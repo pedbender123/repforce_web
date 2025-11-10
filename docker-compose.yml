@@ -1,0 +1,65 @@
+services:
+  db:
+    image: postgres:15
+    container_name: repforce_db
+    volumes:
+      - ./postgres-data:/var/lib/postgresql/data
+    environment:
+      POSTGRES_USER: repforce_user
+      POSTGRES_PASSWORD: repforce_password
+      POSTGRES_DB: repforce_db
+    ports:
+      - "5432:5432" # Expor apenas para debug local, se necessário
+    networks:
+      - repforce_net
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: repforce_backend
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    volumes:
+      - ./backend:/app
+    ports:
+      - "8000:8000"
+    depends_on:
+      - db
+    environment:
+      DATABASE_URL: "postgresql+psycopg2://repforce_user:repforce_password@db:5432/repforce_db"
+      SECRET_KEY: "super-secret-key-mude-em-producao" # Mude isso em produção
+      ALGORITHM: "HS256"
+      ACCESS_TOKEN_EXPIRE_MINUTES: 60
+    networks:
+      - repforce_net
+
+  frontend-web:
+    build:
+      context: ./frontend-web
+      dockerfile: Dockerfile
+    container_name: repforce_frontend
+    ports:
+      - "3000:80" # O Nginx dentro do container serve na porta 80
+    networks:
+      - repforce_net
+
+  nginx:
+    image: nginx:latest
+    container_name: repforce_nginx
+    ports:
+      - "80:80" # Porta principal de entrada
+      - "443:443" # Para HTTPS no futuro
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf
+    depends_on:
+      - backend
+      - frontend-web
+    networks:
+      - repforce_net
+
+networks:
+  repforce_net:
+    driver: bridge
+
+volumes:
+  postgres-data:

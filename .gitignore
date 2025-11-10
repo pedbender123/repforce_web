@@ -1,0 +1,29 @@
+Dependências do Node.js (Frontend)
+
+/frontend-web/node_modules
+/frontend-web/build
+/frontend-web/.npm
+
+Banco de Dados (Docker)
+
+/postgres-data
+
+Arquivos de Cache do Python (Backend)
+
+/backend/app/pycache
+/backend/pycache
+*.pyc
+
+Pasta de ambiente virtual (se você criar uma local)
+
+.venv
+venv/
+
+Arquivos de sistema
+
+.DS_Store
+Thumbs.db
+
+Arquivos do VSCode (opcional, mas recomendado)
+
+.vscode/
