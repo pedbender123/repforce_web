@@ -8,8 +8,10 @@ services:
       POSTGRES_USER: repforce_user
       POSTGRES_PASSWORD: repforce_password
       POSTGRES_DB: repforce_db
-    ports:
-      - "5432:5432" # Expor apenas para debug local, se necessário
+    # A porta do DB só precisa ser acessível pelos outros containers.
+    # Removendo a exposição pública, a menos que você precise depurar.
+    # ports:
+    #   - "127.0.0.1:5432:5432" 
     networks:
       - repforce_net
 
@@ -18,11 +20,14 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     container_name: repforce_backend
+    # O --reload não é ideal para produção, mas pode manter por enquanto.
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
     volumes:
       - ./backend:/app
     ports:
-      - "8000:8000"
+      # MUDANÇA IMPORTANTE AQUI:
+      # O serviço só será acessível pelo Nginx da VPS (localhost)
+      - "127.0.0.1:8000:8000"
     depends_on:
       - db
     environment:
@@ -39,21 +44,9 @@ services:
       dockerfile: Dockerfile
     container_name: repforce_frontend
     ports:
-      - "3000:80" # O Nginx dentro do container serve na porta 80
-    networks:
-      - repforce_net
-
-  nginx:
-    image: nginx:latest
-    container_name: repforce_nginx
-    ports:
-      - "80:80" # Porta principal de entrada
-      - "443:443" # Para HTTPS no futuro
-    volumes:
-      - ./nginx.conf:/etc/nginx/nginx.conf
-    depends_on:
-      - backend
-      - frontend-web
+      # MUDANÇA IMPORTANTE AQUI:
+      # O serviço só será acessível pelo Nginx da VPS (localhost)
+      - "127.0.0.1:3000:80" # O Nginx dentro do container serve na porta 80
     networks:
       - repforce_net
 
