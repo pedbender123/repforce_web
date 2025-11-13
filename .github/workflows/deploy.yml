@@ -22,7 +22,7 @@ jobs:
         with:
           host: ${{ secrets.VPS_HOST }}        # Segredo: IP da VPS
           username: ${{ secrets.VPS_USERNAME }} # Segredo: usuário da VPS (provavelmente 'root')
-          key: ${{ secrets.VPS_PRIVATE_KEY }}  # Segredo: Chave SSH privada
+          key: ${{ secrets.VPS_PRIVATE_KEY }}  
 
           # Comandos que serão executados na VPS
           script: |
