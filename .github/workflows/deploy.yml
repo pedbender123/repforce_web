@@ -1,0 +1,42 @@
+# Este é o arquivo de automação do deploy.
+# Salve ele no seu projeto local (VS Code) em:
+# .github/workflows/deploy.yml
+
+name: Deploy Repforce na VPS
+
+# Gatilho: Executar toda vez que houver um push na branch 'main'
+on:
+  push:
+    branches:
+      - main  # Mude para 'master' se for o seu caso
+
+jobs:
+  deploy:
+    # A "máquina" do GitHub que vai rodar os comandos
+    runs-on: ubuntu-latest 
+
+    steps:
+      - name: 1. Conectar na VPS e fazer o Deploy
+        # Usamos uma "Action" pronta para facilitar a conexão SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VPS_HOST }}        # Segredo: IP da VPS
+          username: ${{ secrets.VPS_USERNAME }} # Segredo: usuário da VPS (provavelmente 'root')
+          key: ${{ secrets.VPS_PRIVATE_KEY }}  # Segredo: Chave SSH privada
+
+          # Comandos que serão executados na VPS
+          script: |
+            # 1. Entra na pasta do projeto (o caminho /root/repforce_web)
+            cd ${{ secrets.TARGET_DIR }}
+
+            # 2. Puxa as atualizações do repositório
+            git pull origin main
+
+            # 3. Reconstrói e reinicia os serviços com Docker Compose
+            #    O -f especifica o arquivo (boa prática)
+            #    O --build força a reconstrução das imagens (backend, frontend)
+            #    O -d roda em modo "detached" (em segundo plano)
+            docker compose -f docker-compose.yml up --build -d
+
+            # 4. (Opcional) Limpa imagens Docker antigas e não utilizadas
+            docker image prune -f
