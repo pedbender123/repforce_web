@@ -10,6 +10,15 @@ class Tenant(Base):
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, unique=True, index=True, nullable=False)
     
+    # --- NOVOS CAMPOS PARA GESTÃO ---
+    cnpj = Column(String, unique=True, index=True, nullable=True)
+    email = Column(String, nullable=True)
+    phone = Column(String, nullable=True)
+    logo_url = Column(String, nullable=True)
+    commercial_info = Column(String, nullable=True) # Outras infos
+    status = Column(String, nullable=False, default='inactive') # inactive, active, contract
+    # --- FIM NOVOS CAMPOS ---
+
     users = relationship("User", back_populates="tenant")
     clients = relationship("Client", back_populates="tenant")
     products = relationship("Product", back_populates="tenant")
@@ -25,6 +34,10 @@ class User(Base):
     hashed_password = Column(String, nullable=False)
     profile = Column(String, nullable=False) # 'admin' ou 'representante'
     
+    # --- NOVO CAMPO ---
+    name = Column(String, nullable=True)
+    # --- FIM NOVO CAMPO ---
+
     tenant_id = Column(Integer, ForeignKey("tenants.id"), nullable=False)
     tenant = relationship("Tenant", back_populates="users")
     

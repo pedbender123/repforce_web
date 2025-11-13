@@ -4,13 +4,15 @@ import { useAuth } from '../context/AuthContext';
 import { 
   HomeIcon, 
   UserGroupIcon, 
-  ArrowLeftOnRectangleIcon 
+  ArrowLeftOnRectangleIcon,
+  BuildingOfficeIcon // Ícone novo
 } from '@heroicons/react/24/outline';
 
 // Links de navegação do Admin
 const navigation = [
   { name: 'Dashboard', href: '/admin/dashboard', icon: HomeIcon },
   { name: 'Usuários', href: '/admin/users', icon: UserGroupIcon },
+  { name: 'Tenants', href: '/admin/tenants', icon: BuildingOfficeIcon }, // Novo link
 ];
 
 function classNames(...classes) {
@@ -69,7 +71,8 @@ export default function AdminLayout() {
         <header className="bg-white shadow-sm h-16 z-10">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-full flex items-center">
             <h1 className="text-xl font-semibold text-gray-900">
-              Painel do Administrador
+              {/* Lógica simples para exibir o título da página */}
+              {navigation.find(nav => location.pathname.startsWith(nav.href))?.name || 'Painel do Administrador'}
             </h1>
           </div>
         </header>

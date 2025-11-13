@@ -32,7 +32,10 @@ def create_initial_admin():
         tenant = db.query(models.Tenant).filter(models.Tenant.name == tenant_name).first()
         
         if not tenant:
-            tenant = models.Tenant(name=tenant_name)
+            tenant = models.Tenant(
+                name=tenant_name,
+                status="active" # Tenant do sistema sempre ativo
+            )
             db.add(tenant)
             db.commit()
             db.refresh(tenant)
@@ -46,6 +49,7 @@ def create_initial_admin():
             hashed_password = security.get_password_hash("12345678")
             new_admin = models.User(
                 email=admin_email,
+                name="Admin Padrão", # Adiciona o nome
                 hashed_password=hashed_password,
                 profile="admin",
                 tenant_id=tenant.id  # Vincula ao tenant "Systems"

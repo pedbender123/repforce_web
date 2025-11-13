@@ -18,6 +18,7 @@ import AppOrderCreate from './pages/app/AppOrderCreate';
 // Páginas do Admin
 import AdminDashboard from './pages/admin/AdminDashboard';
 import UserManagement from './pages/admin/UserManagement';
+import TenantManagement from './pages/admin/TenantManagement'; // Nova página
 
 function App() {
   return (
@@ -53,6 +54,7 @@ function App() {
           <Route index element={<Navigate to="dashboard" replace />} />
           <Route path="dashboard" element={<AdminDashboard />} />
           <Route path="users" element={<UserManagement />} />
+          <Route path="tenants" element={<TenantManagement />} /> {/* Nova rota */}
         </Route>
 
         {/* Redirecionamento padrão (se não estiver logado, vai para login) */}

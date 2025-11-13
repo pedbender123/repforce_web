@@ -17,7 +17,11 @@ const createUser = async (userData) => {
 
 export default function UserManagement() {
   const queryClient = useQueryClient();
-  const { register, handleSubmit, reset, formState: { errors } } = useForm();
+  const { register, handleSubmit, reset, formState: { errors } } = useForm({
+    defaultValues: {
+      profile: 'representante' // Define o padrão do formulário
+    }
+  });
 
   // Query para buscar usuários existentes
   const { data: users, isLoading: isLoadingUsers } = useQuery(
@@ -30,11 +34,11 @@ export default function UserManagement() {
     onSuccess: () => {
       // Invalida a query 'adminUsers' para buscar a lista atualizada
       queryClient.invalidateQueries(['adminUsers']);
-      alert('Representante criado com sucesso!');
+      alert('Usuário criado com sucesso!');
       reset(); // Limpa o formulário
     },
     onError: (error) => {
-      alert(`Erro ao criar representante: ${error.response?.data?.detail || error.message}`);
+      alert(`Erro ao criar usuário: ${error.response?.data?.detail || error.message}`);
     }
   });
 
@@ -48,9 +52,23 @@ export default function UserManagement() {
       <div className="md:col-span-1">
         <div className="bg-white p-6 rounded-lg shadow">
           <h2 className="text-xl font-bold text-gray-800 mb-4">
-            Novo Representante
+            Novo Usuário
           </h2>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+            {/* NOVO CAMPO NOME */}
+            <div>
+              <label htmlFor="name" className="block text-sm font-medium text-gray-700">
+                Nome
+              </label>
+              <input
+                id="name"
+                type="text"
+                {...register("name", { required: "Nome é obrigatório" })}
+                className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-repforce-primary focus:border-repforce-primary"
+              />
+              {errors.name && <span className="text-red-500 text-sm">{errors.name.message}</span>}
+            </div>
+
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-gray-700">
                 Email
@@ -63,6 +81,7 @@ export default function UserManagement() {
               />
               {errors.email && <span className="text-red-500 text-sm">{errors.email.message}</span>}
             </div>
+            
             <div>
               <label htmlFor="password"className="block text-sm font-medium text-gray-700">
                 Senha
@@ -75,6 +94,23 @@ export default function UserManagement() {
               />
               {errors.password && <span className="text-red-500 text-sm">{errors.password.message || "Senha deve ter min. 6 caracteres"}</span>}
             </div>
+
+            {/* NOVO CAMPO PERFIL */}
+            <div>
+              <label htmlFor="profile" className="block text-sm font-medium text-gray-700">
+                Perfil
+              </label>
+              <select
+                id="profile"
+                {...register("profile", { required: "Perfil é obrigatório" })}
+                className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-repforce-primary focus:border-repforce-primary"
+              >
+                <option value="representante">Representante</option>
+                <option value="admin">Administrador</option>
+              </select>
+              {errors.profile && <span className="text-red-500 text-sm">{errors.profile.message}</span>}
+            </div>
+
             <button
               type="submit"
               disabled={mutation.isLoading}
@@ -96,9 +132,9 @@ export default function UserManagement() {
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nome</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Perfil</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
@@ -107,9 +143,15 @@ export default function UserManagement() {
                 ) : (
                   users?.map((user) => (
                     <tr key={user.id}>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{user.email}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{user.profile}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{user.id}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{user.name || 'N/A'}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{user.email}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                          user.profile === 'admin' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'
+                        }`}>
+                          {user.profile}
+                        </span>
+                      </td>
                     </tr>
                   ))
                 )}

@@ -12,9 +12,11 @@ class TokenData(BaseModel):
 # --- User Schemas ---
 class UserBase(BaseModel):
     email: EmailStr
+    name: Optional[str] = None
 
 class UserCreate(UserBase):
     password: str
+    profile: Optional[str] = "representante" # Default é representante
 
 class User(UserBase):
     id: int
@@ -83,12 +85,25 @@ class Product(ProductBase):
         orm_mode = True
 
 # --- Tenant Schemas (Para o SysAdmin) ---
-class Tenant(BaseModel):
-    id: int
+
+class TenantBase(BaseModel):
     name: str
+    cnpj: Optional[str] = None
+    email: Optional[EmailStr] = None
+    phone: Optional[str] = None
+    logo_url: Optional[str] = None
+    commercial_info: Optional[str] = None
+    status: Optional[str] = 'inactive'
+
+class TenantCreate(TenantBase):
+    pass
+
+class Tenant(TenantBase):
+    id: int
     class Config:
         orm_mode = True
 
 # --- NOVO SCHEMA QUE FALTAVA ---
-class SetupRequest(UserCreate):
-    tenant_name: str
+# Este schema não é mais necessário, pois UserCreate agora o substitui
+# class SetupRequest(UserCreate):
+#     tenant_name: str
