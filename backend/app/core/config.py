@@ -6,8 +6,9 @@ class Settings(BaseSettings):
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
 
-    class Config:
-        env_file = ".env" # Se você usar um arquivo .env
-        env_file_encoding = 'utf-8'
+    # REMOVEMOS a classe 'Config'. O Pydantic (BaseSettings)
+    # automaticamente já lê as variáveis do ambiente do contêiner,
+    # que é exatamente o que o docker-compose (com env_file) faz.
+    # Não precisamos mais que o Python leia o .env.
 
 settings = Settings()

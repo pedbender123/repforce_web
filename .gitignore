@@ -27,3 +27,9 @@ Thumbs.db
 Arquivos do VSCode (opcional, mas recomendado)
 
 .vscode/
+
+A LINHA MAIS IMPORTANTE:
+
+Ignora o arquivo .env que contém os segredos
+
+/.env
