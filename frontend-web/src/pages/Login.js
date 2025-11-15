@@ -8,8 +8,6 @@ const LogoPlaceholder = () => (
     <span className="text-4xl font-bold text-repforce-primary tracking-wider">
       REPFORCE
     </span>
-    {/* O círculo azul vibrante no 'O' pode ser feito com CSS, 
-        mas um SVG ou texto simples é mais fácil aqui. */}
   </div>
 );
 
@@ -17,12 +15,26 @@ export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState(null);
-  const { login, token, userProfile } = useAuth();
+  const { login, token, userProfile } = useAuth(); // Apenas userProfile é necessário aqui
   const navigate = useNavigate();
+
+  // Função de redirecionamento baseada no perfil
+  const getRedirectPath = (profile) => {
+    switch (profile) {
+      case 'sysadmin':
+        return '/sysadmin';
+      case 'admin':
+        return '/admin';
+      case 'representante':
+        return '/app';
+      default:
+        return '/login';
+    }
+  };
 
   // Se já estiver logado, redireciona
   if (token) {
-    const redirectTo = userProfile === 'admin' ? '/admin' : '/app';
+    const redirectTo = getRedirectPath(userProfile);
     return <Navigate to={redirectTo} replace />;
   }
 
@@ -30,10 +42,13 @@ export default function Login() {
     e.preventDefault();
     setError(null);
     try {
-      const profile = await login(email, password);
+      // login() no AuthContext agora retorna o perfil
+      const profile = await login(email, password); 
+      
       // Redireciona com base no perfil
-      const redirectTo = profile === 'admin' ? '/admin' : '/app';
+      const redirectTo = getRedirectPath(profile);
       navigate(redirectTo, { replace: true });
+
     } catch (err) {
       setError('Falha no login. Verifique seu e-mail e senha.');
     }

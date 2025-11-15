@@ -17,13 +17,11 @@ app = FastAPI(
     version="0.1.0"
 )
 
-# --- SEEDING AUTOMÁTICO (A SUA IDEIA) ---
+# --- SEEDING AUTOMÁTICO ---
 @app.on_event("startup")
 def create_initial_admin():
     """
-    Executa na inicialização da API.
-    Verifica se o Tenant 'Systems' e o User 'admin@sistemas.com' existem.
-    Se não, cria eles.
+    Cria o Tenant "Systems" e o usuário "SysAdmin" padrão.
     """
     db: Session = database.SessionLocal()
     try:
@@ -34,14 +32,16 @@ def create_initial_admin():
         if not tenant:
             tenant = models.Tenant(
                 name=tenant_name,
-                status="active" # Tenant do sistema sempre ativo
+                status="active", # Tenant do sistema sempre ativo
+                email="pedro.p.bender.randon@gmail.com", # Email padrão do SysAdmin
+                cnpj="00.000.000/0001-00"
             )
             db.add(tenant)
             db.commit()
             db.refresh(tenant)
             print(f"Tenant '{tenant_name}' criado com sucesso.")
         
-        # 2. Verificar/Criar o Admin "admin@sistemas.com"
+        # 2. Verificar/Criar o SysAdmin "admin@sistemas.com"
         admin_email = "admin@sistemas.com"
         admin_user = db.query(models.User).filter(models.User.email == admin_email).first()
         
@@ -49,14 +49,14 @@ def create_initial_admin():
             hashed_password = security.get_password_hash("12345678")
             new_admin = models.User(
                 email=admin_email,
-                name="Admin Padrão", # Adiciona o nome
+                name="SysAdmin Padrão", 
                 hashed_password=hashed_password,
-                profile="admin",
+                profile="sysadmin", # <-- MUDANÇA IMPORTANTE
                 tenant_id=tenant.id  # Vincula ao tenant "Systems"
             )
             db.add(new_admin)
             db.commit()
-            print(f"Usuário Admin '{admin_email}' criado com sucesso.")
+            print(f"Usuário SysAdmin '{admin_email}' criado com sucesso.")
         
     except Exception as e:
         print(f"Erro durante o seeding inicial: {e}")

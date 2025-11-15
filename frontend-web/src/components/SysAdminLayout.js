@@ -4,29 +4,31 @@ import { useAuth } from '../context/AuthContext';
 import { 
   HomeIcon, 
   UserGroupIcon, 
-  ArrowLeftOnRectangleIcon 
+  ArrowLeftOnRectangleIcon,
+  BuildingOfficeIcon 
 } from '@heroicons/react/24/outline';
 
-// Links de navegação do Admin (Tenant) - SEM "Tenants"
+// Links de navegação do SysAdmin
 const navigation = [
-  { name: 'Dashboard', href: '/admin/dashboard', icon: HomeIcon },
-  { name: 'Usuários', href: '/admin/users', icon: UserGroupIcon },
+  { name: 'Dashboard', href: '/sysadmin/dashboard', icon: HomeIcon },
+  { name: 'Usuários', href: '/sysadmin/users', icon: UserGroupIcon },
+  { name: 'Tenants', href: '/sysadmin/tenants', icon: BuildingOfficeIcon },
 ];
 
 function classNames(...classes) {
   return classes.filter(Boolean).join(' ')
 }
 
-export default function AdminLayout() {
+export default function SysAdminLayout() {
   const { logout } = useAuth();
   const location = useLocation();
 
   return (
     <div className="flex h-screen bg-gray-100">
       {/* Sidebar */}
-      <div className="w-64 flex flex-col bg-gray-800 text-white"> {/* Mantém a cor de admin */}
+      <div className="w-64 flex flex-col bg-gray-900 text-white"> {/* Cor mais escura para diferenciar */}
         <div className="h-16 flex items-center justify-center shadow-md">
-           <span className="text-2xl font-bold text-white tracking-wider">ADMIN</span>
+           <span className="text-2xl font-bold text-white tracking-wider">SYSADMIN</span>
         </div>
         <nav className="flex-1 px-2 py-4 space-y-1">
           {navigation.map((item) => (
@@ -35,7 +37,7 @@ export default function AdminLayout() {
               to={item.href}
               className={classNames(
                 location.pathname.startsWith(item.href)
-                  ? 'bg-gray-900 text-white'
+                  ? 'bg-gray-700 text-white'
                   : 'text-gray-300 hover:bg-gray-700 hover:text-white',
                 'group flex items-center px-2 py-2 text-sm font-medium rounded-md'
               )}
@@ -67,7 +69,7 @@ export default function AdminLayout() {
         <header className="bg-white shadow-sm h-16 z-10">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-full flex items-center">
             <h1 className="text-xl font-semibold text-gray-900">
-              {navigation.find(nav => location.pathname.startsWith(nav.href))?.name || 'Painel do Administrador'}
+              {navigation.find(nav => location.pathname.startsWith(nav.href))?.name || 'Painel do SysAdmin'}
             </h1>
           </div>
         </header>

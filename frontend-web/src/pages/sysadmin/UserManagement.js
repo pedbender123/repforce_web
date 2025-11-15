@@ -5,37 +5,36 @@ import apiClient from '../../api/apiClient';
 
 // --- Busca de Usuários ---
 const fetchUsers = async () => {
-  // Bate no endpoint de Admin (Tenant)
-  const { data } = await apiClient.get('/api/admin/users');
+  // ATENÇÃO: API path mudou
+  const { data } = await apiClient.get('/api/sysadmin/users');
   return data;
 };
 
 // --- Criação de Usuário ---
 const createUser = async (userData) => {
-  // Bate no endpoint de Admin (Tenant)
-  const { data } = await apiClient.post('/api/admin/users', userData);
+  // ATENÇÃO: API path mudou
+  const { data } = await apiClient.post('/api/sysadmin/users', userData);
   return data;
 };
 
-// Este é o NOVO UserManagement para Admins de Tenant
-export default function TenantUserManagement() {
+export default function SysAdminUserManagement() {
   const queryClient = useQueryClient();
   const { register, handleSubmit, reset, formState: { errors } } = useForm({
     defaultValues: {
-      profile: 'representante' // Padrão
+      profile: 'admin' // Padrão para criar novos admins
     }
   });
 
   // Query para buscar usuários existentes
   const { data: users, isLoading: isLoadingUsers } = useQuery(
-    ['tenantAdminUsers'], // Chave de query única
+    ['sysAdminUsers'], // Chave de query única
     fetchUsers
   );
 
   // Mutation para criar novo usuário
   const mutation = useMutation(createUser, {
     onSuccess: () => {
-      queryClient.invalidateQueries(['tenantAdminUsers']);
+      queryClient.invalidateQueries(['sysAdminUsers']);
       alert('Usuário criado com sucesso!');
       reset(); 
     },
@@ -54,7 +53,7 @@ export default function TenantUserManagement() {
       <div className="md:col-span-1">
         <div className="bg-white p-6 rounded-lg shadow">
           <h2 className="text-xl font-bold text-gray-800 mb-4">
-            Novo Usuário do Tenant
+            Novo Usuário (Sistema)
           </h2>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
             <div>
@@ -105,9 +104,9 @@ export default function TenantUserManagement() {
                 {...register("profile", { required: "Perfil é obrigatório" })}
                 className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-repforce-primary focus:border-repforce-primary"
               >
-                {/* Admin de Tenant SÓ PODE criar representantes ou outros admins */}
-                <option value="representante">Representante</option>
+                <option value="sysadmin">SysAdmin</option>
                 <option value="admin">Admin (Tenant)</option>
+                <option value="representante">Representante (Sistema)</option>
               </select>
               {errors.profile && <span className="text-red-500 text-sm">{errors.profile.message}</span>}
             </div>
@@ -127,7 +126,7 @@ export default function TenantUserManagement() {
       <div className="md:col-span-2">
         <div className="bg-white shadow-lg rounded-lg overflow-hidden">
           <div className="px-6 py-4">
-            <h2 className="text-xl font-bold text-gray-800">Usuários do Tenant</h2>
+            <h2 className="text-xl font-bold text-gray-800">Usuários do Sistema (Tenant 'Systems')</h2>
           </div>
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
@@ -148,6 +147,7 @@ export default function TenantUserManagement() {
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{user.email}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                         <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                          user.profile === 'sysadmin' ? 'bg-red-100 text-red-800' :
                           user.profile === 'admin' ? 'bg-blue-100 text-blue-800' : 
                           'bg-green-100 text-green-800'
                         }`}>

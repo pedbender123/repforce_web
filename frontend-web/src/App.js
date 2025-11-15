@@ -10,15 +10,21 @@ import AppLayout from './components/AppLayout';
 import AdminLayout from './components/AdminLayout';
 import PrivateRoute from './components/PrivateRoute';
 
-// Páginas do App (Representante)
+// --- Layouts e Páginas Novas ---
+import SysAdminLayout from './components/SysAdminLayout'; 
+import SysAdminDashboard from './pages/sysadmin/SysAdminDashboard';
+import TenantManagement from './pages/sysadmin/TenantManagement';
+import SysAdminUserManagement from './pages/sysadmin/UserManagement'; // Renomeado
+
+// --- Páginas Admin (Tenant) ---
+import AdminDashboard from './pages/admin/AdminDashboard';
+import TenantUserManagement from './pages/admin/UserManagement'; // Renomeado
+
+// --- Páginas App (Representante) ---
 import AppDashboard from './pages/app/AppDashboard';
 import AppClientList from './pages/app/AppClientList';
 import AppOrderCreate from './pages/app/AppOrderCreate';
 
-// Páginas do Admin
-import AdminDashboard from './pages/admin/AdminDashboard';
-import UserManagement from './pages/admin/UserManagement';
-import TenantManagement from './pages/admin/TenantManagement'; // Nova página
 
 function App() {
   return (
@@ -26,35 +32,48 @@ function App() {
       <Routes>
         <Route path="/login" element={<Login />} />
 
-        {/* Rotas protegidas para Representantes (/app/*) */}
+        {/* === ROTAS DO REPRESENTANTE === */}
         <Route
           path="/app"
           element={
-            <PrivateRoute profile="representante">
+            <PrivateRoute requiredProfile="representante">
               <AppLayout />
             </PrivateRoute>
           }
         >
-          {/* Redireciona /app para /app/dashboard */}
           <Route index element={<Navigate to="dashboard" replace />} />
           <Route path="dashboard" element={<AppDashboard />} />
           <Route path="clients" element={<AppClientList />} />
           <Route path="orders/new" element={<AppOrderCreate />} />
         </Route>
 
-        {/* Rotas protegidas para Admin (/admin/*) */}
+        {/* === ROTAS DO ADMIN (TENANT) === */}
         <Route
           path="/admin"
           element={
-            <PrivateRoute profile="admin">
+            <PrivateRoute requiredProfile="admin">
               <AdminLayout />
             </PrivateRoute>
           }
         >
           <Route index element={<Navigate to="dashboard" replace />} />
           <Route path="dashboard" element={<AdminDashboard />} />
-          <Route path="users" element={<UserManagement />} />
-          <Route path="tenants" element={<TenantManagement />} /> {/* Nova rota */}
+          <Route path="users" element={<TenantUserManagement />} />
+        </Route>
+
+        {/* === ROTAS DO SYSADMIN (SISTEMA) === */}
+        <Route
+          path="/sysadmin"
+          element={
+            <PrivateRoute requiredProfile="sysadmin">
+              <SysAdminLayout />
+            </PrivateRoute>
+          }
+        >
+          <Route index element={<Navigate to="dashboard" replace />} />
+          <Route path="dashboard" element={<SysAdminDashboard />} />
+          <Route path="users" element={<SysAdminUserManagement />} />
+          <Route path="tenants" element={<TenantManagement />} />
         </Route>
 
         {/* Redirecionamento padrão (se não estiver logado, vai para login) */}
