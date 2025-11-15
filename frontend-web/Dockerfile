@@ -25,10 +25,10 @@ RUN rm -rf ./*
 # Copia os arquivos estáticos do estágio de build
 COPY --from=build /app/build .
 
-# --- LINHA MODIFICADA ---
+# --- ESSA É A CORREÇÃO ---
 # Copia a configuração Nginx específica para o React Router
 COPY nginx.conf /etc/nginx/conf.d/default.conf
-# --- FIM DA MODIFICAÇÃO ---
+# --- FIM DA CORREÇÃO ---
 
 EXPOSE 80
 CMD ["nginx", "-g", "daemon off;"]
