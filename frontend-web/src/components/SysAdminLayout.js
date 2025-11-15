@@ -1,18 +1,20 @@
 import React from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
+import { useSysAdminAuth } from '../context/SysAdminAuthContext'; // <-- USA O AUTH NOVO
 import { 
   HomeIcon, 
   UserGroupIcon, 
   ArrowLeftOnRectangleIcon,
-  BuildingOfficeIcon 
+  BuildingOfficeIcon,
+  GlobeAltIcon // Ícone novo
 } from '@heroicons/react/24/outline';
 
 // Links de navegação do SysAdmin
 const navigation = [
   { name: 'Dashboard', href: '/sysadmin/dashboard', icon: HomeIcon },
-  { name: 'Usuários', href: '/sysadmin/users', icon: UserGroupIcon },
-  { name: 'Tenants', href: '/sysadmin/tenants', icon: BuildingOfficeIcon },
+  { name: 'Ver Todos Usuários', href: '/sysadmin/all-users', icon: GlobeAltIcon },
+  { name: 'Gerenciar Tenants', href: '/sysadmin/tenants', icon: BuildingOfficeIcon },
+  { name: 'Gerenciar SysAdmins', href: '/sysadmin/systems-users', icon: UserGroupIcon },
 ];
 
 function classNames(...classes) {
@@ -20,13 +22,13 @@ function classNames(...classes) {
 }
 
 export default function SysAdminLayout() {
-  const { logout } = useAuth();
+  const { logout } = useSysAdminAuth(); // <-- USA O LOGOUT NOVO
   const location = useLocation();
 
   return (
     <div className="flex h-screen bg-gray-100">
       {/* Sidebar */}
-      <div className="w-64 flex flex-col bg-gray-900 text-white"> {/* Cor mais escura para diferenciar */}
+      <div className="w-64 flex flex-col bg-gray-900 text-white"> 
         <div className="h-16 flex items-center justify-center shadow-md">
            <span className="text-2xl font-bold text-white tracking-wider">SYSADMIN</span>
         </div>

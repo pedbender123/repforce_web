@@ -16,26 +16,22 @@ export const AuthProvider = ({ children }) => {
       try {
         const storedToken = localStorage.getItem('token');
         if (storedToken) {
-          // Decodifica o token para pegar o perfil
           const decodedToken = jwtDecode(storedToken);
           
-          // Verifica se o token expirou
           if (decodedToken.exp * 1000 < Date.now()) {
             throw new Error("Token expirado");
           }
 
-          // Configura o token no apiClient e no estado
+          // Este é o apiClient PADRÃO
           apiClient.defaults.headers.common['Authorization'] = `Bearer ${storedToken}`;
           setToken(storedToken);
           setUserProfile(decodedToken.profile);
         } else {
-          // Garante que o estado está limpo se não houver token
           setToken(null);
           setUserProfile(null);
           delete apiClient.defaults.headers.common['Authorization'];
         }
       } catch (error) {
-        // Se o token for inválido ou expirado, limpa tudo
         console.error("Falha ao inicializar autenticação:", error.message);
         localStorage.removeItem('token');
         setToken(null);
@@ -47,15 +43,18 @@ export const AuthProvider = ({ children }) => {
     };
 
     initializeAuth();
-  }, []); // Executa apenas na montagem inicial
+  }, []);
 
-  const login = async (email, password) => {
+  const login = async (email, password) => { // Manteve 'email' aqui, mas o back usa 'username'
+    // ATENÇÃO: O FORM de login normal agora deve enviar 'username'
+    // Vamos manter a variável como 'email' aqui por enquanto,
+    // mas ela será o 'username' no backend.
     try {
-      // O backend espera dados de formulário (OAuth2PasswordRequestForm)
       const formData = new URLSearchParams();
-      formData.append('username', email); // 'username' é o email
+      formData.append('username', email); // O backend espera 'username'
       formData.append('password', password);
 
+      // Bate no endpoint /auth/token (o normal)
       const response = await apiClient.post('/auth/token', formData, {
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded',
@@ -63,31 +62,27 @@ export const AuthProvider = ({ children }) => {
       });
 
       const { access_token } = response.data;
-      
-      // Decodifica o token para extrair o perfil
       const decodedToken = jwtDecode(access_token);
       const profile = decodedToken.profile;
 
-      // Salva no localStorage, no estado e no header do apiClient
       localStorage.setItem('token', access_token);
       apiClient.defaults.headers.common['Authorization'] = `Bearer ${access_token}`;
       setToken(access_token);
       setUserProfile(profile);
 
-      return profile; // Retorna o perfil para o componente de Login redirecionar
+      return profile; 
     } catch (error) {
       console.error('Erro no login:', error);
-      throw error; // Lança o erro para a página de Login tratar
+      throw error;
     }
   };
 
   const logout = () => {
-    // Limpa tudo
     localStorage.removeItem('token');
     setToken(null);
     setUserProfile(null);
     delete apiClient.defaults.headers.common['Authorization'];
-    // Redireciona para /login (o PrivateRoute cuidará disso)
+    window.location.replace('/login'); // Força ida ao login normal
   };
 
   const value = {

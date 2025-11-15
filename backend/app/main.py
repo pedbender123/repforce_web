@@ -17,12 +17,9 @@ app = FastAPI(
     version="0.1.0"
 )
 
-# --- SEEDING AUTOMÁTICO ---
+# --- SEEDING AUTOMÁTICO (CORRIGIDO) ---
 @app.on_event("startup")
 def create_initial_admin():
-    """
-    Cria o Tenant "Systems" e o usuário "SysAdmin" padrão.
-    """
     db: Session = database.SessionLocal()
     try:
         # 1. Verificar/Criar o Tenant "Systems"
@@ -32,8 +29,8 @@ def create_initial_admin():
         if not tenant:
             tenant = models.Tenant(
                 name=tenant_name,
-                status="active", # Tenant do sistema sempre ativo
-                email="pedro.p.bender.randon@gmail.com", # Email padrão do SysAdmin
+                status="active",
+                email="pedro.p.bender.randon@gmail.com", 
                 cnpj="00.000.000/0001-00"
             )
             db.add(tenant)
@@ -41,22 +38,33 @@ def create_initial_admin():
             db.refresh(tenant)
             print(f"Tenant '{tenant_name}' criado com sucesso.")
         
-        # 2. Verificar/Criar o SysAdmin "admin@sistemas.com"
-        admin_email = "admin@sistemas.com"
-        admin_user = db.query(models.User).filter(models.User.email == admin_email).first()
+        # 2. Verificar/Criar ou ATUALIZAR o SysAdmin
+        # O USERNAME de login será "sysadmin"
+        admin_username = "sysadmin"
+        admin_user = db.query(models.User).filter(models.User.username == admin_username).first()
         
         if not admin_user:
+            # Se não existir, cria
             hashed_password = security.get_password_hash("12345678")
             new_admin = models.User(
-                email=admin_email,
+                username=admin_username, # LOGIN
+                email="pedro.p.bender.randon@gmail.com", # CONTATO
                 name="SysAdmin Padrão", 
                 hashed_password=hashed_password,
-                profile="sysadmin", # <-- MUDANÇA IMPORTANTE
-                tenant_id=tenant.id  # Vincula ao tenant "Systems"
+                profile="sysadmin", # Perfil correto
+                tenant_id=tenant.id
             )
             db.add(new_admin)
             db.commit()
-            print(f"Usuário SysAdmin '{admin_email}' criado com sucesso.")
+            print(f"Usuário SysAdmin '{admin_username}' criado com sucesso.")
+        else:
+            # Se existir, garante que os dados estão corretos
+            admin_user.profile = "sysadmin"
+            admin_user.tenant_id = tenant.id
+            admin_user.name = "SysAdmin Padrão"
+            admin_user.email = "pedro.p.bender.randon@gmail.com"
+            db.commit()
+            print(f"Usuário SysAdmin '{admin_username}' verificado e atualizado.")
         
     except Exception as e:
         print(f"Erro durante o seeding inicial: {e}")
@@ -65,6 +73,7 @@ def create_initial_admin():
         db.close()
 # --- FIM DO SEEDING ---
 
+# ... (Resto do arquivo main.py) ...
 
 # Configuração do CORS
 app.add_middleware(
@@ -76,6 +85,7 @@ app.add_middleware(
 )
 
 # Adiciona o Middleware de Tenant
+# ATENÇÃO: Precisamos ajustar o middleware para "ignorar" o /api/auth/sysadmin/token
 app.add_middleware(TenantMiddleware)
 
 @app.get("/")

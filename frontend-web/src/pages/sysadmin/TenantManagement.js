@@ -1,19 +1,17 @@
 import React from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
-import apiClient from '../../api/apiClient';
+import sysAdminApiClient from '../../api/sysAdminApiClient'; // <-- USA O API CLIENT NOVO
 
 // --- Busca de Tenants ---
 const fetchTenants = async () => {
-  // ATENÇÃO: API path mudou
-  const { data } = await apiClient.get('/api/sysadmin/tenants');
+  const { data } = await sysAdminApiClient.get('/api/sysadmin/tenants');
   return data;
 };
 
 // --- Criação de Tenant ---
 const createTenant = async (tenantData) => {
-  // ATENÇÃO: API path mudou
-  const { data } = await apiClient.post('/api/sysadmin/tenants', tenantData);
+  const { data } = await sysAdminApiClient.post('/api/sysadmin/tenants', tenantData);
   return data;
 };
 

@@ -12,17 +12,16 @@ const LogoPlaceholder = () => (
 );
 
 export default function Login() {
-  const [email, setEmail] = useState('');
+  const [username, setUsername] = useState(''); // MUDOU DE 'email' PARA 'username'
   const [password, setPassword] = useState('');
   const [error, setError] = useState(null);
-  const { login, token, userProfile } = useAuth(); // Apenas userProfile é necessário aqui
+  const { login, token, userProfile } = useAuth();
   const navigate = useNavigate();
 
   // Função de redirecionamento baseada no perfil
   const getRedirectPath = (profile) => {
     switch (profile) {
-      case 'sysadmin':
-        return '/sysadmin';
+      // Este login NÃO deve logar sysadmin
       case 'admin':
         return '/admin';
       case 'representante':
@@ -42,21 +41,18 @@ export default function Login() {
     e.preventDefault();
     setError(null);
     try {
-      // login() no AuthContext agora retorna o perfil
-      const profile = await login(email, password); 
+      // Passa o 'username' para a função login
+      const profile = await login(username, password);
       
-      // Redireciona com base no perfil
       const redirectTo = getRedirectPath(profile);
       navigate(redirectTo, { replace: true });
-
     } catch (err) {
-      setError('Falha no login. Verifique seu e-mail e senha.');
+      setError('Falha no login. Verifique seu usuário e senha.');
     }
   };
 
   return (
     <div className="flex min-h-screen">
-      {/* Lado Esquerdo: Imagem ou Cor Sólida (Identidade Visual) */}
       <div className="hidden lg:flex lg:w-1/2 bg-repforce-dark items-center justify-center p-12">
         <div className="text-white text-left max-w-md">
           <h1 className="text-5xl font-bold mb-6">
@@ -67,8 +63,7 @@ export default function Login() {
           </p>
         </div>
       </div>
-
-      {/* Lado Direito: Formulário de Login */}
+      
       <div className="flex-1 flex flex-col justify-center items-center bg-repforce-light lg:w-1/2 p-8">
         <div className="w-full max-w-md bg-white p-8 md:p-12 rounded-lg shadow-xl">
           <div className="mb-10">
@@ -82,20 +77,20 @@ export default function Login() {
           <form onSubmit={handleSubmit}>
             <div>
               <label 
-                htmlFor="email" 
+                htmlFor="username" // MUDOU
                 className="block text-sm font-medium text-gray-700"
               >
-                E-mail
+                Usuário (Username) 
               </label>
               <div className="mt-1">
                 <input
-                  id="email"
-                  name="email"
-                  type="email"
-                  autoComplete="email"
+                  id="username" // MUDOU
+                  name="username" // MUDOU
+                  type="text" // MUDOU
+                  autoComplete="username"
                   required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-repforce-primary focus:border-repforce-primary"
                 />
               </div>

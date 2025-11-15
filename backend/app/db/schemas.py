@@ -1,30 +1,51 @@
 from pydantic import BaseModel, EmailStr
 from typing import List, Optional, Any
 
+# --- Tenant Schemas (Usado dentro do User Schema) ---
+class TenantBase(BaseModel):
+    name: str
+    cnpj: Optional[str] = None
+    email: Optional[EmailStr] = None
+    phone: Optional[str] = None
+    logo_url: Optional[str] = None
+    commercial_info: Optional[str] = None
+    status: Optional[str] = 'inactive'
+
+class TenantCreate(TenantBase):
+    pass
+
+class Tenant(TenantBase):
+    id: int
+    class Config:
+        orm_mode = True
+
+# --- User Schemas ---
+class UserBase(BaseModel):
+    username: str # Campo de login
+    email: Optional[EmailStr] = None # Campo de contato
+    name: Optional[str] = None
+
+class UserCreate(UserBase):
+    password: str
+    profile: Optional[str] = "representante"
+    tenant_id: Optional[int] = None # SysAdmin pode precisar definir isso
+
+class User(UserBase):
+    id: int
+    profile: str
+    tenant_id: int
+    tenant: Tenant # <-- Retorna os dados do Tenant junto
+
+    class Config:
+        orm_mode = True
+
 # --- Token Schemas ---
 class Token(BaseModel):
     access_token: str
     token_type: str
 
 class TokenData(BaseModel):
-    username: Optional[str] = None # 'username' aqui é o 'sub' (user.id)
-
-# --- User Schemas ---
-class UserBase(BaseModel):
-    email: EmailStr
-    name: Optional[str] = None
-
-class UserCreate(UserBase):
-    password: str
-    profile: Optional[str] = "representante" # Default é representante
-
-class User(UserBase):
-    id: int
-    profile: str
-    tenant_id: int
-
-    class Config:
-        orm_mode = True # No Pydantic v1. Use from_attributes = True no v2
+    username: Optional[str] = None
 
 # --- Client Schemas ---
 class ClientBase(BaseModel):
@@ -55,7 +76,7 @@ class OrderBase(BaseModel):
     items: List[OrderItem]
 
 class OrderCreate(OrderBase):
-    pass # Pode adicionar mais campos se necessário
+    pass
 
 class Order(OrderBase):
     id: int
@@ -83,27 +104,3 @@ class Product(ProductBase):
 
     class Config:
         orm_mode = True
-
-# --- Tenant Schemas (Para o SysAdmin) ---
-
-class TenantBase(BaseModel):
-    name: str
-    cnpj: Optional[str] = None
-    email: Optional[EmailStr] = None
-    phone: Optional[str] = None
-    logo_url: Optional[str] = None
-    commercial_info: Optional[str] = None
-    status: Optional[str] = 'inactive'
-
-class TenantCreate(TenantBase):
-    pass
-
-class Tenant(TenantBase):
-    id: int
-    class Config:
-        orm_mode = True
-
-# --- NOVO SCHEMA QUE FALTAVA ---
-# Este schema não é mais necessário, pois UserCreate agora o substitui
-# class SetupRequest(UserCreate):
-#     tenant_name: str

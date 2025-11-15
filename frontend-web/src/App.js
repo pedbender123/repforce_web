@@ -5,34 +5,44 @@ import {
   Route,
   Navigate
 } from 'react-router-dom';
+
+// --- Logins ---
 import Login from './pages/Login';
+import SysAdminLogin from './pages/sysadmin/SysAdminLogin'; // <-- NOVO LOGIN
+
+// --- Layouts ---
 import AppLayout from './components/AppLayout';
 import AdminLayout from './components/AdminLayout';
+import SysAdminLayout from './components/SysAdminLayout';
+
+// --- Private Routes ---
 import PrivateRoute from './components/PrivateRoute';
-
-// --- Layouts e Páginas Novas ---
-import SysAdminLayout from './components/SysAdminLayout'; 
-import SysAdminDashboard from './pages/sysadmin/SysAdminDashboard';
-import TenantManagement from './pages/sysadmin/TenantManagement';
-import SysAdminUserManagement from './pages/sysadmin/UserManagement'; // Renomeado
-
-// --- Páginas Admin (Tenant) ---
-import AdminDashboard from './pages/admin/AdminDashboard';
-import TenantUserManagement from './pages/admin/UserManagement'; // Renomeado
+import SysAdminPrivateRoute from './components/SysAdminPrivateRoute'; // <-- NOVA ROTA PRIVADA
 
 // --- Páginas App (Representante) ---
 import AppDashboard from './pages/app/AppDashboard';
 import AppClientList from './pages/app/AppClientList';
 import AppOrderCreate from './pages/app/AppOrderCreate';
 
+// --- Páginas Admin (Tenant) ---
+import AdminDashboard from './pages/admin/AdminDashboard';
+import TenantUserManagement from './pages/admin/UserManagement';
+
+// --- Páginas SysAdmin (Sistema) ---
+import SysAdminDashboard from './pages/sysadmin/SysAdminDashboard';
+import TenantManagement from './pages/sysadmin/TenantManagement';
+import SysAdminUserManagement from './pages/sysadmin/UserManagement';
+import AllUserManagement from './pages/sysadmin/AllUserManagement'; // <-- NOVA PÁGINA
 
 function App() {
   return (
     <BrowserRouter>
       <Routes>
+        {/* --- ROTAS PÚBLICAS --- */}
         <Route path="/login" element={<Login />} />
+        <Route path="/sysadmin/login" element={<SysAdminLogin />} />
 
-        {/* === ROTAS DO REPRESENTANTE === */}
+        {/* --- ROTAS PRIVADAS /APP (REPRESENTANTE) --- */}
         <Route
           path="/app"
           element={
@@ -47,7 +57,7 @@ function App() {
           <Route path="orders/new" element={<AppOrderCreate />} />
         </Route>
 
-        {/* === ROTAS DO ADMIN (TENANT) === */}
+        {/* --- ROTAS PRIVADAS /ADMIN (TENANT) --- */}
         <Route
           path="/admin"
           element={
@@ -61,22 +71,23 @@ function App() {
           <Route path="users" element={<TenantUserManagement />} />
         </Route>
 
-        {/* === ROTAS DO SYSADMIN (SISTEMA) === */}
+        {/* --- ROTAS PRIVADAS /SYSADMIN (SISTEMA) --- */}
         <Route
           path="/sysadmin"
           element={
-            <PrivateRoute requiredProfile="sysadmin">
+            <SysAdminPrivateRoute> {/* <-- USA A NOVA ROTA PRIVADA */}
               <SysAdminLayout />
-            </PrivateRoute>
+            </SysAdminPrivateRoute>
           }
         >
           <Route index element={<Navigate to="dashboard" replace />} />
           <Route path="dashboard" element={<SysAdminDashboard />} />
-          <Route path="users" element={<SysAdminUserManagement />} />
+          <Route path="systems-users" element={<SysAdminUserManagement />} />
           <Route path="tenants" element={<TenantManagement />} />
+          <Route path="all-users" element={<AllUserManagement />} /> {/* <-- ROTA PARA VER TUDO */}
         </Route>
 
-        {/* Redirecionamento padrão (se não estiver logado, vai para login) */}
+        {/* Redirecionamento padrão */}
         <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
     </BrowserRouter>

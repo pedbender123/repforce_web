@@ -1,19 +1,19 @@
 import React from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
-import apiClient from '../../api/apiClient';
+import sysAdminApiClient from '../../api/sysAdminApiClient'; // <-- USA O API CLIENT NOVO
 
 // --- Busca de Usuários ---
 const fetchUsers = async () => {
-  // ATENÇÃO: API path mudou
-  const { data } = await apiClient.get('/api/sysadmin/users');
+  // ATENÇÃO: API path mudou (este é o /users, que só pega usuários do 'Systems')
+  const { data } = await sysAdminApiClient.get('/api/sysadmin/users');
   return data;
 };
 
 // --- Criação de Usuário ---
 const createUser = async (userData) => {
   // ATENÇÃO: API path mudou
-  const { data } = await apiClient.post('/api/sysadmin/users', userData);
+  const { data } = await sysAdminApiClient.post('/api/sysadmin/users', userData);
   return data;
 };
 
@@ -21,7 +21,7 @@ export default function SysAdminUserManagement() {
   const queryClient = useQueryClient();
   const { register, handleSubmit, reset, formState: { errors } } = useForm({
     defaultValues: {
-      profile: 'admin' // Padrão para criar novos admins
+      profile: 'sysadmin' // Padrão para criar novos admins
     }
   });
 
@@ -44,6 +44,7 @@ export default function SysAdminUserManagement() {
   });
 
   const onSubmit = (data) => {
+    // Não precisa de tenant_id, o backend assume o tenant "Systems"
     mutation.mutate(data);
   };
 
@@ -68,18 +69,30 @@ export default function SysAdminUserManagement() {
               />
               {errors.name && <span className="text-red-500 text-sm">{errors.name.message}</span>}
             </div>
+            
+            <div>
+              <label htmlFor="username" className="block text-sm font-medium text-gray-700">
+                Username (para login)
+              </label>
+              <input
+                id="username"
+                type="text"
+                {...register("username", { required: "Username é obrigatório" })}
+                className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-repforce-primary focus:border-repforce-primary"
+              />
+              {errors.username && <span className="text-red-500 text-sm">{errors.username.message}</span>}
+            </div>
 
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-                Email
+                Email (para contato)
               </label>
               <input
                 id="email"
                 type="email"
-                {...register("email", { required: "Email é obrigatório" })}
+                {...register("email")}
                 className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-repforce-primary focus:border-repforce-primary"
               />
-              {errors.email && <span className="text-red-500 text-sm">{errors.email.message}</span>}
             </div>
             
             <div>
@@ -106,7 +119,6 @@ export default function SysAdminUserManagement() {
               >
                 <option value="sysadmin">SysAdmin</option>
                 <option value="admin">Admin (Tenant)</option>
-                <option value="representante">Representante (Sistema)</option>
               </select>
               {errors.profile && <span className="text-red-500 text-sm">{errors.profile.message}</span>}
             </div>
@@ -133,7 +145,7 @@ export default function SysAdminUserManagement() {
               <thead className="bg-gray-50">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nome</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Username</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Perfil</th>
                 </tr>
               </thead>
@@ -144,7 +156,7 @@ export default function SysAdminUserManagement() {
                   users?.map((user) => (
                     <tr key={user.id}>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{user.name || 'N/A'}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{user.email}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{user.username}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                         <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
                           user.profile === 'sysadmin' ? 'bg-red-100 text-red-800' :
