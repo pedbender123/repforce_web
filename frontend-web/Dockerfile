@@ -25,14 +25,10 @@ RUN rm -rf ./*
 # Copia os arquivos estáticos do estágio de build
 COPY --from=build /app/build .
 
-# (Opcional) Copia uma configuração Nginx específica para o React Router
-# COPY nginx.conf /etc/nginx/conf.d/default.conf
-# O nginx.conf padrão do Estágio 2 deve ter:
-# location / {
-#   try_files $uri $uri/ /index.html;
-# }
-# Por simplicidade, vamos usar o proxy reverso principal (do docker-compose)
-# para lidar com isso.
+# --- LINHA MODIFICADA ---
+# Copia a configuração Nginx específica para o React Router
+COPY nginx.conf /etc/nginx/conf.d/default.conf
+# --- FIM DA MODIFICAÇÃO ---
 
 EXPOSE 80
 CMD ["nginx", "-g", "daemon off;"]
