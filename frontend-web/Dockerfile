@@ -25,7 +25,11 @@ RUN rm -rf ./*
 # Copia os arquivos estáticos do estágio de build
 COPY --from=build /app/build .
 
-
+# --- ESSA É A CORREÇÃO ---
+# Copia a configuração Nginx com um nome diferente de "default.conf"
+# para que os scripts de inicialização da imagem Nginx não a modifiquem.
+COPY nginx.conf /etc/nginx/conf.d/repforce.conf
+# --- FIM DA CORREÇÃO ---
 
 EXPOSE 80
 CMD ["nginx", "-g", "daemon off;"]
