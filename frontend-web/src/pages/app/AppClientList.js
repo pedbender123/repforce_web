@@ -4,7 +4,8 @@ import apiClient from '../../api/apiClient';
 
 // Função para buscar os clientes
 const fetchClients = async () => {
-  const { data } = await apiClient.get('/api/crm/clients');
+  // CORRIGIDO: /api/ removido
+  const { data } = await apiClient.get('/crm/clients');
   return data;
 };
 

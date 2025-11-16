@@ -4,7 +4,8 @@ import sysAdminApiClient from '../../api/sysAdminApiClient'; // <-- USA O API CL
 
 // --- Busca de Usuários ---
 const fetchAllUsers = async () => {
-  const { data } = await sysAdminApiClient.get('/api/sysadmin/all-users');
+  // CORRIGIDO: /api/ removido
+  const { data } = await sysAdminApiClient.get('/sysadmin/all-users');
   return data;
 };
 

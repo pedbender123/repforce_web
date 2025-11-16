@@ -5,13 +5,20 @@ import sysAdminApiClient from '../../api/sysAdminApiClient'; // <-- USA O API CL
 
 // --- Busca de Tenants ---
 const fetchTenants = async () => {
-  const { data } = await sysAdminApiClient.get('/api/sysadmin/tenants');
+  // CORRIGIDO: /api/ removido
+  const { data } = await sysAdminApiClient.get('/sysadmin/tenants');
   return data;
 };
 
 // --- Criação de Tenant ---
-const createTenant = async (tenantData) => {
-  const { data } = await sysAdminApiClient.post('/api/sysadmin/tenants', tenantData);
+const createTenant = async (formData) => { // MUDOU: de tenantData para formData
+  // CORRIGIDO: /api/ removido e agora envia FormData
+  const { data } = await sysAdminApiClient.post('/sysadmin/tenants', formData, {
+    headers: {
+      // Deixe o browser definir o 'Content-Type' para 'multipart/form-data'
+      // Não defina 'Content-Type': 'application/json'
+    }
+  });
   return data;
 };
 
@@ -47,8 +54,24 @@ export default function TenantManagement() {
     }
   });
 
+  // MUDANÇA: onSubmit agora cria FormData
   const onSubmit = (data) => {
-    mutation.mutate(data);
+    const formData = new FormData();
+
+    // Adiciona os campos de texto
+    formData.append('name', data.name);
+    formData.append('cnpj', data.cnpj || '');
+    formData.append('email', data.email || '');
+    formData.append('phone', data.phone || '');
+    formData.append('status', data.status);
+    formData.append('commercial_info', data.commercial_info || '');
+
+    // Adiciona o arquivo de logo (se existir)
+    if (data.logo && data.logo[0]) {
+      formData.append('logo', data.logo[0]);
+    }
+    
+    mutation.mutate(formData);
   };
 
   return (
@@ -124,16 +147,20 @@ export default function TenantManagement() {
               {errors.status && <span className="text-red-500 text-sm">{errors.status.message}</span>}
             </div>
 
+            {/* --- UPGRADE DO CAMPO DE LOGO --- */}
             <div>
-              <label htmlFor="logo_url" className="block text-sm font-medium text-gray-700">
-                URL da Logo
+              <label htmlFor="logo" className="block text-sm font-medium text-gray-700">
+                Logo (Upload)
               </label>
               <input
-                id="logo_url"
-                {...register("logo_url")}
-                className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-repforce-primary focus:border-repforce-primary"
+                id="logo"
+                type="file"
+                {...register("logo")}
+                accept="image/png, image/jpeg, image/gif"
+                className="mt-1 block w-full text-sm text-gray-700 border border-gray-300 rounded-md cursor-pointer bg-gray-50 focus:outline-none file:bg-gray-200 file:border-0 file:px-3 file:py-2 file:mr-3 file:text-sm file:font-medium"
               />
             </div>
+            {/* --- FIM DO UPGRADE --- */}
 
             <div>
               <label htmlFor="commercial_info" className="block text-sm font-medium text-gray-700">
@@ -169,6 +196,7 @@ export default function TenantManagement() {
               <thead className="bg-gray-50">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nome</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Logo</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">CNPJ</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
@@ -176,11 +204,19 @@ export default function TenantManagement() {
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {isLoadingTenants ? (
-                  <tr><td colSpan="4" className="p-4 text-center">Carregando...</td></tr>
+                  <tr><td colSpan="5" className="p-4 text-center">Carregando...</td></tr>
                 ) : (
                   tenants?.map((tenant) => (
                     <tr key={tenant.id}>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{tenant.name}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {/* A logo agora é servida pela API, então o caminho relativo funciona */}
+                        {tenant.logo_url ? (
+                          <img src={tenant.logo_url} alt={`Logo ${tenant.name}`} className="h-10 w-10 object-contain" />
+                        ) : (
+                          'N/A'
+                        )}
+                      </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{tenant.cnpj || 'N/A'}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{tenant.email || 'N/A'}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">

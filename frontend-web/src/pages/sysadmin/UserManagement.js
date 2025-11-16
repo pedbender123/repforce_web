@@ -6,14 +6,16 @@ import sysAdminApiClient from '../../api/sysAdminApiClient'; // <-- USA O API CL
 // --- Busca de Usuários ---
 const fetchUsers = async () => {
   // ATENÇÃO: API path mudou (este é o /users, que só pega usuários do 'Systems')
-  const { data } = await sysAdminApiClient.get('/api/sysadmin/users');
+  // CORRIGIDO: /api/ removido
+  const { data } = await sysAdminApiClient.get('/sysadmin/users');
   return data;
 };
 
 // --- Criação de Usuário ---
 const createUser = async (userData) => {
   // ATENÇÃO: API path mudou
-  const { data } = await sysAdminApiClient.post('/api/sysadmin/users', userData);
+  // CORRIGIDO: /api/ removido
+  const { data } = await sysAdminApiClient.post('/sysadmin/users', userData);
   return data;
 };
 

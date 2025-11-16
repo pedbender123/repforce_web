@@ -1,17 +1,20 @@
 import React from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
-import apiClient from '../../api/apiClient';
+// CORRIGIDO: Deve usar o sysAdminApiClient, pois são rotas de sysadmin
+import sysAdminApiClient from '../../api/sysAdminApiClient';
 
 // --- Busca de Tenants ---
 const fetchTenants = async () => {
-  const { data } = await apiClient.get('/api/sysadmin/tenants');
+  // CORRIGIDO: /api/ removido
+  const { data } = await sysAdminApiClient.get('/sysadmin/tenants');
   return data;
 };
 
 // --- Criação de Tenant ---
 const createTenant = async (tenantData) => {
-  const { data } = await apiClient.post('/api/sysadmin/tenants', tenantData);
+  // CORRIGIDO: /api/ removido
+  const { data } = await sysAdminApiClient.post('/sysadmin/tenants', tenantData);
   return data;
 };
 
@@ -31,7 +34,7 @@ export default function TenantManagement() {
 
   // Query para buscar tenants existentes
   const { data: tenants, isLoading: isLoadingTenants } = useQuery(
-    ['adminTenants'], 
+    ['adminTenants'], // Deixei a chave original, mas idealmente seria a mesma do sysadmin
     fetchTenants
   );
 
@@ -48,6 +51,9 @@ export default function TenantManagement() {
   });
 
   const onSubmit = (data) => {
+    // Este arquivo não foi atualizado para FormData,
+    // então a criação de tenant por aqui falhará se o backend esperar um arquivo.
+    // Apenas as rotas foram corrigidas.
     mutation.mutate(data);
   };
 

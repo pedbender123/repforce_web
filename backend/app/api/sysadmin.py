@@ -1,8 +1,18 @@
-from fastapi import APIRouter, Depends, Request, HTTPException, status
+from fastapi import APIRouter, Depends, Request, HTTPException, status, File, UploadFile, Form
 from sqlalchemy.orm import Session, joinedload
+from pydantic import EmailStr
 from ..db import database, models, schemas
 from ..core import security
-from typing import List
+from typing import List, Optional
+import shutil
+import os
+
+# --- NOVO: Configuração de Upload ---
+# Define o diretório de upload DENTRO do container
+UPLOAD_DIRECTORY = "/app/uploads/tenants"
+# Define a URL base que o frontend usará para buscar a imagem
+STATIC_URL_PATH = "/uploads/tenants"
+# -----------------------------------
 
 router = APIRouter()
 
@@ -22,22 +32,65 @@ def check_sysadmin_profile(request: Request):
              status_code=201,
              dependencies=[Depends(check_sysadmin_profile)])
 def create_tenant(
-    tenant: schemas.TenantCreate,
-    db: Session = Depends(database.get_db)
+    db: Session = Depends(database.get_db),
+    # --- MUDANÇA: Recebe dados como Formulário ---
+    name: str = Form(...),
+    cnpj: Optional[str] = Form(None),
+    email: Optional[EmailStr] = Form(None),
+    phone: Optional[str] = Form(None),
+    status: Optional[str] = Form('inactive'),
+    commercial_info: Optional[str] = Form(None),
+    logo: Optional[UploadFile] = File(None)
+    # --- FIM DA MUDANÇA ---
 ):
     """
     (SysAdmin) Cria uma nova Conta Mãe (Tenant).
     """
-    db_tenant_name = db.query(models.Tenant).filter(models.Tenant.name == tenant.name).first()
+    db_tenant_name = db.query(models.Tenant).filter(models.Tenant.name == name).first()
     if db_tenant_name:
         raise HTTPException(status_code=400, detail="Nome do Tenant já existe")
         
-    if tenant.cnpj:
-        db_tenant_cnpj = db.query(models.Tenant).filter(models.Tenant.cnpj == tenant.cnpj).first()
+    if cnpj:
+        db_tenant_cnpj = db.query(models.Tenant).filter(models.Tenant.cnpj == cnpj).first()
         if db_tenant_cnpj:
             raise HTTPException(status_code=400, detail="CNPJ já cadastrado")
 
-    new_tenant = models.Tenant(**tenant.dict())
+    # --- NOVO: Lógica de Upload ---
+    logo_url_to_save = None
+    if logo:
+        # Garante que o diretório de upload exista
+        os.makedirs(UPLOAD_DIRECTORY, exist_ok=True)
+        
+        # Gera um caminho de arquivo seguro (idealmente usando UUID ou um hash)
+        # Por simplicidade, vamos usar o nome do arquivo.
+        # ATENÇÃO: Nomes de arquivo duplicados podem sobrescrever uploads.
+        file_path = os.path.join(UPLOAD_DIRECTORY, logo.filename)
+        
+        try:
+            # Salva o arquivo no disco
+            with open(file_path, "wb") as buffer:
+                shutil.copyfileobj(logo.file, buffer)
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Erro ao salvar o arquivo: {str(e)}")
+        finally:
+            logo.file.close()
+        
+        # Define a URL que será salva no banco
+        logo_url_to_save = f"{STATIC_URL_PATH}/{logo.filename}"
+    # --- FIM DA LÓGICA DE UPLOAD ---
+
+    # --- MUDANÇA: Cria o modelo com os dados do Form ---
+    new_tenant = models.Tenant(
+        name=name,
+        cnpj=cnpj,
+        email=email,
+        phone=phone,
+        status=status,
+        commercial_info=commercial_info,
+        logo_url=logo_url_to_save # Salva o caminho do arquivo
+    )
+    # --- FIM DA MUDANÇA ---
+
     db.add(new_tenant)
     db.commit()
     db.refresh(new_tenant)

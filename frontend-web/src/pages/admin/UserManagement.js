@@ -6,14 +6,16 @@ import apiClient from '../../api/apiClient';
 // --- Busca de Usuários ---
 const fetchUsers = async () => {
   // Bate no endpoint de Admin (Tenant)
-  const { data } = await apiClient.get('/api/admin/users');
+  // CORRIGIDO: /api/ removido
+  const { data } = await apiClient.get('/admin/users');
   return data;
 };
 
 // --- Criação de Usuário ---
 const createUser = async (userData) => {
   // Bate no endpoint de Admin (Tenant)
-  const { data } = await apiClient.post('/api/admin/users', userData);
+  // CORRIGIDO: /api/ removido
+  const { data } = await apiClient.post('/admin/users', userData);
   return data;
 };
 

@@ -1,5 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles # <-- IMPORTADO
+import os # <-- IMPORTADO
 from .middleware import TenantMiddleware
 from .db import models, database
 from .core import security
@@ -16,6 +18,18 @@ app = FastAPI(
     description="API para o sistema de gestão Repforce.",
     version="0.1.0"
 )
+
+# --- NOVO: SERVIR ARQUIVOS ESTÁTICOS ---
+# Garante que o diretório de upload exista no container
+upload_dir = "/app/uploads"
+os.makedirs(upload_dir, exist_ok=True)
+
+# Serve os arquivos da pasta /app/uploads na rota /uploads
+# Ex: /app/uploads/tenants/logo.png será acessível em /uploads/tenants/logo.png
+# O Nginx da VPS precisa ser configurado para /api/uploads/* apontar para o backend
+app.mount("/uploads", StaticFiles(directory=upload_dir), name="uploads")
+# --- FIM DA MUDANÇA ---
+
 
 # --- SEEDING AUTOMÁTICO (CORRIGIDO) ---
 @app.on_event("startup")
@@ -86,6 +100,7 @@ app.add_middleware(
 
 # Adiciona o Middleware de Tenant
 # ATENÇÃO: Precisamos ajustar o middleware para "ignorar" o /api/auth/sysadmin/token
+# e agora também a rota /api/uploads/*
 app.add_middleware(TenantMiddleware)
 
 @app.get("/")

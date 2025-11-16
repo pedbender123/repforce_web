@@ -33,3 +33,5 @@ A LINHA MAIS IMPORTANTE:
 Ignora o arquivo .env que contém os segredos
 
 /.env
+
+/backend/uploads/

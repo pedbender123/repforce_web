@@ -5,8 +5,8 @@ import apiClient from '../../api/apiClient';
 
 // Função para postar o pedido
 const createOrder = async (orderData) => {
-  // Corrigido para /api/orders (como definido no main.py)
-  const { data } = await apiClient.post('/api/orders', orderData); 
+  // CORRIGIDO: /api/ removido
+  const { data } = await apiClient.post('/orders', orderData); 
   return data;
 };
 

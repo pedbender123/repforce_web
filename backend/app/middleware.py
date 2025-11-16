@@ -8,27 +8,27 @@ import jwt
 # Rotas públicas (sem o prefixo /api/)
 PUBLIC_ROUTES = [
     "/auth/token", 
-    "/auth/sysadmin/token", # <-- ADICIONA A NOVA ROTA DE LOGIN
+    "/auth/sysadmin/token", # <-- ROTA DE LOGIN SYSADMIN
     "/docs", 
     "/openapi.json"
 ]
 
+# --- NOVO: Caminho estático para uploads ---
+# Esta rota também não precisa de autenticação
+STATIC_PATH = "/uploads/"
+
 class TenantMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
-        # Pula a verificação para rotas públicas
-        if any(request.url.path.endswith(route) for route in PUBLIC_ROUTES):
+        
+        # --- MUDANÇA: Ignora rotas públicas E rotas de upload ---
+        if any(request.url.path.endswith(route) for route in PUBLIC_ROUTES) or \
+           request.url.path.startswith(STATIC_PATH):
             response = await call_next(request)
             return response
+        # --- FIM DA MUDANÇA ---
 
         # Verifica o header de autorização
         auth_header = request.headers.get("Authorization")
-        
-        # --- LÓGICA DE TOKEN SEPARADA ---
-        # O SysAdmin usa 'SysAdmin-Token' e o resto usa 'Authorization'
-        # Isso é um HACK rápido, o ideal é um único header, mas 
-        # para isolar 100% como você pediu, vamos usar headers diferentes.
-        # OU MELHOR, vamos usar o mesmo header 'Authorization'
-        # O Frontend que vai gerenciar qual token enviar.
         
         if not auth_header:
             return JSONResponse(
