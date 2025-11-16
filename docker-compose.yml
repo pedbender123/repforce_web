@@ -11,6 +11,15 @@ services:
       - .env
     networks:
       - repforce_net
+    
+    # --- INÍCIO DA CORREÇÃO ---
+    # Adiciona uma verificação de saúde. O 'backend' vai esperar por isto.
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    # --- FIM DA CORREÇÃO ---
 
   backend:
     build:
@@ -25,8 +34,13 @@ services:
       - ./backend:/app
     ports:
       - "127.0.0.1:8000:8000"
+      
+    # --- INÍCIO DA CORREÇÃO ---
+    # Altera 'depends_on' para esperar pela condição de 'service_healthy'
     depends_on:
-      - db
+      db:
+        condition: service_healthy
+    # --- FIM DA CORREÇÃO ---
       
     # AQUI: Injeta as variáveis do .env (SECRET_KEY, ALGORITHM, etc.)
     env_file:
@@ -41,6 +55,7 @@ services:
 
   frontend-web:
     build:
+      # O contexto agora aponta para a pasta correta
       context: ./frontend-web
       dockerfile: Dockerfile
     container_name: repforce_frontend
@@ -48,6 +63,8 @@ services:
       - "127.0.0.1:3000:80"
     networks:
       - repforce_net
+    # O Dockerfile DENTRO de ./frontend-web já copia o nginx.conf
+    # que agora está em ./frontend-web/nginx.conf
 
 networks:
   repforce_net:
