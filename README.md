@@ -1,98 +1,115 @@
-🚀 Projeto Repforce v0_Web
+🚀 Projeto Repforce
 
-Este é o protótipo da arquitetura full-stack para o sistema de gestão de representantes Repforce. O projeto é totalmente containerizado usando Docker e é composto por um backend (API), um frontend (React) e um proxy reverso (Nginx).
+Este é o sistema de gestão multi-tenant (multi-empresa) para representantes comerciais. O projeto é totalmente containerizado usando Docker e é composto por um backend (API), um frontend (React) e uma arquitetura de proxy reverso.
 
 🛠️ Tecnologias Utilizadas
 
 Orquestração: Docker & Docker Compose
 
-Proxy Reverso: Nginx
+Proxy Reverso (VPS): Nginx (para gerir o domínio e o tráfego)
 
-Backend: FastAPI (Python)
+Backend: FastAPI (Python), SQLAlchemy, PostgreSQL
 
 Frontend: React (com Tailwind CSS, React Query, Axios)
 
-Banco de Dados: PostgreSQL
+Deploy: GitHub Actions (para deploy automático na VPS)
 
-▶️ Como Executar o Projeto
+🏛️ Arquitetura de Produção
 
-Para rodar o ambiente de desenvolvimento completo:
+O sistema é desenhado para rodar numa VPS e usa uma arquitetura com dois Nginx, que foi a causa dos nossos problemas de 404:
 
-Pré-requisito (Apenas na 1ª vez):
-O Docker precisa do arquivo package-lock.json para construir o frontend. Entre na pasta frontend-web e instale as dependências:
+Nginx da VPS (O "Porteiro"):
 
-cd frontend-web
-npm install
-cd ..
+É o Nginx principal instalado na sua VPS (em /etc/nginx/sites-available/).
 
+Ele cuida do seu domínio (repforce.com.br) e do certificado SSL (HTTPS).
 
-Subir os Serviços:
-Na pasta raiz do projeto (v0_Web), suba todos os serviços com o Docker Compose. O --build garante que todas as mudanças sejam aplicadas.
+Função: Ele direciona o tráfego:
 
-docker compose up --build
+Requisições para repforce.com.br/api/* são enviadas para http://127.0.0.1:8000 (o container backend).
 
+Todas as outras requisições (/, /login, /sysadmin, etc.) são enviadas para http://127.0.0.1:3000 (o container frontend-web).
 
-Acessar o Projeto:
-Após os containers iniciarem (especialmente o repforce_backend mostrar Application startup complete.), acesse o sistema no seu navegador:
+Nginx do Container frontend-web (O "Servidor do React"):
 
-URL: http://localhost
+Este Nginx vive dentro do container frontend-web.
 
-🔑 Credenciais de Acesso (Administrador)
+A sua configuração vem do ficheiro frontend-web/nginx.conf [cite: pedbender123/repforce_web/repforce_web-c157320724a7421235d1ff78ab5c17836af4afbe/frontend-web/nginx.conf] no projeto.
 
-Para facilitar o desenvolvimento, um usuário Administrador padrão é criado automaticamente (via seeding no main.py) toda vez que o backend é iniciado.
+Função: Ele serve os ficheiros estáticos do React e usa a regra try_files $uri $uri/ /index.html; para garantir que o React Router funcione, mesmo se você recarregar a página numa rota como /sysadmin/login.
 
-URL de Login: http://localhost/login
+🔑 Acessos e Credenciais
 
-Usuário (Admin): admin@sistemas.com
+O sistema agora tem duas portas de entrada separadas:
+
+1. Portal do SysAdmin (Administrador do Sistema)
+
+Este é o painel "Deus" onde você cria os Tenants (as empresas clientes).
+
+URL de Login: https://repforce.com.br/sysadmin/login [cite: pedbender123/repforce_web/repforce_web-c157320724a7421235d1ff78ab5c17836af4afbe/frontend-web/src/pages/sysadmin/SysAdminLogin.js]
+
+Usuário (Username): sysadmin
 
 Senha: 12345678
 
-Tenant Padrão: Systems
+Estas credenciais são criadas automaticamente pelo backend (main.py) [cite: pedbender123/repforce_web/repforce_web-c157320724a7421235d1ff78ab5c17836af4afbe/backend/app/main.py] na inicialização, associadas ao tenant especial "Systems".
 
-Use este usuário para acessar o painel /admin e cadastrar novos Representantes (Contas Filhas) para outros tenants.
+2. Portal do Tenant (Admins de Empresa e Representantes)
 
-🏗️ Estrutura dos Serviços
+Esta é a página de login normal para os seus clientes (Admins) e os representantes deles.
 
-nginx (Porta 80): É o "porteiro" do projeto.
+URL de Login: https://repforce.com.br/login [cite: pedbender123/repforce_web/repforce_web-c157320724a7421235d1ff78ab5c17836af4afbe/frontend-web/src/pages/Login.js]
 
-Requisições para http://localhost/ são enviadas para o container frontend-web.
+Credenciais: Não há utilizadores padrão. O SysAdmin deve primeiro criar um Tenant (ex: "Empresa X") e depois criar um utilizador "Admin" (ex: admin_empresaX) para esse tenant.
 
-Requisições para http://localhost/api/ são enviadas para o container backend.
+⚙️ Deploy Automático (CI/CD)
 
-backend (FastAPI): A API Python.
+O deploy é feito automaticamente pelo GitHub Actions.
 
-Contém toda a lógica de negócios, autenticação JWT e isolamento de dados por tenant_id.
+Gatilho: Qualquer git push para a branch main.
 
-Cria o admin padrão na inicialização (via main.py).
+Ficheiro: .github/workflows/deploy.yml [cite: pedbender123/repforce_web/repforce_web-c157320724a7421235d1ff78ab5c17836af4afbe/.github/workflows/deploy.yml]
 
-frontend-web (React): O portal web.
+O que ele faz:
 
-Faz chamadas para http://localhost/api/... para se comunicar com o backend (via apiClient.js).
+Conecta-se à VPS via SSH.
 
-Tem rotas protegidas para /app (Representante) e /admin (Admin).
+Entra no diretório do projeto (definido no segredo TARGET_DIR).
 
-db (PostgreSQL): O banco de dados.
+Roda git pull origin main para baixar o código novo.
 
-Os dados são persistidos na pasta local postgres-data/ (criada pelo Docker).
+Roda docker compose -f docker-compose.yml up --build -d para reconstruir e reiniciar os containers com o novo código.
 
-💡 Dica de Desenvolvimento: Resetar o Banco de Dados
+Roda docker image prune -f para limpar imagens antigas.
 
-Se em algum momento você "corromper" o banco de dados (como aconteceu conosco) e quiser começar do zero, siga estes passos:
+Importante: Para o deploy funcionar, os seguintes segredos devem estar configurados nas Settings > Secrets and variables > Actions do seu repositório no GitHub:
 
-Pare os containers:
-(No terminal onde o docker está rodando, aperte Ctrl + C ou rode docker compose down)
+VPS_HOST (IP da VPS)
+
+VPS_USERNAME (Utilizador, ex: root)
+
+VPS_PRIVATE_KEY (A sua chave SSH privada)
+
+TARGET_DIR (O caminho completo na VPS, ex: /root/repforce_web)
+
+🔄 Como Resetar o Banco de Dados (Manualmente)
+
+Se precisar de apagar todos os dados e começar do zero:
+
+Acesse sua VPS via SSH.
+
+Navegue até a pasta do projeto (ex: cd /root/repforce_web).
+
+Pare e remova os containers:
 
 docker compose down
 
 
-IMPORTANTE: Destrua o volume do banco (apaga todos os dados):
+IMPORTANTE: O seu docker-compose.yml [cite: pedbender123/repforce_web/repforce_web-c157320724a7421235d1ff78ab5c17836af4afbe/docker-compose.yml] usa um bind mount. Para apagar os dados, remova a pasta local:
 
-docker volume rm v0_web_postgres-data
-
-
-Suba tudo de novo:
-
-docker compose up --build
+rm -rf ./postgres-data
 
 
-Isso vai forçar o Docker a criar um banco de dados limpo, e o script de seeding (em main.py) rodará novamente, recriando o usuário admin@sistemas.com.
+Suba tudo novamente (o Docker irá recriar a pasta e o script de main.py [cite: pedbender123/repforce_web/repforce_web-c157320724a7421235d1ff78ab5c17836af4afbe/backend/app/main.py] irá recriar o utilizador sysadmin):
+
+docker compose up --build -d
