@@ -27,7 +27,7 @@ COPY --from=build /app/build .
 
 # --- ESSA É A CORREÇÃO ---
 # Copia a configuração Nginx específica para o React Router
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+COPY nginx.conf /etc/nginx.conf
 # --- FIM DA CORREÇÃO ---
 
 EXPOSE 80
