@@ -1,8 +1,8 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import apiClient from '../api/apiClient';
+// CORREÇÃO DE CAMINHO: Apenas um "../" pois estamos em src/context
+import sysAdminApiClient from '../api/sysAdminApiClient'; 
 import { jwtDecode } from 'jwt-decode';
 
-// CHAVE SEPARADA NO LOCALSTORAGE
 const SYSADMIN_TOKEN_KEY = 'sysadmin_token';
 
 const SysAdminAuthContext = createContext(null);
@@ -25,8 +25,6 @@ export const SysAdminAuthProvider = ({ children }) => {
             throw new Error("Token expirado");
           }
 
-          // AQUI NÃO PRECISAMOS SETAR O apiClient DEFAULT
-          // O apiClient do SysAdmin será separado.
           setToken(storedToken);
           setUserProfile(decodedToken.profile);
         } else {
@@ -52,8 +50,7 @@ export const SysAdminAuthProvider = ({ children }) => {
       formData.append('username', username);
       formData.append('password', password);
 
-      // BATE NO ENDPOINT SEPARADO
-      const response = await apiClient.post('/auth/sysadmin/token', formData, {
+      const response = await sysAdminApiClient.post('/auth/sysadmin/token', formData, {
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded',
         },
@@ -63,7 +60,6 @@ export const SysAdminAuthProvider = ({ children }) => {
       const decodedToken = jwtDecode(access_token);
       const profile = decodedToken.profile;
 
-      // Salva no localStorage com a chave separada
       localStorage.setItem(SYSADMIN_TOKEN_KEY, access_token);
       setToken(access_token);
       setUserProfile(profile);
@@ -79,7 +75,6 @@ export const SysAdminAuthProvider = ({ children }) => {
     localStorage.removeItem(SYSADMIN_TOKEN_KEY);
     setToken(null);
     setUserProfile(null);
-    // O PrivateRoute cuidará do redirecionamento
   };
 
   const value = {
