@@ -3,25 +3,20 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import sysAdminApiClient from '../../api/sysAdminApiClient';
 
-// --- Busca de Tenants ---
 const fetchTenants = async () => {
   const { data } = await sysAdminApiClient.get('/sysadmin/tenants');
   return data;
 };
 
-// --- Criação de Tenant ---
 const createTenant = async (formData) => { 
   const { data } = await sysAdminApiClient.post('/sysadmin/tenants', formData);
   return data;
 };
 
-// --- Atualização de Status do Tenant ---
 const updateTenantStatus = async ({ id, status }) => {
-  // Chamada PUT para o novo endpoint
   const { data } = await sysAdminApiClient.put(`/sysadmin/tenants/${id}`, { status });
   return data;
 };
-
 
 const statusOptions = [
   { value: 'inactive', label: 'Inativo' },
@@ -37,13 +32,11 @@ export default function TenantManagement() {
     }
   });
 
-  // Query para buscar tenants existentes
   const { data: tenants, isLoading: isLoadingTenants } = useQuery(
     ['sysAdminTenants'], 
     fetchTenants
   );
 
-  // Mutation para criar novo tenant
   const createMutation = useMutation(createTenant, {
     onSuccess: () => {
       queryClient.invalidateQueries(['sysAdminTenants']);
@@ -55,7 +48,6 @@ export default function TenantManagement() {
     }
   });
 
-  // Mutation para atualizar status do tenant
   const statusMutation = useMutation(updateTenantStatus, {
     onSuccess: () => {
       queryClient.invalidateQueries(['sysAdminTenants']);
@@ -65,16 +57,12 @@ export default function TenantManagement() {
     }
   });
   
-  // Handler para a mudança do dropdown de status
   const handleStatusChange = (tenantId, newStatus) => {
     statusMutation.mutate({ id: tenantId, status: newStatus });
   };
 
-
   const onSubmit = (data) => {
     const formData = new FormData();
-
-    // Adiciona os campos de texto
     formData.append('name', data.name);
     formData.append('cnpj', data.cnpj || '');
     formData.append('email', data.email || '');
@@ -82,7 +70,6 @@ export default function TenantManagement() {
     formData.append('status', data.status);
     formData.append('commercial_info', data.commercial_info || '');
 
-    // Adiciona o arquivo de logo (se existir)
     if (data.logo && data.logo[0]) {
       formData.append('logo', data.logo[0]);
     }
@@ -92,80 +79,77 @@ export default function TenantManagement() {
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-      {/* Formulário de Criação de Tenant */}
+      {/* Formulário */}
       <div className="md:col-span-1">
-        <div className="bg-white p-6 rounded-lg shadow">
-          <h2 className="text-xl font-bold text-gray-800 mb-4">
-            Novo Tenant (Empresa)
+        <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow transition-colors">
+          <h2 className="text-xl font-bold text-gray-800 dark:text-white mb-4">
+            Novo Tenant
           </h2>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
             
             <div>
-              <label htmlFor="name" className="block text-sm font-medium text-gray-700">
+              <label htmlFor="name" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                 Nome da Empresa
               </label>
               <input
                 id="name"
                 {...register("name", { required: "Nome é obrigatório" })}
-                className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-repforce-primary focus:border-repforce-primary"
+                className="mt-1 w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-repforce-primary focus:border-repforce-primary bg-white dark:bg-gray-700 dark:text-white"
               />
               {errors.name && <span className="text-red-500 text-sm">{errors.name.message}</span>}
             </div>
 
             <div>
-              <label htmlFor="cnpj" className="block text-sm font-medium text-gray-700">
+              <label htmlFor="cnpj" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                 CNPJ
               </label>
               <input
                 id="cnpj"
                 {...register("cnpj")}
-                className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-repforce-primary focus:border-repforce-primary"
+                className="mt-1 w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-repforce-primary focus:border-repforce-primary bg-white dark:bg-gray-700 dark:text-white"
               />
             </div>
 
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-                Email Comercial
+              <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                Email
               </label>
               <input
                 id="email"
                 type="email"
                 {...register("email", { required: "Email é obrigatório" })}
-                className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-repforce-primary focus:border-repforce-primary"
+                className="mt-1 w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-repforce-primary focus:border-repforce-primary bg-white dark:bg-gray-700 dark:text-white"
               />
-              {errors.email && <span className="text-red-500 text-sm">{errors.email.message}</span>}
             </div>
 
             <div>
-              <label htmlFor="phone" className="block text-sm font-medium text-gray-700">
+              <label htmlFor="phone" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                 Telefone
               </label>
               <input
                 id="phone"
                 {...register("phone")}
-                className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-repforce-primary focus:border-repforce-primary"
+                className="mt-1 w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-repforce-primary focus:border-repforce-primary bg-white dark:bg-gray-700 dark:text-white"
               />
             </div>
 
             <div>
-              <label htmlFor="status" className="block text-sm font-medium text-gray-700">
+              <label htmlFor="status" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                 Status
               </label>
               <select
                 id="status"
                 {...register("status", { required: "Status é obrigatório" })}
-                className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-repforce-primary focus:border-repforce-primary"
+                className="mt-1 w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-repforce-primary focus:border-repforce-primary bg-white dark:bg-gray-700 dark:text-white"
               >
                 {statusOptions.map(opt => (
                   <option key={opt.value} value={opt.value}>{opt.label}</option>
                 ))}
               </select>
-              {errors.status && <span className="text-red-500 text-sm">{errors.status.message}</span>}
             </div>
 
-            {/* --- CAMPO DE LOGO --- */}
             <div>
-              <label htmlFor="logo" className="block text-sm font-medium text-gray-700">
+              <label htmlFor="logo" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                 Logo (Upload)
               </label>
               <input
@@ -173,27 +157,26 @@ export default function TenantManagement() {
                 type="file"
                 {...register("logo")}
                 accept="image/png, image/jpeg, image/gif"
-                className="mt-1 block w-full text-sm text-gray-700 border border-gray-300 rounded-md cursor-pointer bg-gray-50 focus:outline-none file:bg-gray-200 file:border-0 file:px-3 file:py-2 file:mr-3 file:text-sm file:font-medium"
+                className="mt-1 block w-full text-sm text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 rounded-md cursor-pointer bg-gray-50 dark:bg-gray-700 focus:outline-none file:bg-gray-200 dark:file:bg-gray-600 file:border-0 file:px-3 file:py-2 file:mr-3 file:text-sm file:font-medium dark:file:text-white"
               />
             </div>
-            {/* --- FIM CAMPO DE LOGO --- */}
 
             <div>
-              <label htmlFor="commercial_info" className="block text-sm font-medium text-gray-700">
+              <label htmlFor="commercial_info" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                 Informações Comerciais
               </label>
               <textarea
                 id="commercial_info"
                 rows={3}
                 {...register("commercial_info")}
-                className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-repforce-primary focus:border-repforce-primary"
+                className="mt-1 w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-repforce-primary focus:border-repforce-primary bg-white dark:bg-gray-700 dark:text-white"
               />
             </div>
 
             <button
               type="submit"
               disabled={createMutation.isLoading}
-              className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-repforce-primary hover:bg-opacity-90 disabled:bg-gray-400"
+              className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-repforce-primary hover:bg-opacity-90 disabled:bg-gray-400 transition-colors"
             >
               {createMutation.isLoading ? 'Criando...' : 'Criar Tenant'}
             </button>
@@ -201,38 +184,34 @@ export default function TenantManagement() {
         </div>
       </div>
 
-      {/* Lista de Tenants */}
+      {/* Lista */}
       <div className="md:col-span-2">
-        <div className="bg-white shadow-lg rounded-lg overflow-hidden">
-          <div className="px-6 py-4">
-            <h2 className="text-xl font-bold text-gray-800">Gerenciar Tenants (TenantManagement.js)</h2>
-            {(createMutation.isError || statusMutation.isError) && (
-              <p className="text-red-500 text-sm mt-2">Ocorreu um erro. Recarregue a página se persistir.</p>
-            )}
+        <div className="bg-white dark:bg-gray-800 shadow-lg rounded-lg overflow-hidden transition-colors">
+          <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+            <h2 className="text-xl font-bold text-gray-800 dark:text-white">Gerenciar Tenants</h2>
           </div>
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
+            <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+              <thead className="bg-gray-50 dark:bg-gray-700">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nome</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">CNPJ</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">ID</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Nome</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">CNPJ</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Email</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Status</th>
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
+              <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                 {isLoadingTenants ? (
-                  <tr><td colSpan="5" className="p-4 text-center">Carregando...</td></tr>
+                  <tr><td colSpan="5" className="p-4 text-center dark:text-white">Carregando...</td></tr>
                 ) : (
                   tenants?.map((tenant) => (
                     <tr key={tenant.id}>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{tenant.id}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{tenant.name}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{tenant.cnpj || 'N/A'}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{tenant.email || 'N/A'}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {/* Dropdown para editar status */}
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">{tenant.id}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">{tenant.name}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{tenant.cnpj || 'N/A'}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{tenant.email || 'N/A'}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                         <select
                           value={tenant.status}
                           onChange={(e) => handleStatusChange(tenant.id, e.target.value)}

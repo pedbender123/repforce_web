@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate, Navigate } from 'react-router-dom';
-import ThemeToggle from '../components/ThemeToggle'; // Importa o botão
-import { useTheme } from '../context/ThemeContext'; // Importa o hook para saber o tema atual
+import ThemeToggle from '../components/ThemeToggle';
 
 export default function Login() {
   const [username, setUsername] = useState('');
@@ -10,9 +9,6 @@ export default function Login() {
   const [error, setError] = useState(null);
   const { login, token, userProfile } = useAuth();
   const navigate = useNavigate();
-  
-  // Pega o tema atual para decidir qual logo mostrar no fundo branco/escuro
-  const { theme } = useTheme(); 
 
   const getRedirectPath = (profile) => {
     switch (profile) {
@@ -41,15 +37,13 @@ export default function Login() {
 
   return (
     <div className="flex min-h-screen transition-colors duration-300">
-      {/* Botão Sol/Lua flutuante no canto */}
       <div className="absolute top-4 right-4 z-50">
         <ThemeToggle />
       </div>
 
-      {/* Lado Esquerdo (Banner Escuro) */}
+      {/* Lado Esquerdo (Banner) - Sempre Escuro */}
       <div className="hidden lg:flex lg:w-1/2 bg-repforce-dark dark:bg-black items-center justify-center p-12 transition-colors">
         <div className="text-white text-left max-w-md">
-          {/* No fundo escuro, sempre logo clara */}
           <img 
             src="/logo_clara.png" 
             alt="Repforce" 
@@ -64,17 +58,22 @@ export default function Login() {
         </div>
       </div>
       
-      {/* Lado Direito (Formulário) - Fundo muda com o tema */}
+      {/* Lado Direito (Formulário) */}
       <div className="flex-1 flex flex-col justify-center items-center bg-repforce-light dark:bg-gray-900 lg:w-1/2 p-8 transition-colors">
-        <div className="w-full max-w-md bg-white dark:bg-gray-800 p-8 md:p-12 rounded-lg shadow-xl transition-colors">
+        <div className="w-full max-w-md bg-white dark:bg-gray-800 p-8 md:p-12 rounded-lg shadow-xl transition-colors border border-transparent dark:border-gray-700">
           
           <div className="mb-10 flex justify-center">
-             {/* Se o tema for escuro (fundo cinza escuro), usa logo clara. Se for claro (fundo branco), usa logo escura */}
-             <img 
-               src={theme === 'dark' ? "/logo_clara.png" : "/logo_escura.png"} 
-               alt="Repforce" 
-               className="h-12 w-auto object-contain" 
-             />
+             {/* USANDO SEMPRE A LOGO CLARA AGORA, POIS O FUNDO NO DARK É ESCURO E NO LIGHT PODE-SE USAR UM CONTAINER ESCURO SE QUISER, MAS AQUI VAMOS FORÇAR UM BG ESCURO PARA A LOGO SE NECESSÁRIO OU APENAS USAR A CLARA SE O FUNDO PERMITIR */}
+             {/* Como o fundo do card é branco no light e cinza no dark, a logo clara (branca/azul claro) pode sumir no branco. 
+                 Vou colocar um fundo azul escuro arredondado atrás da logo APENAS no modo light para garantir visibilidade, ou usar a logo escura no light e clara no dark. 
+                 Mas você pediu SÓ A CLARA. Então vou colocar um container escuro atrás dela no modo light. */}
+             <div className="bg-repforce-dark p-4 rounded-lg">
+                <img 
+                  src="/logo_clara.png" 
+                  alt="Repforce" 
+                  className="h-10 w-auto object-contain" 
+                />
+             </div>
           </div>
           
           <h2 className="text-2xl font-semibold text-gray-800 dark:text-white text-center mb-6">

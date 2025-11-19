@@ -2,22 +2,19 @@ import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import apiClient from '../../api/apiClient';
 
-// Função para buscar os clientes
 const fetchClients = async () => {
-  // CORRIGIDO: /api/ removido
   const { data } = await apiClient.get('/crm/clients');
   return data;
 };
 
 export default function AppClientList() {
-  // Usa React Query para buscar e cachear os dados
   const { data: clients, error, isLoading, isError } = useQuery(
-    ['clients'], // Chave de cache
+    ['clients'], 
     fetchClients
   );
 
   if (isLoading) {
-    return <div className="text-center p-10">Carregando clientes...</div>;
+    return <div className="text-center p-10 dark:text-white">Carregando clientes...</div>;
   }
 
   if (isError) {
@@ -25,43 +22,43 @@ export default function AppClientList() {
   }
 
   return (
-    <div className="bg-white shadow-lg rounded-lg overflow-hidden">
-      <div className="px-6 py-4">
-        <h2 className="text-2xl font-bold text-gray-800">Meus Clientes</h2>
+    <div className="bg-white dark:bg-gray-800 shadow-lg rounded-lg overflow-hidden transition-colors duration-300">
+      <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+        <h2 className="text-2xl font-bold text-gray-800 dark:text-white">Meus Clientes</h2>
       </div>
       <div className="overflow-x-auto">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
+        <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+          <thead className="bg-gray-50 dark:bg-gray-700">
             <tr>
-              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                 Nome
               </th>
-              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                 CNPJ
               </th>
-              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                 ID do Representante
               </th>
             </tr>
           </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
+          <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
             {clients && clients.length > 0 ? (
               clients.map((client) => (
                 <tr key={client.id}>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
                     {client.name}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                     {client.cnpj || 'N/A'}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                     {client.representative_id}
                   </td>
                 </tr>
               ))
             ) : (
               <tr>
-                <td colSpan="3" className="px-6 py-4 text-center text-sm text-gray-500">
+                <td colSpan="3" className="px-6 py-4 text-center text-sm text-gray-500 dark:text-gray-400">
                   Nenhum cliente encontrado.
                 </td>
               </tr>
