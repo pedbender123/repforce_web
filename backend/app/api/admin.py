@@ -40,14 +40,17 @@ def create_tenant_user( # Renomeado para clareza
     # Garante que o perfil seja 'admin' ou 'representante'
     profile = user.profile if user.profile in ['admin', 'representante'] else 'representante'
 
-    db_user = db.query(models.User).filter(models.User.email == user.email).first()
+    # --- MUDANÇA 1: Usar 'username' para verificação de unicidade ---
+    db_user = db.query(models.User).filter(models.User.username == user.username).first()
     if db_user:
-        raise HTTPException(status_code=400, detail="Email já cadastrado")
+        raise HTTPException(status_code=400, detail="Username já cadastrado")
+    # --- FIM MUDANÇA 1 ---
 
     hashed_password = security.get_password_hash(user.password)
     
     db_new_user = models.User(
-        email=user.email,
+        username=user.username, # NOVO: Usando username do input
+        email=user.email, # Usando email do input (agora opcional)
         name=user.name,
         hashed_password=hashed_password,
         profile=profile,

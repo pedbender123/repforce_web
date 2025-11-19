@@ -21,8 +21,8 @@ class Tenant(TenantBase):
 
 # --- User Schemas ---
 class UserBase(BaseModel):
-    username: str # Campo de login
-    email: Optional[EmailStr] = None # Campo de contato
+    username: str # Campo de login (Obrigatório)
+    email: Optional[EmailStr] = None # Campo de contato (Opcional)
     name: Optional[str] = None
 
 class UserCreate(UserBase):
@@ -104,3 +104,7 @@ class Product(ProductBase):
 
     class Config:
         orm_mode = True
+
+# --- Tenant Update Status Schema (para PUT) ---
+class TenantUpdateStatus(BaseModel):
+    status: str
