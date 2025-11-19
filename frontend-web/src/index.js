@@ -4,7 +4,8 @@ import './index.css';
 import App from './App';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AuthProvider } from './context/AuthContext';
-import { SysAdminAuthProvider } from './context/SysAdminAuthContext'; // <-- NOVO
+import { SysAdminAuthProvider } from './context/SysAdminAuthContext';
+import { ThemeProvider } from './context/ThemeContext'; // <--- ADICIONE ISSO
 
 const queryClient = new QueryClient();
 
@@ -12,11 +13,13 @@ const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
   <React.StrictMode>
     <QueryClientProvider client={queryClient}>
-      <AuthProvider>        {/* Contexto para /app e /admin */}
-        <SysAdminAuthProvider> {/* Contexto para /sysadmin */}
-          <App />
-        </SysAdminAuthProvider>
-      </AuthProvider>
+      <ThemeProvider> {/* <--- ADICIONE ISSO AQUI ENVOLVENDO TUDO */}
+        <AuthProvider>        
+          <SysAdminAuthProvider> 
+            <App />
+          </SysAdminAuthProvider>
+        </AuthProvider>
+      </ThemeProvider>
     </QueryClientProvider>
   </React.StrictMode>
 );

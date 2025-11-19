@@ -1,5 +1,7 @@
 /** @type {import('tailwindcss').Config} */
 module.exports = {
+  // Habilita o modo escuro baseado na classe 'dark' na tag HTML/Body
+  darkMode: 'class', 
   content: [
     "./src/**/*.{js,jsx,ts,tsx}",
   ],
@@ -12,9 +14,7 @@ module.exports = {
         'repforce-light': '#E4E8f7',       // Azul-claro Acinzentado
       },
       fontFamily: {
-        // A 'Termina' e 'Barlow' são fontes customizadas.
-        // Usaremos 'Manrope' (pág 63) ou 'Inter' como substituto sans-serif.
-        sans: ['Inter', 'sans-serif'], // Usando Inter como fallback moderno
+        sans: ['Inter', 'sans-serif'], 
       }
     },
   },
