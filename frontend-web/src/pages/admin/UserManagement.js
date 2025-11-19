@@ -56,7 +56,7 @@ export default function TenantUserManagement() {
       <div className="md:col-span-1">
         <div className="bg-white p-6 rounded-lg shadow">
           <h2 className="text-xl font-bold text-gray-800 mb-4">
-            Novo Usuário do Tenant (frontend-web/src/pages/admin/UserManagement.js)
+            Novo Usuário Tenant
           </h2>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
             <div>
