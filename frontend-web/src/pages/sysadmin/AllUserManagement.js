@@ -40,13 +40,13 @@ export default function AllUserManagement() {
   }, [users, profileFilter, tenantFilter]);
 
   return (
-    <div className="bg-white dark:bg-gray-800 shadow-lg rounded-lg overflow-hidden transition-colors">
+    <div className="bg-white dark:bg-gray-800 shadow-lg rounded-lg overflow-hidden transition-colors duration-300">
       <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
         <h2 className="text-2xl font-bold text-gray-800 dark:text-white">Todos Usuários do Sistema</h2>
       </div>
 
       {/* Filtros */}
-      <div className="p-4 flex flex-col md:flex-row gap-4">
+      <div className="p-4 flex flex-col md:flex-row gap-4 bg-gray-50 dark:bg-gray-750">
         <div>
           <label htmlFor="profileFilter" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
             Filtrar por Perfil
@@ -55,10 +55,10 @@ export default function AllUserManagement() {
             id="profileFilter"
             value={profileFilter}
             onChange={(e) => setProfileFilter(e.target.value)}
-            className="mt-1 block w-full md:w-auto pl-3 pr-10 py-2 text-base border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-repforce-primary focus:border-repforce-primary sm:text-sm rounded-md bg-white dark:bg-gray-700 dark:text-white"
+            className="mt-1 block w-full md:w-auto pl-3 pr-10 py-2 text-base border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-repforce-primary focus:border-repforce-primary sm:text-sm rounded-md bg-white dark:bg-gray-700 dark:text-white transition-colors"
           >
             {profileOptions.map(opt => (
-              <option key={opt.value} value={opt.value}>{opt.label}</option>
+              <option key={opt.value} value={opt.value} className="dark:bg-gray-700">{opt.label}</option>
             ))}
           </select>
         </div>
@@ -70,10 +70,10 @@ export default function AllUserManagement() {
             id="tenantFilter"
             value={tenantFilter}
             onChange={(e) => setTenantFilter(e.target.value)}
-            className="mt-1 block w-full md:w-auto pl-3 pr-10 py-2 text-base border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-repforce-primary focus:border-repforce-primary sm:text-sm rounded-md bg-white dark:bg-gray-700 dark:text-white"
+            className="mt-1 block w-full md:w-auto pl-3 pr-10 py-2 text-base border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-repforce-primary focus:border-repforce-primary sm:text-sm rounded-md bg-white dark:bg-gray-700 dark:text-white transition-colors"
           >
             {uniqueTenants.map(tenant => (
-              <option key={tenant.id} value={tenant.id}>{tenant.name}</option>
+              <option key={tenant.id} value={tenant.id} className="dark:bg-gray-700">{tenant.name}</option>
             ))}
           </select>
         </div>
@@ -93,14 +93,14 @@ export default function AllUserManagement() {
           </thead>
           <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
             {isLoadingUsers ? (
-              <tr><td colSpan="5" className="p-4 text-center dark:text-white">Carregando...</td></tr>
+              <tr><td colSpan="5" className="p-4 text-center text-gray-500 dark:text-gray-300">Carregando...</td></tr>
             ) : (
               filteredUsers?.map((user) => (
                 <tr key={user.id}>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">{user.name || 'N/A'}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300 font-medium">{user.username}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{user.email || 'N/A'}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm">
                     <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
                       user.profile === 'sysadmin' ? 'bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200' :
                       user.profile === 'admin' ? 'bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200' : 

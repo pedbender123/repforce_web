@@ -94,7 +94,7 @@ export default function TenantManagement() {
               <input
                 id="name"
                 {...register("name", { required: "Nome é obrigatório" })}
-                className="mt-1 w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-repforce-primary focus:border-repforce-primary bg-white dark:bg-gray-700 dark:text-white"
+                className="mt-1 w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-repforce-primary focus:border-repforce-primary bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
               />
               {errors.name && <span className="text-red-500 text-sm">{errors.name.message}</span>}
             </div>
@@ -106,7 +106,7 @@ export default function TenantManagement() {
               <input
                 id="cnpj"
                 {...register("cnpj")}
-                className="mt-1 w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-repforce-primary focus:border-repforce-primary bg-white dark:bg-gray-700 dark:text-white"
+                className="mt-1 w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-repforce-primary focus:border-repforce-primary bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
               />
             </div>
 
@@ -118,7 +118,7 @@ export default function TenantManagement() {
                 id="email"
                 type="email"
                 {...register("email", { required: "Email é obrigatório" })}
-                className="mt-1 w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-repforce-primary focus:border-repforce-primary bg-white dark:bg-gray-700 dark:text-white"
+                className="mt-1 w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-repforce-primary focus:border-repforce-primary bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
               />
             </div>
 
@@ -129,7 +129,7 @@ export default function TenantManagement() {
               <input
                 id="phone"
                 {...register("phone")}
-                className="mt-1 w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-repforce-primary focus:border-repforce-primary bg-white dark:bg-gray-700 dark:text-white"
+                className="mt-1 w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-repforce-primary focus:border-repforce-primary bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
               />
             </div>
 
@@ -140,7 +140,7 @@ export default function TenantManagement() {
               <select
                 id="status"
                 {...register("status", { required: "Status é obrigatório" })}
-                className="mt-1 w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-repforce-primary focus:border-repforce-primary bg-white dark:bg-gray-700 dark:text-white"
+                className="mt-1 w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-repforce-primary focus:border-repforce-primary bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
               >
                 {statusOptions.map(opt => (
                   <option key={opt.value} value={opt.value}>{opt.label}</option>
@@ -169,7 +169,7 @@ export default function TenantManagement() {
                 id="commercial_info"
                 rows={3}
                 {...register("commercial_info")}
-                className="mt-1 w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-repforce-primary focus:border-repforce-primary bg-white dark:bg-gray-700 dark:text-white"
+                className="mt-1 w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-repforce-primary focus:border-repforce-primary bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
               />
             </div>
 
@@ -216,14 +216,14 @@ export default function TenantManagement() {
                           value={tenant.status}
                           onChange={(e) => handleStatusChange(tenant.id, e.target.value)}
                           disabled={statusMutation.isLoading}
-                          className={`mt-1 block w-auto pl-3 pr-10 py-1 text-sm border-gray-300 rounded-md focus:outline-none focus:ring-repforce-primary focus:border-repforce-primary ${
-                            tenant.status === 'active' ? 'bg-green-50 text-green-800' :
-                            tenant.status === 'inactive' ? 'bg-red-50 text-red-800' :
-                            'bg-yellow-50 text-yellow-800'
+                          className={`mt-1 block w-auto pl-3 pr-10 py-1 text-sm border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-repforce-primary focus:border-repforce-primary dark:bg-gray-700 dark:text-white ${
+                            tenant.status === 'active' ? 'text-green-800 dark:text-green-400 bg-green-50 dark:bg-green-900/30' :
+                            tenant.status === 'inactive' ? 'text-red-800 dark:text-red-400 bg-red-50 dark:bg-red-900/30' :
+                            'text-yellow-800 dark:text-yellow-400 bg-yellow-50 dark:bg-yellow-900/30'
                           }`}
                         >
                           {statusOptions.map(opt => (
-                            <option key={opt.value} value={opt.value}>{opt.label}</option>
+                            <option key={opt.value} value={opt.value} className="dark:bg-gray-700 dark:text-white">{opt.label}</option>
                           ))}
                         </select>
                       </td>

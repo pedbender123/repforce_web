@@ -41,15 +41,16 @@ export default function Login() {
         <ThemeToggle />
       </div>
 
-      {/* Lado Esquerdo (Banner) - Sempre Escuro */}
+      {/* Lado Esquerdo (Banner) - Escuro */}
       <div className="hidden lg:flex lg:w-1/2 bg-repforce-dark dark:bg-black items-center justify-center p-12 transition-colors">
         <div className="text-white text-left max-w-md">
+          {/* Logo grande no banner */}
           <img 
             src="/logo_clara.png" 
             alt="Repforce" 
-            className="mb-8 w-64 h-auto"
+            className="mb-8 w-64 h-auto object-contain"
           />
-          <h1 className="text-5xl font-bold mb-6">
+          <h1 className="text-5xl font-bold mb-6 leading-tight">
             Tecnologia que entende quem vende.
           </h1>
           <p className="text-xl text-gray-300">
@@ -62,12 +63,9 @@ export default function Login() {
       <div className="flex-1 flex flex-col justify-center items-center bg-repforce-light dark:bg-gray-900 lg:w-1/2 p-8 transition-colors">
         <div className="w-full max-w-md bg-white dark:bg-gray-800 p-8 md:p-12 rounded-lg shadow-xl transition-colors border border-transparent dark:border-gray-700">
           
+          {/* Logo visível mobile/tablet e topo do form */}
           <div className="mb-10 flex justify-center">
-             {/* USANDO SEMPRE A LOGO CLARA AGORA, POIS O FUNDO NO DARK É ESCURO E NO LIGHT PODE-SE USAR UM CONTAINER ESCURO SE QUISER, MAS AQUI VAMOS FORÇAR UM BG ESCURO PARA A LOGO SE NECESSÁRIO OU APENAS USAR A CLARA SE O FUNDO PERMITIR */}
-             {/* Como o fundo do card é branco no light e cinza no dark, a logo clara (branca/azul claro) pode sumir no branco. 
-                 Vou colocar um fundo azul escuro arredondado atrás da logo APENAS no modo light para garantir visibilidade, ou usar a logo escura no light e clara no dark. 
-                 Mas você pediu SÓ A CLARA. Então vou colocar um container escuro atrás dela no modo light. */}
-             <div className="bg-repforce-dark p-4 rounded-lg">
+             <div className="bg-repforce-dark p-4 rounded-lg shadow-md">
                 <img 
                   src="/logo_clara.png" 
                   alt="Repforce" 
@@ -94,7 +92,7 @@ export default function Login() {
                   required
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-repforce-primary focus:border-repforce-primary bg-white dark:bg-gray-700 dark:text-white transition-colors"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-repforce-primary focus:border-repforce-primary bg-white dark:bg-gray-700 text-gray-900 dark:text-white transition-colors placeholder-gray-400 dark:placeholder-gray-500"
                   placeholder="Seu usuário"
                 />
               </div>
@@ -113,7 +111,7 @@ export default function Login() {
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-repforce-primary focus:border-repforce-primary bg-white dark:bg-gray-700 dark:text-white transition-colors"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-repforce-primary focus:border-repforce-primary bg-white dark:bg-gray-700 text-gray-900 dark:text-white transition-colors placeholder-gray-400 dark:placeholder-gray-500"
                   placeholder="••••••••"
                 />
               </div>
