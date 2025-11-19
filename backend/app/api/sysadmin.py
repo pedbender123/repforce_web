@@ -106,6 +106,35 @@ def get_tenants(db: Session = Depends(database.get_db)):
     tenants = db.query(models.Tenant).order_by(models.Tenant.id).all()
     return tenants
 
+# --- NOVO ENDPOINT: Atualizar Status do Tenant ---
+class TenantUpdateStatus(schemas.TenantBase):
+    """Schema usado apenas para receber o status para edição"""
+    status: str
+
+@router.put("/tenants/{tenant_id}", 
+            response_model=schemas.Tenant,
+            dependencies=[Depends(check_sysadmin_profile)])
+def update_tenant_status(
+    tenant_id: int,
+    tenant_update: TenantUpdateStatus,
+    db: Session = Depends(database.get_db)
+):
+    """
+    (SysAdmin) Atualiza o status de um Tenant.
+    """
+    db_tenant = db.query(models.Tenant).filter(models.Tenant.id == tenant_id).first()
+    
+    if not db_tenant:
+        raise HTTPException(status_code=404, detail="Tenant não encontrado")
+    
+    # Atualiza apenas o campo status
+    db_tenant.status = tenant_update.status
+    db.commit()
+    db.refresh(db_tenant)
+    return db_tenant
+# --- FIM NOVO ENDPOINT ---
+
+
 # --- Gestão de Usuários (SysAdmin) ---
 
 @router.post("/users", 
@@ -119,11 +148,13 @@ def create_sysadmin_user(
 ):
     """
     (SysAdmin) Cria um novo usuário (SysAdmin, Admin ou Rep).
-    Se o tenant_id não for fornecido, cria no tenant "Systems".
+    O frontend deve passar o tenant_id e o profile correto.
     """
     
     tenant_id = user.tenant_id
     if not tenant_id:
+        # Se tenant_id não for fornecido pelo frontend, 
+        # forçamos a busca pelo "Systems" (fallback seguro)
         systems_tenant = db.query(models.Tenant).filter(models.Tenant.name == "Systems").first()
         if not systems_tenant:
             raise HTTPException(status_code=500, detail="Tenant 'Systems' não encontrado.")
@@ -135,7 +166,8 @@ def create_sysadmin_user(
 
     hashed_password = security.get_password_hash(user.password)
     
-    profile = user.profile if user.profile in ['admin', 'representante', 'sysadmin'] else 'representante'
+    # Confia no profile enviado pelo frontend, mas garante que não seja nulo.
+    profile = user.profile if user.profile else 'representante'
 
     db_new_user = models.User(
         username=user.username,
@@ -150,6 +182,28 @@ def create_sysadmin_user(
     db.commit()
     db.refresh(db_new_user)
     return db_new_user
+
+@router.get("/users", 
+            response_model=List[schemas.User], 
+            dependencies=[Depends(check_sysadmin_profile)])
+def get_systems_users(
+    db: Session = Depends(database.get_db)
+):
+    """
+    (SysAdmin) Lista usuários apenas do Tenant 'Systems' E com perfil 'sysadmin'.
+    """
+    # 1. Encontra o Tenant "Systems"
+    systems_tenant = db.query(models.Tenant).filter(models.Tenant.name == "Systems").first()
+    if not systems_tenant:
+        return [] 
+    
+    # 2. Busca usuários apenas desse Tenant E filtra por perfil 'sysadmin'
+    users = db.query(models.User).options(joinedload(models.User.tenant)).filter(
+        models.User.tenant_id == systems_tenant.id,
+        models.User.profile == 'sysadmin' # <-- NOVO FILTRO
+    ).order_by(models.User.id).all()
+    
+    return users
 
 @router.get("/all-users", 
             response_model=List[schemas.User], 

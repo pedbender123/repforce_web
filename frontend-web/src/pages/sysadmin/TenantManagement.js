@@ -1,26 +1,27 @@
 import React from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
-import sysAdminApiClient from '../../api/sysAdminApiClient'; // <-- USA O API CLIENT NOVO
+import sysAdminApiClient from '../../api/sysAdminApiClient';
 
 // --- Busca de Tenants ---
 const fetchTenants = async () => {
-  // CORRIGIDO: /api/ removido
   const { data } = await sysAdminApiClient.get('/sysadmin/tenants');
   return data;
 };
 
 // --- Criação de Tenant ---
-const createTenant = async (formData) => { // MUDOU: de tenantData para formData
-  // CORRIGIDO: /api/ removido e agora envia FormData
-  const { data } = await sysAdminApiClient.post('/sysadmin/tenants', formData, {
-    headers: {
-      // Deixe o browser definir o 'Content-Type' para 'multipart/form-data'
-      // Não defina 'Content-Type': 'application/json'
-    }
-  });
+const createTenant = async (formData) => { 
+  const { data } = await sysAdminApiClient.post('/sysadmin/tenants', formData);
   return data;
 };
+
+// --- Atualização de Status do Tenant ---
+const updateTenantStatus = async ({ id, status }) => {
+  // Chamada PUT para o novo endpoint
+  const { data } = await sysAdminApiClient.put(`/sysadmin/tenants/${id}`, { status });
+  return data;
+};
+
 
 const statusOptions = [
   { value: 'inactive', label: 'Inativo' },
@@ -38,12 +39,12 @@ export default function TenantManagement() {
 
   // Query para buscar tenants existentes
   const { data: tenants, isLoading: isLoadingTenants } = useQuery(
-    ['sysAdminTenants'], // Chave de query única
+    ['sysAdminTenants'], 
     fetchTenants
   );
 
   // Mutation para criar novo tenant
-  const mutation = useMutation(createTenant, {
+  const createMutation = useMutation(createTenant, {
     onSuccess: () => {
       queryClient.invalidateQueries(['sysAdminTenants']);
       alert('Tenant criado com sucesso!');
@@ -54,7 +55,22 @@ export default function TenantManagement() {
     }
   });
 
-  // MUDANÇA: onSubmit agora cria FormData
+  // Mutation para atualizar status do tenant
+  const statusMutation = useMutation(updateTenantStatus, {
+    onSuccess: () => {
+      queryClient.invalidateQueries(['sysAdminTenants']);
+    },
+    onError: (error) => {
+      alert(`Erro ao atualizar status: ${error.response?.data?.detail || error.message}`);
+    }
+  });
+  
+  // Handler para a mudança do dropdown de status
+  const handleStatusChange = (tenantId, newStatus) => {
+    statusMutation.mutate({ id: tenantId, status: newStatus });
+  };
+
+
   const onSubmit = (data) => {
     const formData = new FormData();
 
@@ -71,7 +87,7 @@ export default function TenantManagement() {
       formData.append('logo', data.logo[0]);
     }
     
-    mutation.mutate(formData);
+    createMutation.mutate(formData);
   };
 
   return (
@@ -147,7 +163,7 @@ export default function TenantManagement() {
               {errors.status && <span className="text-red-500 text-sm">{errors.status.message}</span>}
             </div>
 
-            {/* --- UPGRADE DO CAMPO DE LOGO --- */}
+            {/* --- CAMPO DE LOGO --- */}
             <div>
               <label htmlFor="logo" className="block text-sm font-medium text-gray-700">
                 Logo (Upload)
@@ -160,7 +176,7 @@ export default function TenantManagement() {
                 className="mt-1 block w-full text-sm text-gray-700 border border-gray-300 rounded-md cursor-pointer bg-gray-50 focus:outline-none file:bg-gray-200 file:border-0 file:px-3 file:py-2 file:mr-3 file:text-sm file:font-medium"
               />
             </div>
-            {/* --- FIM DO UPGRADE --- */}
+            {/* --- FIM CAMPO DE LOGO --- */}
 
             <div>
               <label htmlFor="commercial_info" className="block text-sm font-medium text-gray-700">
@@ -176,10 +192,10 @@ export default function TenantManagement() {
 
             <button
               type="submit"
-              disabled={mutation.isLoading}
+              disabled={createMutation.isLoading}
               className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-repforce-primary hover:bg-opacity-90 disabled:bg-gray-400"
             >
-              {mutation.isLoading ? 'Criando...' : 'Criar Tenant'}
+              {createMutation.isLoading ? 'Criando...' : 'Criar Tenant'}
             </button>
           </form>
         </div>
@@ -189,14 +205,17 @@ export default function TenantManagement() {
       <div className="md:col-span-2">
         <div className="bg-white shadow-lg rounded-lg overflow-hidden">
           <div className="px-6 py-4">
-            <h2 className="text-xl font-bold text-gray-800">Tenants Cadastrados</h2>
+            <h2 className="text-xl font-bold text-gray-800">Gerenciar Tenants (TenantManagement.js)</h2>
+            {(createMutation.isError || statusMutation.isError) && (
+              <p className="text-red-500 text-sm mt-2">Ocorreu um erro. Recarregue a página se persistir.</p>
+            )}
           </div>
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nome</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Logo</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">CNPJ</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
@@ -208,25 +227,26 @@ export default function TenantManagement() {
                 ) : (
                   tenants?.map((tenant) => (
                     <tr key={tenant.id}>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{tenant.id}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{tenant.name}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {/* A logo agora é servida pela API, então o caminho relativo funciona */}
-                        {tenant.logo_url ? (
-                          <img src={tenant.logo_url} alt={`Logo ${tenant.name}`} className="h-10 w-10 object-contain" />
-                        ) : (
-                          'N/A'
-                        )}
-                      </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{tenant.cnpj || 'N/A'}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{tenant.email || 'N/A'}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                          tenant.status === 'active' ? 'bg-green-100 text-green-800' :
-                          tenant.status === 'inactive' ? 'bg-red-100 text-red-800' :
-                          'bg-yellow-100 text-yellow-800'
-                        }`}>
-                          {statusOptions.find(o => o.value === tenant.status)?.label || tenant.status}
-                        </span>
+                        {/* Dropdown para editar status */}
+                        <select
+                          value={tenant.status}
+                          onChange={(e) => handleStatusChange(tenant.id, e.target.value)}
+                          disabled={statusMutation.isLoading}
+                          className={`mt-1 block w-auto pl-3 pr-10 py-1 text-sm border-gray-300 rounded-md focus:outline-none focus:ring-repforce-primary focus:border-repforce-primary ${
+                            tenant.status === 'active' ? 'bg-green-50 text-green-800' :
+                            tenant.status === 'inactive' ? 'bg-red-50 text-red-800' :
+                            'bg-yellow-50 text-yellow-800'
+                          }`}
+                        >
+                          {statusOptions.map(opt => (
+                            <option key={opt.value} value={opt.value}>{opt.label}</option>
+                          ))}
+                        </select>
                       </td>
                     </tr>
                   ))
