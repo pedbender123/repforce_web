@@ -1,120 +1,94 @@
-import React, { useState, useMemo } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import sysAdminApiClient from '../api/sysAdminApiClient';
+import React from 'react';
+import { Outlet, Link, useLocation } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
+import ThemeToggle from './ThemeToggle';
+import { 
+  HomeIcon, 
+  UsersIcon, 
+  ShoppingCartIcon,
+  ArrowLeftOnRectangleIcon 
+} from '@heroicons/react/24/outline';
 
-const fetchAllUsers = async () => {
-  const { data } = await sysAdminApiClient.get('/sysadmin/all-users');
-  return data;
-};
-
-const profileOptions = [
-  { value: 'all', label: 'Todos Perfis' },
-  { value: 'sysadmin', label: 'SysAdmin' },
-  { value: 'admin', label: 'Admin' },
-  { value: 'representante', label: 'Representante' },
+const navigation = [
+  { name: 'Dashboard', href: '/app/dashboard', icon: HomeIcon },
+  { name: 'Meus Clientes', href: '/app/clients', icon: UsersIcon },
+  { name: 'Novo Pedido', href: '/app/orders/new', icon: ShoppingCartIcon },
 ];
 
-export default function AllUserManagement() {
-  const [profileFilter, setProfileFilter] = useState('all');
-  const [tenantFilter, setTenantFilter] = useState('all');
+function classNames(...classes) {
+  return classes.filter(Boolean).join(' ')
+}
 
-  const { data: users, isLoading: isLoadingUsers } = useQuery(
-    ['allSystemUsers'], 
-    fetchAllUsers
-  );
-
-  const uniqueTenants = useMemo(() => {
-    if (!users) return [];
-    const tenants = users.map(user => user.tenant);
-    const tenantMap = new Map(tenants.map(t => [t.id, t]));
-    return [{ id: 'all', name: 'Todos Tenants' }, ...Array.from(tenantMap.values())];
-  }, [users]);
-
-  const filteredUsers = useMemo(() => {
-    if (!users) return [];
-    return users.filter(user => {
-      const profileMatch = profileFilter === 'all' || user.profile === profileFilter;
-      const tenantMatch = tenantFilter === 'all' || user.tenant.id === parseInt(tenantFilter, 10);
-      return profileMatch && tenantMatch;
-    });
-  }, [users, profileFilter, tenantFilter]);
+export default function AppLayout() {
+  const { logout, userProfile } = useAuth();
+  const location = useLocation();
 
   return (
-    <div className="bg-white dark:bg-gray-800 shadow-lg rounded-lg overflow-hidden transition-colors duration-300">
-      <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-        <h2 className="text-2xl font-bold text-gray-800 dark:text-white">Todos Usuários do Sistema</h2>
+    <div className="flex h-screen bg-gray-100 dark:bg-gray-900 transition-colors duration-300">
+      {/* Sidebar */}
+      <div className="w-64 flex flex-col bg-repforce-dark dark:bg-black text-white transition-colors"> 
+        <div className="h-20 flex items-center justify-center shadow-md px-4 border-b border-gray-700">
+           {/* Logo Clara para fundo escuro */}
+           <img 
+             src="/logo_clara.png" 
+             alt="Repforce App" 
+             className="h-10 w-auto object-contain"
+           />
+        </div>
+        <nav className="flex-1 px-2 py-4 space-y-1">
+          {navigation.map((item) => (
+            <Link
+              key={item.name}
+              to={item.href}
+              className={classNames(
+                location.pathname.startsWith(item.href)
+                  ? 'bg-repforce-primary text-white'
+                  : 'text-gray-300 hover:bg-gray-800 hover:text-white',
+                'group flex items-center px-2 py-2 text-sm font-medium rounded-md transition-colors'
+              )}
+            >
+              <item.icon
+                className="mr-3 flex-shrink-0 h-6 w-6"
+                aria-hidden="true"
+              />
+              {item.name}
+            </Link>
+          ))}
+        </nav>
+        <div className="p-4 border-t border-gray-700">
+          <button
+            onClick={logout}
+            className="group w-full flex items-center px-2 py-2 text-sm font-medium rounded-md text-gray-300 hover:bg-gray-800 hover:text-white transition-colors"
+          >
+            <ArrowLeftOnRectangleIcon
+              className="mr-3 flex-shrink-0 h-6 w-6"
+              aria-hidden="true"
+            />
+            Sair
+          </button>
+        </div>
       </div>
 
-      {/* Filtros */}
-      <div className="p-4 flex flex-col md:flex-row gap-4 bg-gray-50 dark:bg-gray-750">
-        <div>
-          <label htmlFor="profileFilter" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-            Filtrar por Perfil
-          </label>
-          <select
-            id="profileFilter"
-            value={profileFilter}
-            onChange={(e) => setProfileFilter(e.target.value)}
-            className="mt-1 block w-full md:w-auto pl-3 pr-10 py-2 text-base border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-repforce-primary focus:border-repforce-primary sm:text-sm rounded-md bg-white dark:bg-gray-700 dark:text-white transition-colors"
-          >
-            {profileOptions.map(opt => (
-              <option key={opt.value} value={opt.value} className="dark:bg-gray-700">{opt.label}</option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <label htmlFor="tenantFilter" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-            Filtrar por Tenant
-          </label>
-          <select
-            id="tenantFilter"
-            value={tenantFilter}
-            onChange={(e) => setTenantFilter(e.target.value)}
-            className="mt-1 block w-full md:w-auto pl-3 pr-10 py-2 text-base border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-repforce-primary focus:border-repforce-primary sm:text-sm rounded-md bg-white dark:bg-gray-700 dark:text-white transition-colors"
-          >
-            {uniqueTenants.map(tenant => (
-              <option key={tenant.id} value={tenant.id} className="dark:bg-gray-700">{tenant.name}</option>
-            ))}
-          </select>
-        </div>
-      </div>
-
-      {/* Tabela */}
-      <div className="overflow-x-auto">
-        <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-          <thead className="bg-gray-50 dark:bg-gray-700">
-            <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Nome</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Username</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Email (Contato)</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Perfil</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Tenant</th>
-            </tr>
-          </thead>
-          <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-            {isLoadingUsers ? (
-              <tr><td colSpan="5" className="p-4 text-center text-gray-500 dark:text-gray-300">Carregando...</td></tr>
-            ) : (
-              filteredUsers?.map((user) => (
-                <tr key={user.id}>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">{user.name || 'N/A'}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300 font-medium">{user.username}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{user.email || 'N/A'}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm">
-                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                      user.profile === 'sysadmin' ? 'bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200' :
-                      user.profile === 'admin' ? 'bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200' : 
-                      'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200'
-                    }`}>
-                      {user.profile}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{user.tenant.name} (ID: {user.tenant.id})</td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+      {/* Conteúdo Principal */}
+      <div className="flex-1 flex flex-col overflow-hidden">
+        <header className="bg-white dark:bg-gray-800 shadow-sm h-16 z-10 transition-colors">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-full flex items-center justify-between">
+            <h1 className="text-xl font-semibold text-gray-900 dark:text-white">
+              {navigation.find(nav => location.pathname.startsWith(nav.href))?.name || 'Área do Representante'}
+            </h1>
+            <div className="flex items-center space-x-4">
+              <ThemeToggle />
+              <div className="px-3 py-1 rounded-full bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 text-xs font-bold border border-green-200 dark:border-green-800 uppercase">
+                 {userProfile || 'Representante'}
+               </div>
+            </div>
+          </div>
+        </header>
+        
+        {/* AQUI ESTÁ O SEGREDO: O Outlet renderiza a página filha (Dashboard, Clientes, etc) */}
+        <main className="flex-1 overflow-y-auto p-6 bg-gray-100 dark:bg-gray-900 transition-colors">
+          <Outlet />
+        </main>
       </div>
     </div>
   );
