@@ -57,6 +57,8 @@ services:
     build:
       # O contexto agora aponta para a pasta correta
       context: ./frontend-web
+      args:
+        - REACT_APP_API_URL=https://repforce.com.br/api 
       dockerfile: Dockerfile
     container_name: repforce_frontend
     ports:

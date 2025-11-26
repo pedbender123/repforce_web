@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import sysAdminApiClient from '../../api/sysAdminApiClient';
+import sysAdminApiClient from '../api/sysAdminApiClient';
 
 const fetchAllUsers = async () => {
   const { data } = await sysAdminApiClient.get('/sysadmin/all-users');

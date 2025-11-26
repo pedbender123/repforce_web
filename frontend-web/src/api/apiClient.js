@@ -1,7 +1,7 @@
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 // CORREÇÃO: Usando apiClient padrão (o Admin não tem acesso ao sysAdminApiClient)
-import apiClient from '../../api/apiClient';
+import apiClient from '../api/apiClient';
 
 // Endpoint fictício para o admin ver sua própria empresa (ajustar backend se necessário)
 const fetchMyTenant = async () => {
