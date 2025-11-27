@@ -2,26 +2,40 @@ from datetime import datetime, timedelta, timezone
 from typing import Optional, Dict, Any
 from jose import JWTError, jwt
 from passlib.context import CryptContext
+from fastapi import Header, HTTPException, status
 from .config import settings
 
-# Configuração do hashing de senha
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    """Verifica se a senha plana corresponde ao hash."""
     return pwd_context.verify(plain_password, hashed_password)
 
 def get_password_hash(password: str) -> str:
-    """Gera o hash de uma senha."""
     return pwd_context.hash(password)
 
-# --- Funções JWT ---
+# --- Dependência para validar Webhook do N8N ---
+async def get_api_key(x_api_key: str = Header(None)):
+    """Valida o header X-API-Key contra a configuração."""
+    if x_api_key != settings.N8N_API_KEY:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Chave de API inválida."
+        )
+    return x_api_key
 
-def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
-    """Cria um novo token de acesso JWT."""
+# --- Funções JWT ---
+def create_access_token(data: dict, expires_delta: Optional[timedelta] = None, remember_me: bool = False) -> str:
+    """
+    Cria um token JWT. 
+    Se remember_me=True, usa a expiração longa (dias).
+    Caso contrário, usa a curta (minutos).
+    """
     to_encode = data.copy()
+    
     if expires_delta:
         expire = datetime.now(timezone.utc) + expires_delta
+    elif remember_me:
+        expire = datetime.now(timezone.utc) + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
     else:
         expire = datetime.now(timezone.utc) + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     
@@ -35,7 +49,6 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
     return encoded_jwt
 
 def decode_access_token(token: str) -> Optional[Dict[str, Any]]:
-    """Decodifica um token de acesso. Retorna o payload se válido, ou None."""
     try:
         payload = jwt.decode(
             token,
@@ -44,5 +57,4 @@ def decode_access_token(token: str) -> Optional[Dict[str, Any]]:
         )
         return payload
     except JWTError:
-        # Token inválido, expirado ou com assinatura incorreta
         return None

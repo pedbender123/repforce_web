@@ -2,7 +2,6 @@ from fastapi import APIRouter, Depends, Request, HTTPException
 from sqlalchemy.orm import Session
 from ..db import database, models, schemas
 from typing import List
-import json # Para lidar com o campo 'items'
 
 router = APIRouter()
 
@@ -12,25 +11,50 @@ def create_order(
     request: Request,
     db: Session = Depends(database.get_db)
 ):
-    """
-    Cria um novo pedido (WF III.1 - Demo Simplificada).
-    """
     tenant_id = request.state.tenant_id
-    representative_id = request.state.user_id # O usuário logado é o representante
+    representative_id = request.state.user_id
 
-    # Lógica simplificada para calcular o total
-    # Em um cenário real, você buscaria os preços dos produtos no DB
-    # para evitar adulteração
-    total_value = sum(item.quantity * item.unit_price for item in order.items)
+    # Busca produtos para garantir preço correto
+    product_ids = [item.product_id for item in order.items]
+    products = db.query(models.Product).filter(
+        models.Product.id.in_(product_ids),
+        models.Product.tenant_id == tenant_id
+    ).all()
     
-    # Converte Pydantic models para dicts para salvar no JSONB
-    items_as_dicts = [item.dict() for item in order.items]
+    product_map = {p.id: p for p in products}
+    
+    total_value = 0.0
+    total_cost = 0.0
+    final_items = []
+    
+    for item in order.items:
+        if item.product_id not in product_map:
+            raise HTTPException(status_code=400, detail=f"Produto ID {item.product_id} inválido")
+        
+        prod = product_map[item.product_id]
+        
+        unit_price = prod.price 
+        subtotal = unit_price * item.quantity
+        
+        total_value += subtotal
+        total_cost += (prod.cost_price or 0) * item.quantity
+        
+        final_items.append({
+            "product_id": item.product_id,
+            "quantity": item.quantity,
+            "unit_price": unit_price,
+            "subtotal": subtotal,
+            "name": prod.name
+        })
+
+    margin_value = total_value - total_cost
 
     db_order = models.Order(
         client_id=order.client_id,
-        items=items_as_dicts, # Salva como JSON
+        items=final_items,
         total_value=total_value,
-        status="PENDING",
+        margin_value=margin_value,
+        status="draft",
         tenant_id=tenant_id,
         representative_id=representative_id
     )
@@ -39,20 +63,10 @@ def create_order(
     db.commit()
     db.refresh(db_order)
     
-    # Fase 1 (Dezembro): Chamar n8n_client.trigger_order_validation(...) aqui
-    
     return db_order
 
 @router.get("/orders", response_model=List[schemas.Order])
-def get_orders(
-    request: Request,
-    db: Session = Depends(database.get_db)
-):
-    """
-    Lista pedidos.
-    - Admin vê todos do tenant.
-    - Representante vê apenas os seus.
-    """
+def get_orders(request: Request, db: Session = Depends(database.get_db)):
     tenant_id = request.state.tenant_id
     profile = request.state.profile
     user_id = request.state.user_id
@@ -62,5 +76,4 @@ def get_orders(
     if profile == 'representante':
         query = query.filter(models.Order.representative_id == user_id)
         
-    orders = query.all()
-    return orders
+    return query.order_by(models.Order.created_at.desc()).all()

@@ -2,12 +2,16 @@ import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate, Navigate } from 'react-router-dom';
 import ThemeToggle from '../components/ThemeToggle';
+import apiClient from '../api/apiClient';
+import { jwtDecode } from 'jwt-decode';
 
 export default function Login() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [rememberMe, setRememberMe] = useState(false);
   const [error, setError] = useState(null);
-  const { login, token, userProfile } = useAuth();
+  
+  const { token, userProfile } = useAuth();
   const navigate = useNavigate();
 
   const getRedirectPath = (profile) => {
@@ -18,117 +22,57 @@ export default function Login() {
     }
   };
 
-  if (token) {
-    const redirectTo = getRedirectPath(userProfile);
-    return <Navigate to={redirectTo} replace />;
-  }
+  if (token) return <Navigate to={getRedirectPath(userProfile)} replace />;
 
-  const handleSubmit = async (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
     setError(null);
     try {
-      const profile = await login(username, password);
-      const redirectTo = getRedirectPath(profile);
-      navigate(redirectTo, { replace: true });
+        const formData = new URLSearchParams();
+        formData.append('username', username);
+        formData.append('password', password);
+        formData.append('remember_me', rememberMe); 
+
+        const response = await apiClient.post('/auth/token', formData, {
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        });
+
+        const { access_token } = response.data;
+        localStorage.setItem('token', access_token);
+        window.location.reload(); // Recarrega para atualizar AuthContext
     } catch (err) {
-      setError('Falha no login. Verifique seu usuário e senha.');
+        setError('Login falhou. Verifique suas credenciais.');
     }
   };
 
   return (
     <div className="flex min-h-screen transition-colors duration-300">
-      <div className="absolute top-4 right-4 z-50">
-        <ThemeToggle />
-      </div>
-
-      {/* Lado Esquerdo (Banner) - Escuro */}
-      <div className="hidden lg:flex lg:w-1/2 bg-repforce-dark dark:bg-black items-center justify-center p-12 transition-colors">
-        <div className="text-white text-left max-w-md">
-          {/* Logo grande no banner */}
-          <img 
-            src="/logo_clara.png" 
-            alt="Repforce" 
-            className="mb-8 w-64 h-auto object-contain"
-          />
-          <h1 className="text-5xl font-bold mb-6 leading-tight">
-            Tecnologia que entende quem vende.
-          </h1>
-          <p className="text-xl text-gray-300">
-            Acesse seu painel para organizar rotas, acompanhar clientes e controlar tudo que importa.
-          </p>
+      <div className="absolute top-4 right-4 z-50"><ThemeToggle /></div>
+      <div className="hidden lg:flex lg:w-1/2 bg-repforce-dark dark:bg-black items-center justify-center p-12">
+        <div className="text-white max-w-md">
+          <img src="/logo_clara.png" alt="Repforce" className="mb-8 w-48 object-contain"/>
+          <h1 className="text-4xl font-bold mb-4">Gestão inteligente.</h1>
+          <p className="text-gray-300">Acesse sua conta para continuar.</p>
         </div>
       </div>
-      
-      {/* Lado Direito (Formulário) */}
-      <div className="flex-1 flex flex-col justify-center items-center bg-repforce-light dark:bg-gray-900 lg:w-1/2 p-8 transition-colors">
-        <div className="w-full max-w-md bg-white dark:bg-gray-800 p-8 md:p-12 rounded-lg shadow-xl transition-colors border border-transparent dark:border-gray-700">
-          
-          {/* Logo visível mobile/tablet e topo do form */}
-          <div className="mb-10 flex justify-center">
-             <div className="bg-repforce-dark p-4 rounded-lg shadow-md">
-                <img 
-                  src="/logo_clara.png" 
-                  alt="Repforce" 
-                  className="h-10 w-auto object-contain" 
-                />
-             </div>
-          </div>
-          
-          <h2 className="text-2xl font-semibold text-gray-800 dark:text-white text-center mb-6">
-            Acesse sua conta
-          </h2>
-
-          <form onSubmit={handleSubmit} className="space-y-6">
+      <div className="flex-1 flex flex-col justify-center items-center bg-gray-50 dark:bg-gray-900 p-8">
+        <div className="w-full max-w-md bg-white dark:bg-gray-800 p-8 rounded-lg shadow-lg">
+          <h2 className="text-2xl font-bold text-gray-800 dark:text-white text-center mb-6">Login</h2>
+          <form onSubmit={handleLogin} className="space-y-5">
             <div>
-              <label htmlFor="username" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                Usuário
-              </label>
-              <div className="mt-1">
-                <input
-                  id="username"
-                  name="username"
-                  type="text"
-                  autoComplete="username"
-                  required
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-repforce-primary focus:border-repforce-primary bg-white dark:bg-gray-700 text-gray-900 dark:text-white transition-colors placeholder-gray-400 dark:placeholder-gray-500"
-                  placeholder="Seu usuário"
-                />
-              </div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Usuário</label>
+              <input type="text" required value={username} onChange={e => setUsername(e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white px-3 py-2"/>
             </div>
-
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                Senha
-              </label>
-              <div className="mt-1">
-                <input
-                  id="password"
-                  name="password"
-                  type="password"
-                  autoComplete="current-password"
-                  required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-repforce-primary focus:border-repforce-primary bg-white dark:bg-gray-700 text-gray-900 dark:text-white transition-colors placeholder-gray-400 dark:placeholder-gray-500"
-                  placeholder="••••••••"
-                />
-              </div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Senha</label>
+              <input type="password" required value={password} onChange={e => setPassword(e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white px-3 py-2"/>
             </div>
-
-            {error && (
-              <div className="text-center text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 p-2 rounded">
-                {error}
-              </div>
-            )}
-
-            <button
-              type="submit"
-              className="w-full flex justify-center py-3 px-4 border border-transparent rounded-md shadow-sm text-lg font-medium text-white bg-repforce-primary hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-repforce-primary transition-colors"
-            >
-              Entrar
-            </button>
+            <div className="flex items-center">
+              <input id="remember" type="checkbox" checked={rememberMe} onChange={e => setRememberMe(e.target.checked)} className="h-4 w-4 text-blue-600 border-gray-300 rounded"/>
+              <label htmlFor="remember" className="ml-2 block text-sm text-gray-900 dark:text-gray-300">Manter conectado</label>
+            </div>
+            {error && <p className="text-red-500 text-sm text-center">{error}</p>}
+            <button type="submit" className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-repforce-primary hover:bg-blue-700">Entrar</button>
           </form>
         </div>
       </div>
