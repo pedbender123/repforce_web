@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, Request, HTTPException, File, UploadFile, Form
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from ..db import database, models, schemas
 from typing import List, Optional
 import os
@@ -10,6 +10,8 @@ router = APIRouter()
 UPLOAD_DIR_PRODUCTS = "/app/uploads/products"
 STATIC_URL_PRODUCTS = "/uploads/products"
 
+# --- PRODUTOS ---
+
 @router.get("/products", response_model=List[schemas.Product])
 def get_products(
     request: Request,
@@ -17,7 +19,7 @@ def get_products(
     search: str = ""
 ):
     tenant_id = request.state.tenant_id
-    query = db.query(models.Product).filter(models.Product.tenant_id == tenant_id)
+    query = db.query(models.Product).options(joinedload(models.Product.supplier)).filter(models.Product.tenant_id == tenant_id)
     
     if search:
         query = query.filter(models.Product.name.ilike(f"%{search}%"))
@@ -33,6 +35,7 @@ def create_product(
     sku: Optional[str] = Form(None),
     cost_price: Optional[float] = Form(None),
     stock: Optional[int] = Form(0),
+    supplier_id: Optional[int] = Form(None), # NOVO
     image: Optional[UploadFile] = File(None)
 ):
     if request.state.profile not in ['admin', 'sysadmin']:
@@ -55,9 +58,38 @@ def create_product(
         cost_price=cost_price,
         stock=stock,
         image_url=image_url,
+        supplier_id=supplier_id, # NOVO
         tenant_id=tenant_id
     )
     db.add(db_product)
     db.commit()
     db.refresh(db_product)
     return db_product
+
+# --- FORNECEDORES (NOVO) ---
+
+@router.get("/suppliers", response_model=List[schemas.Supplier])
+def get_suppliers(
+    request: Request,
+    db: Session = Depends(database.get_db)
+):
+    tenant_id = request.state.tenant_id
+    suppliers = db.query(models.Supplier).filter(models.Supplier.tenant_id == tenant_id).all()
+    return suppliers
+
+@router.post("/suppliers", response_model=schemas.Supplier, status_code=201)
+def create_supplier(
+    supplier: schemas.SupplierCreate,
+    request: Request,
+    db: Session = Depends(database.get_db)
+):
+    if request.state.profile not in ['admin', 'sysadmin']:
+        raise HTTPException(status_code=403, detail="Apenas admins podem criar fornecedores")
+
+    tenant_id = request.state.tenant_id
+    
+    db_supplier = models.Supplier(**supplier.dict(), tenant_id=tenant_id)
+    db.add(db_supplier)
+    db.commit()
+    db.refresh(db_supplier)
+    return db_supplier

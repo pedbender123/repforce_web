@@ -11,6 +11,7 @@ class TenantBase(BaseModel):
     logo_url: Optional[str] = None
     commercial_info: Optional[str] = None
     status: Optional[str] = 'inactive'
+    tenant_type: Optional[str] = 'industry' # NOVO
 
 class TenantCreate(TenantBase):
     pass
@@ -44,7 +45,7 @@ class Token(BaseModel):
     access_token: str
     token_type: str
 
-# --- Contact (NOVO) ---
+# --- Contact ---
 class ContactBase(BaseModel):
     name: str
     role: Optional[str] = None
@@ -86,7 +87,22 @@ class Client(ClientBase):
     id: int
     tenant_id: int
     representative_id: Optional[int] = None
-    contacts: List[Contact] = [] # Inclui contatos na leitura
+    contacts: List[Contact] = []
+    class Config:
+        orm_mode = True
+
+# --- Supplier (NOVO) ---
+class SupplierBase(BaseModel):
+    name: str
+    commercial_contact: Optional[str] = None
+    email: Optional[str] = None
+
+class SupplierCreate(SupplierBase):
+    pass
+
+class Supplier(SupplierBase):
+    id: int
+    tenant_id: int
     class Config:
         orm_mode = True
 
@@ -98,6 +114,7 @@ class ProductBase(BaseModel):
     cost_price: Optional[float] = None
     stock: Optional[int] = 0
     image_url: Optional[str] = None
+    supplier_id: Optional[int] = None # NOVO
 
 class ProductCreate(ProductBase):
     pass
@@ -105,6 +122,7 @@ class ProductCreate(ProductBase):
 class Product(ProductBase):
     id: int
     tenant_id: int
+    supplier: Optional[Supplier] = None # NOVO
     class Config:
         orm_mode = True
 
@@ -133,7 +151,7 @@ class Order(BaseModel):
     class Config:
         orm_mode = True
 
-# --- Routes (NOVO) ---
+# --- Routes ---
 class RouteStopBase(BaseModel):
     client_id: int
     sequence: int

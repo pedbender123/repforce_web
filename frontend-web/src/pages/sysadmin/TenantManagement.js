@@ -24,11 +24,18 @@ const statusOptions = [
   { value: 'contract', label: 'Em Contrato' },
 ];
 
+const typeOptions = [
+  { value: 'industry', label: 'Indústria (Fabricante)' },
+  { value: 'agency', label: 'Agência de Representação' },
+  { value: 'reseller', label: 'Revenda / Distribuidora' },
+];
+
 export default function TenantManagement() {
   const queryClient = useQueryClient();
   const { register, handleSubmit, reset, formState: { errors } } = useForm({
     defaultValues: {
-      status: 'inactive'
+      status: 'inactive',
+      tenant_type: 'industry'
     }
   });
 
@@ -68,6 +75,7 @@ export default function TenantManagement() {
     formData.append('email', data.email || '');
     formData.append('phone', data.phone || '');
     formData.append('status', data.status);
+    formData.append('tenant_type', data.tenant_type);
     formData.append('commercial_info', data.commercial_info || '');
 
     if (data.logo && data.logo[0]) {
@@ -97,6 +105,24 @@ export default function TenantManagement() {
                 className="mt-1 w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-repforce-primary focus:border-repforce-primary bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
               />
               {errors.name && <span className="text-red-500 text-sm">{errors.name.message}</span>}
+            </div>
+
+            <div>
+              <label htmlFor="tenant_type" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                Tipo de Negócio
+              </label>
+              <select
+                id="tenant_type"
+                {...register("tenant_type", { required: "Tipo é obrigatório" })}
+                className="mt-1 w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-repforce-primary focus:border-repforce-primary bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+              >
+                {typeOptions.map(opt => (
+                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                ))}
+              </select>
+              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                Define se controla estoque e fornecedores.
+              </p>
             </div>
 
             <div>
@@ -196,8 +222,8 @@ export default function TenantManagement() {
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">ID</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Nome</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Tipo</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">CNPJ</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Email</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Status</th>
                 </tr>
               </thead>
@@ -209,8 +235,10 @@ export default function TenantManagement() {
                     <tr key={tenant.id}>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">{tenant.id}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">{tenant.name}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                        {typeOptions.find(t => t.value === tenant.tenant_type)?.label || tenant.tenant_type}
+                      </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{tenant.cnpj || 'N/A'}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{tenant.email || 'N/A'}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                         <select
                           value={tenant.status}

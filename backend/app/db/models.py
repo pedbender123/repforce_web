@@ -13,11 +13,18 @@ class Tenant(Base):
     logo_url = Column(String, nullable=True)
     commercial_info = Column(String, nullable=True) 
     status = Column(String, nullable=False, default='inactive') 
+    
+    # NOVO: Tipo de Tenant
+    # industry: Indústria (tem estoque, é o fabricante)
+    # agency: Representação (não tem estoque físico, gere fornecedores)
+    # reseller: Revenda (tem estoque e fornecedores)
+    tenant_type = Column(String, default='industry', nullable=False)
 
     users = relationship("User", back_populates="tenant")
     clients = relationship("Client", back_populates="tenant")
     products = relationship("Product", back_populates="tenant")
     orders = relationship("Order", back_populates="tenant")
+    suppliers = relationship("Supplier", back_populates="tenant") # NOVO
 
 class User(Base):
     __tablename__ = "users"
@@ -38,12 +45,12 @@ class User(Base):
 class Client(Base):
     __tablename__ = "clients"
     id = Column(Integer, primary_key=True, index=True)
-    name = Column(String, index=True, nullable=False) # Razão Social
-    trade_name = Column(String, index=True, nullable=True) # Nome Fantasia (NOVO)
+    name = Column(String, index=True, nullable=False)
+    trade_name = Column(String, index=True, nullable=True)
     cnpj = Column(String, index=True, nullable=True) 
-    status = Column(String, default='active') # active, inactive, blocked
+    status = Column(String, default='active')
     
-    address_data = Column(JSON, nullable=True) # {rua, numero, bairro, cidade, uf, cep}
+    address_data = Column(JSON, nullable=True)
     lat = Column(Float, nullable=True)
     lon = Column(Float, nullable=True)
     
@@ -57,37 +64,52 @@ class Client(Base):
     orders = relationship("Order", back_populates="client")
 
 class Contact(Base):
-    """Modelo de Contato (NOVO)"""
     __tablename__ = "contacts"
     id = Column(Integer, primary_key=True, index=True)
     client_id = Column(Integer, ForeignKey("clients.id"), nullable=False)
     name = Column(String, nullable=False)
-    role = Column(String, nullable=True) # Cargo: Comprador, Financeiro
+    role = Column(String, nullable=True)
     email = Column(String, nullable=True)
     phone = Column(String, nullable=True)
     is_primary = Column(Boolean, default=False)
     
     client = relationship("Client", back_populates="contacts")
 
+class Supplier(Base):
+    """Modelo de Fornecedor / Representada (NOVO)"""
+    __tablename__ = "suppliers"
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, nullable=False) # Nome da Fábrica/Marca
+    commercial_contact = Column(String, nullable=True)
+    email = Column(String, nullable=True)
+    
+    tenant_id = Column(Integer, ForeignKey("tenants.id"), nullable=False)
+    tenant = relationship("Tenant", back_populates="suppliers")
+    products = relationship("Product", back_populates="supplier")
+
 class Product(Base):
     __tablename__ = "products"
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, index=True, nullable=False)
-    sku = Column(String, index=True, nullable=True) # SKU (NOVO)
-    price = Column(Float, nullable=False) # Preço Venda
-    cost_price = Column(Float, nullable=True) # Preço Custo (NOVO - Admin Only)
+    sku = Column(String, index=True, nullable=True)
+    price = Column(Float, nullable=False)
+    cost_price = Column(Float, nullable=True)
     stock = Column(Integer, nullable=True)
-    image_url = Column(String, nullable=True) # Imagem (NOVO)
+    image_url = Column(String, nullable=True)
     
     tenant_id = Column(Integer, ForeignKey("tenants.id"), nullable=False)
     tenant = relationship("Tenant", back_populates="products")
 
+    # NOVO: Vínculo com Fornecedor (Opcional se for Industria)
+    supplier_id = Column(Integer, ForeignKey("suppliers.id"), nullable=True)
+    supplier = relationship("Supplier", back_populates="products")
+
 class Order(Base):
     __tablename__ = "orders"
     id = Column(Integer, primary_key=True, index=True)
-    status = Column(String, default="draft", nullable=False) # draft, pending, approved, rejected
+    status = Column(String, default="draft", nullable=False)
     total_value = Column(Float, nullable=False)
-    margin_value = Column(Float, nullable=True) # Margem de Lucro (NOVO)
+    margin_value = Column(Float, nullable=True)
     items = Column(JSON) 
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
@@ -102,25 +124,23 @@ class Order(Base):
     representative = relationship("User", back_populates="orders_as_representative")
 
 class Route(Base):
-    """Modelo de Rota (NOVO)"""
     __tablename__ = "routes"
     id = Column(Integer, primary_key=True, index=True)
     representative_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     date = Column(Date, nullable=False)
-    status = Column(String, default='planned') # planned, started, completed
+    status = Column(String, default='planned')
     name = Column(String, nullable=True)
     
     representative = relationship("User", back_populates="routes")
     stops = relationship("RouteStop", back_populates="route", cascade="all, delete-orphan")
 
 class RouteStop(Base):
-    """Paradas da Rota (NOVO)"""
     __tablename__ = "route_stops"
     id = Column(Integer, primary_key=True, index=True)
     route_id = Column(Integer, ForeignKey("routes.id"), nullable=False)
     client_id = Column(Integer, ForeignKey("clients.id"), nullable=False)
     sequence = Column(Integer, nullable=False)
-    status = Column(String, default='pending') # pending, checked_in, skipped
+    status = Column(String, default='pending')
     checkin_time = Column(DateTime, nullable=True)
     notes = Column(String, nullable=True)
     
