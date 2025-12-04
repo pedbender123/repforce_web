@@ -3,9 +3,10 @@ import { useAuth } from '../context/AuthContext';
 import { useNavigate, Navigate } from 'react-router-dom';
 import ThemeToggle from '../components/ThemeToggle';
 import apiClient from '../api/apiClient';
-import { jwtDecode } from 'jwt-decode';
 
 export default function Login() {
+  // Novo estado para o SLUG
+  const [tenantSlug, setTenantSlug] = useState(''); 
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
@@ -29,6 +30,8 @@ export default function Login() {
     setError(null);
     try {
         const formData = new URLSearchParams();
+        // Envia o SLUG junto
+        formData.append('tenant_slug', tenantSlug);
         formData.append('username', username);
         formData.append('password', password);
         formData.append('remember_me', rememberMe); 
@@ -39,9 +42,10 @@ export default function Login() {
 
         const { access_token } = response.data;
         localStorage.setItem('token', access_token);
-        window.location.reload(); // Recarrega para atualizar AuthContext
+        window.location.reload(); 
     } catch (err) {
-        setError('Login falhou. Verifique suas credenciais.');
+        // Mensagem de erro melhorada
+        setError(err.response?.data?.detail || 'Login falhou. Verifique código da empresa e credenciais.');
     }
   };
 
@@ -59,6 +63,20 @@ export default function Login() {
         <div className="w-full max-w-md bg-white dark:bg-gray-800 p-8 rounded-lg shadow-lg">
           <h2 className="text-2xl font-bold text-gray-800 dark:text-white text-center mb-6">Login</h2>
           <form onSubmit={handleLogin} className="space-y-5">
+            
+            {/* NOVO CAMPO: Código da Empresa (Slug) */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Código da Empresa</label>
+              <input 
+                type="text" 
+                required 
+                placeholder="Ex: demo"
+                value={tenantSlug} 
+                onChange={e => setTenantSlug(e.target.value.toLowerCase())} 
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white px-3 py-2"
+              />
+            </div>
+
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Usuário</label>
               <input type="text" required value={username} onChange={e => setUsername(e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white px-3 py-2"/>
@@ -67,6 +85,8 @@ export default function Login() {
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Senha</label>
               <input type="password" required value={password} onChange={e => setPassword(e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white px-3 py-2"/>
             </div>
+            
+            {/* Resto do formulário igual... */}
             <div className="flex items-center">
               <input id="remember" type="checkbox" checked={rememberMe} onChange={e => setRememberMe(e.target.checked)} className="h-4 w-4 text-blue-600 border-gray-300 rounded"/>
               <label htmlFor="remember" className="ml-2 block text-sm text-gray-900 dark:text-gray-300">Manter conectado</label>
