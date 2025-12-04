@@ -10,7 +10,7 @@ Proxy Reverso (VPS): Nginx (para gerir o domínio e o tráfego)
 
 Backend: FastAPI (Python), SQLAlchemy, PostgreSQL
 
-Frontend: React (com Tailwind CSS, React Query, Axios)
+Frontend: React (com Tailwind CSS, React Que
 
 
 🏛️ Arquitetura de Produção
