@@ -4,9 +4,8 @@ services:
     container_name: repforce_db
     volumes:
       - ./postgres-data:/var/lib/postgresql/data
-    
-    # AQUI: O Docker Compose vai ler o arquivo .env na pasta raiz
-    # e injetar as variáveis (POSTGRES_USER, etc.) neste contêiner.
+      # ADICIONE ESTA LINHA ABAIXO:
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
     env_file:
       - .env
     networks:

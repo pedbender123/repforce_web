@@ -1,76 +1,80 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Request, Form
-from fastapi.security import OAuth2PasswordRequestForm
+from fastapi import APIRouter, Depends, HTTPException, status, Form
 from sqlalchemy.orm import Session
 from ..db import database, models, schemas
 from ..core import security
 
 router = APIRouter()
 
-def get_user_by_username(db: Session, username: str):
-    return db.query(models.User).filter(models.User.username == username).first()
-
-@router.post("/token", response_model=schemas.Token)
-def login_for_access_token(
+# 1. Login SysAdmin (Usa get_global_db)
+@router.post("/sysadmin/token", response_model=schemas.Token)
+def sysadmin_login(
     username: str = Form(...),
     password: str = Form(...),
-    remember_me: bool = Form(False), # Recebe do form
-    db: Session = Depends(database.get_db)
+    db: Session = Depends(database.get_global_db) # Conecta no Global
 ):
-    """
-    Login para 'admin' e 'representante' com suporte a 'Manter conectado'.
-    """
-    user = get_user_by_username(db, username=username)
+    user = db.query(models.SysUser).filter(models.SysUser.username == username).first()
     
     if not user or not security.verify_password(password, user.hashed_password):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Usuário ou senha incorretos",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-        
-    if user.profile == 'sysadmin':
-        raise HTTPException(status_code=403, detail="Login de SysAdmin deve ser feito na área restrita.")
+        raise HTTPException(status_code=401, detail="Credenciais de SysAdmin inválidas")
     
-    token_data = {
-        "sub": str(user.id), 
-        "profile": user.profile,
-        "tenant_id": user.tenant_id,
-        "username": user.username
-    }
-    
-    # Usa a flag remember_me
-    access_token = security.create_access_token(data=token_data, remember_me=remember_me)
-    
+    # Token de SysAdmin não tem tenant_slug
+    access_token = security.create_access_token(
+        data={"sub": str(user.id), "profile": "sysadmin", "username": user.username}
+    )
     return {"access_token": access_token, "token_type": "bearer"}
 
-@router.post("/sysadmin/token", response_model=schemas.Token)
-def sysadmin_login_for_access_token(
-    form_data: OAuth2PasswordRequestForm = Depends(),
-    db: Session = Depends(database.get_db)
+# 2. Login Tenant (Usuário da Empresa)
+@router.post("/token", response_model=schemas.Token)
+def login_for_access_token(
+    tenant_slug: str = Form(...), # NOVO CAMPO OBRIGATÓRIO
+    username: str = Form(...),
+    password: str = Form(...),
+    remember_me: bool = Form(False),
 ):
-    """Login exclusivo para SysAdmin (sem remember_me por segurança)."""
-    user = get_user_by_username(db, username=form_data.username)
+    """
+    Login Multi-Tenant:
+    1. Busca a connection string do tenant no DB Global.
+    2. Conecta no DB do Tenant.
+    3. Valida o usuário.
+    """
     
-    if not user or not security.verify_password(form_data.password, user.hashed_password):
-        raise HTTPException(status_code=401, detail="Dados incorretos")
+    # Passo 1: Busca Tenant no Global
+    global_db = database.GlobalSessionLocal()
+    tenant = global_db.query(models.Tenant).filter(models.Tenant.slug == tenant_slug).first()
+    global_db.close()
+    
+    if not tenant:
+        raise HTTPException(status_code=404, detail="Empresa não encontrada.")
         
-    if user.profile != 'sysadmin':
-        raise HTTPException(status_code=403, detail="Acesso negado. Área exclusiva SysAdmin.")
-    
-    token_data = {
-        "sub": str(user.id), 
-        "profile": user.profile, 
-        "tenant_id": user.tenant_id, 
-        "username": user.username
-    }
-    access_token = security.create_access_token(data=token_data)
-    
-    return {"access_token": access_token, "token_type": "bearer"}
+    if tenant.status != 'active':
+        raise HTTPException(status_code=403, detail="Empresa inativa.")
 
-@router.get("/users/me", response_model=schemas.User)
-def read_users_me(request: Request, db: Session = Depends(database.get_db)):
-    user_id = request.state.user_id
-    user = db.query(models.User).filter(models.User.id == user_id).first()
-    if user is None:
-        raise HTTPException(status_code=404, detail="Usuário não encontrado")
-    return user
+    # Passo 2: Conecta no Tenant
+    try:
+        tenant_engine = database.tenant_manager.get_tenant_engine(tenant.db_connection_string)
+        TenantSession = sessionmaker(bind=tenant_engine)
+        tenant_db = TenantSession()
+    except Exception as e:
+        print(e)
+        raise HTTPException(status_code=500, detail="Erro de conexão com banco do Tenant.")
+
+    # Passo 3: Valida Usuário no banco do Tenant
+    try:
+        user = tenant_db.query(models.User).filter(models.User.username == username).first()
+        
+        if not user or not security.verify_password(password, user.hashed_password):
+            raise HTTPException(status_code=401, detail="Usuário ou senha incorretos.")
+            
+        # Gera Token com o SLUG para o Middleware saber onde conectar nas próximas requests
+        token_data = {
+            "sub": str(user.id),
+            "profile": user.profile,
+            "username": user.username,
+            "tenant_slug": tenant_slug # O Pulo do Gato
+        }
+        
+        access_token = security.create_access_token(data=token_data, remember_me=remember_me)
+        return {"access_token": access_token, "token_type": "bearer"}
+        
+    finally:
+        tenant_db.close()
