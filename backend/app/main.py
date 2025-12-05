@@ -10,10 +10,15 @@ from sqlalchemy.orm import Session
 # Importa todas as rotas
 from .api import auth, crm, catalog, orders, admin, sysadmin, routes, webhooks
 
-# Cria tabelas do CORE (Users, Tenants) no schema public
+# --- CORREÇÃO ESTÁ AQUI ---
+# Antes você tinha: models.Base.metadata... (O "Base" não existe mais)
+# O correto agora é:
 models.CoreBase.metadata.create_all(bind=database.engine)
+# --------------------------
 
 app = FastAPI(title="Repforce API (Schema Multi-Tenant)")
+
+app.add_middleware(TenantMiddleware)
 
 # Uploads
 upload_dir = "/app/uploads"
@@ -29,8 +34,8 @@ def create_initial_admin():
         tenant = db.query(models.Tenant).filter(models.Tenant.name == tenant_name).first()
         if not tenant:
             print("⚙️ Criando Tenant Administrativo...")
-            # CORREÇÃO: Removido 'db_connection_string', pois agora usamos schema baseado no slug
-            tenant = models.Tenant(name=tenant_name, slug="systems", status="active", cnpj="000")
+            # Note o slug="systems" obrigatório
+            tenant = models.Tenant(name=tenant_name, slug="systems", status="active", cnpj="000", db_connection_string="local")
             db.add(tenant)
             db.commit()
             db.refresh(tenant)
