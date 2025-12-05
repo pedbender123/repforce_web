@@ -6,55 +6,45 @@ from typing import List
 
 router = APIRouter()
 
-# Dependência para verificar se o usuário é Admin (de Tenant)
 def check_tenant_admin_profile(request: Request):
-    """
-    Verifica se o usuário logado tem o perfil 'admin' (e NÃO 'sysadmin').
-    """
     if request.state.profile != 'admin':
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Acesso restrito a administradores de tenant."
-        )
+        raise HTTPException(status_code=403, detail="Acesso restrito a administradores.")
     return True
 
-@router.post("/users", 
-             response_model=schemas.User, 
-             status_code=201, 
-             dependencies=[Depends(check_tenant_admin_profile)])
-def create_tenant_user( # Renomeado para clareza
+@router.post("/users", response_model=schemas.User, status_code=201, dependencies=[Depends(check_tenant_admin_profile)])
+def create_tenant_user(
     user: schemas.UserCreate,
     request: Request,
     db: Session = Depends(database.get_db)
 ):
-    """
-    (Admin de Tenant) Cria um novo usuário (Representante ou Admin) 
-    dentro do SEU PRÓPRIO tenant.
-    """
-    tenant_id = request.state.tenant_id # Tenant do Admin
+    # O middleware já configurou o schema, MAS usuários ficam na tabela 'users' (Core/Public).
+    # Graças ao fix no database.py (search_path ... , public), conseguimos escrever lá.
     
-    # REGRA DE SEGURANÇA: Admin de Tenant NÃO PODE criar SysAdmin
+    # Precisamos saber o ID do tenant atual para vincular o usuário
+    # Como estamos no schema "tenant_nike", precisamos descobrir o ID do tenant "nike"
+    # Uma forma segura é buscar pelo slug que está no request.state
+    tenant_slug = request.state.tenant_slug
+    tenant = db.query(models.Tenant).filter(models.Tenant.slug == tenant_slug).first()
+    
+    if not tenant:
+        raise HTTPException(status_code=404, detail="Erro de integridade: Tenant não encontrado.")
+
     if user.profile == 'sysadmin':
         raise HTTPException(status_code=403, detail="Não é permitido criar usuários SysAdmin")
 
-    # Garante que o perfil seja 'admin' ou 'representante'
-    profile = user.profile if user.profile in ['admin', 'representante'] else 'representante'
-
-    # --- MUDANÇA 1: Usar 'username' para verificação de unicidade ---
     db_user = db.query(models.User).filter(models.User.username == user.username).first()
     if db_user:
         raise HTTPException(status_code=400, detail="Username já cadastrado")
-    # --- FIM MUDANÇA 1 ---
 
     hashed_password = security.get_password_hash(user.password)
     
     db_new_user = models.User(
-        username=user.username, # NOVO: Usando username do input
-        email=user.email, # Usando email do input (agora opcional)
+        username=user.username,
+        email=user.email,
         name=user.name,
         hashed_password=hashed_password,
-        profile=profile,
-        tenant_id=tenant_id
+        profile=user.profile,
+        tenant_id=tenant.id # Vincula ao tenant correto
     )
     
     db.add(db_new_user)
@@ -62,16 +52,15 @@ def create_tenant_user( # Renomeado para clareza
     db.refresh(db_new_user)
     return db_new_user
 
-@router.get("/users", 
-            response_model=List[schemas.User], 
-            dependencies=[Depends(check_tenant_admin_profile)])
+@router.get("/users", response_model=List[schemas.User], dependencies=[Depends(check_tenant_admin_profile)])
 def get_users_in_tenant(
     request: Request,
     db: Session = Depends(database.get_db)
 ):
-    """
-    (Admin de Tenant) Lista todos os usuários do SEU PRÓPRIO tenant.
-    """
-    tenant_id = request.state.tenant_id
-    users = db.query(models.User).filter(models.User.tenant_id == tenant_id).all()
+    # Busca tenant ID pelo slug
+    tenant = db.query(models.Tenant).filter(models.Tenant.slug == request.state.tenant_slug).first()
+    if not tenant: return []
+
+    # Filtra usuários deste tenant
+    users = db.query(models.User).filter(models.User.tenant_id == tenant.id).all()
     return users

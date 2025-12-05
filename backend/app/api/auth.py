@@ -5,59 +5,61 @@ from ..core import security
 
 router = APIRouter()
 
-# Login Unificado para Usuários de Tenant
-@router.post("/token", response_model=schemas.Token)
-def login_for_access_token(
-    tenant_slug: str = Form(...),
-    username: str = Form(...),
-    password: str = Form(...),
-    db_core: Session = Depends(database.get_core_db) # <--- Conecta no Core
-):
-    # 1. Verifica se o Tenant existe no Core
-    tenant = db_core.query(models.Tenant).filter(models.Tenant.slug == tenant_slug).first()
-    if not tenant:
-        raise HTTPException(status_code=404, detail="Empresa não encontrada.")
-    
-    if tenant.status != 'active':
-        raise HTTPException(status_code=403, detail="Empresa inativa.")
-
-    # 2. Busca o usuário no Core (filtrando pelo tenant_id para garantir escopo)
-    user = db_core.query(models.User).filter(
-        models.User.username == username,
-        models.User.tenant_id == tenant.id
-    ).first()
-
-    if not user or not security.verify_password(password, user.hashed_password):
-        raise HTTPException(status_code=401, detail="Usuário ou senha incorretos.")
-
-    # 3. Gera Token com o SLUG e ID do Usuário
-    token_data = {
-        "sub": str(user.id),
-        "profile": user.profile,
-        "username": user.username,
-        "tenant_slug": tenant.slug # Necessário para o Middleware rotear a conexão
-    }
-    
-    access_token = security.create_access_token(data=token_data)
-    return {"access_token": access_token, "token_type": "bearer"}
-
-# Login de SysAdmin (Sem slug, busca globalmente)
+# 1. Login SysAdmin
 @router.post("/sysadmin/token", response_model=schemas.Token)
 def sysadmin_login(
     username: str = Form(...),
     password: str = Form(...),
-    db_core: Session = Depends(database.get_core_db)
+    db: Session = Depends(database.get_db) # Usa get_db padrão (public)
 ):
-    # SysAdmin é um usuário especial no Core (geralmente tenant_id=None ou 1-'Systems')
-    user = db_core.query(models.User).filter(
+    # SysAdmin geralmente está no schema public, tenant_id null ou 1
+    user = db.query(models.User).filter(
         models.User.username == username, 
         models.User.profile == 'sysadmin'
     ).first()
     
     if not user or not security.verify_password(password, user.hashed_password):
-        raise HTTPException(status_code=401, detail="Credenciais inválidas")
+        raise HTTPException(status_code=401, detail="Credenciais de SysAdmin inválidas")
     
     access_token = security.create_access_token(
         data={"sub": str(user.id), "profile": "sysadmin", "username": user.username}
     )
+    return {"access_token": access_token, "token_type": "bearer"}
+
+# 2. Login Tenant (Usuário da Empresa)
+@router.post("/token", response_model=schemas.Token)
+def login_for_access_token(
+    tenant_slug: str = Form(...), 
+    username: str = Form(...),
+    password: str = Form(...),
+    remember_me: bool = Form(False),
+    db: Session = Depends(database.get_db) # Usa get_db padrão (public)
+):
+    # Busca Tenant no Public
+    tenant = db.query(models.Tenant).filter(models.Tenant.slug == tenant_slug).first()
+    
+    if not tenant:
+        raise HTTPException(status_code=404, detail="Empresa não encontrada.")
+        
+    if tenant.status != 'active':
+        raise HTTPException(status_code=403, detail="Empresa inativa.")
+
+    # Busca Usuário no Public (vinculado ao tenant)
+    user = db.query(models.User).filter(
+        models.User.username == username,
+        models.User.tenant_id == tenant.id
+    ).first()
+        
+    if not user or not security.verify_password(password, user.hashed_password):
+        raise HTTPException(status_code=401, detail="Usuário ou senha incorretos.")
+            
+    # Gera Token com o SLUG para o Middleware saber qual schema usar nas próximas requests
+    token_data = {
+        "sub": str(user.id),
+        "profile": user.profile,
+        "username": user.username,
+        "tenant_slug": tenant.slug 
+    }
+        
+    access_token = security.create_access_token(data=token_data, remember_me=remember_me)
     return {"access_token": access_token, "token_type": "bearer"}
