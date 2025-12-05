@@ -13,7 +13,9 @@ from .api import auth, crm, catalog, orders, admin, sysadmin, routes, webhooks
 # Cria tabelas no banco único
 models.Base.metadata.create_all(bind=database.engine)
 
-app = FastAPI(title="Repforce API", version="0.2.0")
+app = FastAPI(title="Repforce API (Schema Multi-Tenant)")
+
+app.add_middleware(TenantMiddleware)
 
 # Uploads
 upload_dir = "/app/uploads"

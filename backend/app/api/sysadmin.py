@@ -1,84 +1,63 @@
 from fastapi import APIRouter, Depends, Request, HTTPException, status, File, UploadFile, Form
-from sqlalchemy.orm import Session, joinedload
-from pydantic import EmailStr
+from sqlalchemy.orm import Session
+from sqlalchemy import text
 from ..db import database, models, schemas
 from ..core import security
 from typing import List, Optional
-import shutil
-import os
-
-UPLOAD_DIRECTORY = "/app/uploads/tenants"
-STATIC_URL_PATH = "/uploads/tenants"
+import shutil, os
 
 router = APIRouter()
 
-# Dependência para verificar se o usuário é SysAdmin
+# Dependência de SysAdmin
 def check_sysadmin_profile(request: Request):
     if request.state.profile != 'sysadmin':
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Acesso restrito a SysAdmins."
-        )
+        raise HTTPException(status_code=403, detail="Acesso restrito.")
     return True
 
-# --- Gestão de Tenants (SysAdmin) ---
-
-@router.post("/tenants", 
-             response_model=schemas.Tenant, 
-             status_code=201,
-             dependencies=[Depends(check_sysadmin_profile)])
+@router.post("/tenants", response_model=schemas.Tenant, status_code=201, dependencies=[Depends(check_sysadmin_profile)])
 def create_tenant(
-    db: Session = Depends(database.get_db),
+    db: Session = Depends(database.get_db), # Conectado no public
     name: str = Form(...),
-    cnpj: Optional[str] = Form(None),
-    email: Optional[EmailStr] = Form(None),
-    phone: Optional[str] = Form(None),
-    status: Optional[str] = Form('inactive'),
-    tenant_type: Optional[str] = Form('industry'), # NOVO
-    commercial_info: Optional[str] = Form(None),
-    logo: Optional[UploadFile] = File(None)
+    slug: str = Form(...), # Agora pedimos o slug explicitamente ou geramos
+    status: Optional[str] = Form('active'),
 ):
-    """
-    (SysAdmin) Cria uma nova Conta Mãe (Tenant).
-    """
-    db_tenant_name = db.query(models.Tenant).filter(models.Tenant.name == name).first()
-    if db_tenant_name:
-        raise HTTPException(status_code=400, detail="Nome do Tenant já existe")
-        
-    if cnpj:
-        db_tenant_cnpj = db.query(models.Tenant).filter(models.Tenant.cnpj == cnpj).first()
-        if db_tenant_cnpj:
-            raise HTTPException(status_code=400, detail="CNPJ já cadastrado")
+    # 1. Validações
+    slug = slug.lower().strip()
+    if not slug.isalnum():
+        raise HTTPException(400, "Slug deve conter apenas letras e números.")
+    
+    if db.query(models.Tenant).filter(models.Tenant.slug == slug).first():
+        raise HTTPException(400, "Slug já utilizado.")
 
-    logo_url_to_save = None
-    if logo:
-        os.makedirs(UPLOAD_DIRECTORY, exist_ok=True)
-        file_path = os.path.join(UPLOAD_DIRECTORY, logo.filename)
-        
-        try:
-            with open(file_path, "wb") as buffer:
-                shutil.copyfileobj(logo.file, buffer)
-        except Exception as e:
-            raise HTTPException(status_code=500, detail=f"Erro ao salvar o arquivo: {str(e)}")
-        finally:
-            logo.file.close()
-        
-        logo_url_to_save = f"{STATIC_URL_PATH}/{logo.filename}"
-
-    new_tenant = models.Tenant(
-        name=name,
-        cnpj=cnpj,
-        email=email,
-        phone=phone,
-        status=status,
-        tenant_type=tenant_type, # NOVO
-        commercial_info=commercial_info,
-        logo_url=logo_url_to_save
-    )
-
+    # 2. Cria o Tenant no 'public'
+    new_tenant = models.Tenant(name=name, slug=slug, status=status, db_connection_string="schema-mode")
     db.add(new_tenant)
     db.commit()
     db.refresh(new_tenant)
+
+    # 3. MÁGICA DOS SCHEMAS: Cria a estrutura isolada
+    schema_name = f"tenant_{slug}"
+    try:
+        # Cria o Schema
+        db.execute(text(f"CREATE SCHEMA IF NOT EXISTS {schema_name}"))
+        db.commit() # Commita a criação do schema
+
+        # Configura o path para criar as tabelas LÁ DENTRO
+        db.execute(text(f"SET search_path TO {schema_name}"))
+        
+        # Cria as tabelas do TenantBase (Clients, Orders, etc.) neste schema
+        models.TenantBase.metadata.create_all(bind=db.get_bind())
+        
+        # Volta para o public (boa prática)
+        db.execute(text("SET search_path TO public"))
+        db.commit()
+        
+    except Exception as e:
+        # Rollback manual se falhar (deletar o tenant criado)
+        db.delete(new_tenant)
+        db.commit()
+        raise HTTPException(500, detail=f"Erro ao criar infraestrutura do tenant: {str(e)}")
+
     return new_tenant
 
 @router.get("/tenants", 
