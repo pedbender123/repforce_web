@@ -10,29 +10,35 @@ from sqlalchemy.orm import Session
 # Importa todas as rotas
 from .api import auth, crm, catalog, orders, admin, sysadmin, routes, webhooks
 
-# Cria tabelas no banco único
-models.Base.metadata.create_all(bind=database.engine)
+# --- CORREÇÃO AQUI ---
+# Antes: models.Base.metadata.create_all(bind=database.engine)
+# Agora: Criamos apenas as tabelas do CORE (Users, Tenants) no schema public.
+# As tabelas de Tenant (Clients, Orders) são criadas dinamicamente via API quando se cria uma empresa.
+models.CoreBase.metadata.create_all(bind=database.engine)
+# ---------------------
 
 app = FastAPI(title="Repforce API (Schema Multi-Tenant)")
-
-app.add_middleware(TenantMiddleware)
 
 # Uploads
 upload_dir = "/app/uploads"
 os.makedirs(upload_dir, exist_ok=True)
 app.mount("/uploads", StaticFiles(directory=upload_dir), name="uploads")
 
-# --- SEED DE SYSADMIN (LIMPO) ---
+# --- SEED DE SYSADMIN ---
 @app.on_event("startup")
 def create_initial_admin():
-    db: Session = database.SessionLocal()
+    # Usa get_db direto, pois na inicialização não há request, 
+    # mas o get_db padrão conecta no 'public' que é o que queremos.
+    # Precisamos instanciar manualmente pois não é uma injeção de dependência aqui.
+    db = database.SessionLocal() 
     try:
-        # 1. Garante que o Tenant 'Systems' existe (para o SysAdmin pertencer a ele)
+        # 1. Garante que o Tenant 'Systems' existe
         tenant_name = "Systems"
         tenant = db.query(models.Tenant).filter(models.Tenant.name == tenant_name).first()
         if not tenant:
             print("⚙️ Criando Tenant Administrativo...")
-            tenant = models.Tenant(name=tenant_name, status="active", cnpj="000")
+            # Note o slug="systems" para o schema public (ou ignorado)
+            tenant = models.Tenant(name=tenant_name, slug="systems", status="active", cnpj="000", db_connection_string="local")
             db.add(tenant)
             db.commit()
             db.refresh(tenant)
@@ -43,7 +49,6 @@ def create_initial_admin():
         if not admin_user:
             print("👤 Criando usuário SysAdmin...")
             hashed_password = security.get_password_hash("12345678")
-            # Note que o tenant_id é o do 'Systems' criado acima
             new_admin = models.User(
                 username=admin_username, 
                 name="Super Administrador", 
@@ -81,4 +86,4 @@ app.include_router(webhooks.router, prefix="/webhooks", tags=["Webhooks"])
 
 @app.get("/")
 def read_root():
-    return {"message": "Repforce API Online (Single DB)"}
+    return {"message": "Repforce API Online (Schema Multi-Tenant)"}
