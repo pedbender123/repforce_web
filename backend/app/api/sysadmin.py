@@ -1,155 +1,144 @@
-from fastapi import APIRouter, Depends, Request, HTTPException, status, File, UploadFile, Form
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from sqlalchemy import text
-from ..db import database, models, schemas
-from ..core import security
-from typing import List, Optional
-import shutil, os
+from app.db import models, schemas, database
+from app.core import security
+from app.api import auth
 
 router = APIRouter()
 
-# Dependência de SysAdmin
-def check_sysadmin_profile(request: Request):
-    if request.state.profile != 'sysadmin':
-        raise HTTPException(status_code=403, detail="Acesso restrito.")
-    return True
+# --- Helpers ---
+def check_sysadmin(user: models.User):
+    if not user.is_sysadmin:
+        raise HTTPException(status_code=403, detail="Requires SysAdmin privileges")
 
-@router.post("/tenants", response_model=schemas.Tenant, status_code=201, dependencies=[Depends(check_sysadmin_profile)])
+# --- Tenants Management ---
+
+@router.post("/tenants", response_model=schemas.Tenant)
 def create_tenant(
-    db: Session = Depends(database.get_db), # Conectado no public
-    name: str = Form(...),
-    slug: str = Form(...), # Agora pedimos o slug explicitamente ou geramos
-    status: Optional[str] = Form('active'),
+    tenant: schemas.TenantCreate,
+    current_user: models.User = Depends(auth.get_current_user),
+    db: Session = Depends(database.get_db)
 ):
-    # 1. Validações
-    slug = slug.lower().strip()
-    if not slug.isalnum():
-        raise HTTPException(400, "Slug deve conter apenas letras e números.")
+    """Cria um novo Tenant, seu SysAdmin local e seu Schema isolado."""
+    check_sysadmin(current_user)
+
+    # 1. Validar Slug
+    if db.query(models.Tenant).filter(models.Tenant.slug == tenant.slug).first():
+        raise HTTPException(status_code=400, detail="Tenant slug already exists")
+
+    schema_name = f"tenant_{tenant.slug}"
+
+    # 2. Criar Tenant no DB (Public)
+    db_tenant = models.Tenant(
+        name=tenant.name,
+        slug=tenant.slug,
+        schema_name=schema_name,
+        status="active"
+    )
+    db.add(db_tenant)
+    db.flush() # Pega o ID
+
+    # 3. Criar Usuário Admin do Tenant (Public)
+    hashed_password = security.get_password_hash(tenant.sysadmin_password)
+    db_user = models.User(
+        username=f"admin_{tenant.slug}",
+        email=tenant.sysadmin_email,
+        password_hash=hashed_password,
+        is_sysadmin=False, # Admin do tenant, não do sistema
+        tenant_id=db_tenant.id
+    )
+    db.add(db_user)
     
-    if db.query(models.Tenant).filter(models.Tenant.slug == slug).first():
-        raise HTTPException(400, "Slug já utilizado.")
-
-    # 2. Cria o Tenant no 'public'
-    new_tenant = models.Tenant(name=name, slug=slug, status=status, db_connection_string="schema-mode")
-    db.add(new_tenant)
-    db.commit()
-    db.refresh(new_tenant)
-
-    # 3. MÁGICA DOS SCHEMAS: Cria a estrutura isolada
-    schema_name = f"tenant_{slug}"
+    # 4. Criar Schema no PostgreSQL
     try:
-        # Cria o Schema
-        db.execute(text(f"CREATE SCHEMA IF NOT EXISTS {schema_name}"))
-        db.commit() # Commita a criação do schema
-
-        # Configura o path para criar as tabelas LÁ DENTRO
-        db.execute(text(f"SET search_path TO {schema_name}"))
+        db.execute(text(f"CREATE SCHEMA {schema_name}"))
         
-        # Cria as tabelas do TenantBase (Clients, Orders, etc.) neste schema
+        # Opcional: Criar tabelas dentro do schema agora.
+        # Na prática, usamos Alembic ou create_all apontando pro schema.
+        # Aqui, vamos fazer um "hack" rápido para criar as tabelas usando o metadata do TenantBase
+        # Mudar search_path para criar tabelas lá
+        db.execute(text(f"SET search_path TO {schema_name}, public"))
         models.TenantBase.metadata.create_all(bind=db.get_bind())
         
-        # Volta para o public (boa prática)
+        # Voltar para public
         db.execute(text("SET search_path TO public"))
-        db.commit()
         
-    except Exception as e:
-        # Rollback manual se falhar (deletar o tenant criado)
-        db.delete(new_tenant)
+        # 5. Seed Default Layout (Opcional, mas útil)
+        seed_default_layout(db, db_tenant.id)
+
         db.commit()
-        raise HTTPException(500, detail=f"Erro ao criar infraestrutura do tenant: {str(e)}")
+    except Exception as e:
+        db.rollback()
+        # Tentar limpar schema se falhou (cuidado em prod)
+        # db.execute(text(f"DROP SCHEMA IF EXISTS {schema_name} CASCADE"))
+        raise HTTPException(status_code=500, detail=f"Failed to create tenant schema: {str(e)}")
 
-    return new_tenant
-
-@router.get("/tenants", 
-            response_model=List[schemas.Tenant],
-            dependencies=[Depends(check_sysadmin_profile)])
-def get_tenants(db: Session = Depends(database.get_db)):
-    tenants = db.query(models.Tenant).order_by(models.Tenant.id).all()
-    return tenants
-
-class TenantUpdateStatus(schemas.TenantBase):
-    status: str
-
-@router.put("/tenants/{tenant_id}", 
-            response_model=schemas.Tenant,
-            dependencies=[Depends(check_sysadmin_profile)])
-def update_tenant_status(
-    tenant_id: int,
-    tenant_update: TenantUpdateStatus,
-    db: Session = Depends(database.get_db)
-):
-    db_tenant = db.query(models.Tenant).filter(models.Tenant.id == tenant_id).first()
-    
-    if not db_tenant:
-        raise HTTPException(status_code=404, detail="Tenant não encontrado")
-    
-    db_tenant.status = tenant_update.status
-    db.commit()
-    db.refresh(db_tenant)
     return db_tenant
 
-# --- Gestão de Usuários (SysAdmin) ---
-
-@router.post("/users", 
-             response_model=schemas.User, 
-             status_code=201, 
-             dependencies=[Depends(check_sysadmin_profile)])
-def create_sysadmin_user(
-    user: schemas.UserCreate,
-    request: Request,
+@router.get("/tenants", response_model=List[schemas.Tenant])
+def list_tenants(
+    current_user: models.User = Depends(auth.get_current_user),
     db: Session = Depends(database.get_db)
 ):
-    tenant_id = user.tenant_id
-    if not tenant_id:
-        systems_tenant = db.query(models.Tenant).filter(models.Tenant.name == "Systems").first()
-        if not systems_tenant:
-            raise HTTPException(status_code=500, detail="Tenant 'Systems' não encontrado.")
-        tenant_id = systems_tenant.id
-    
-    db_user = db.query(models.User).filter(models.User.username == user.username).first()
-    if db_user:
-        raise HTTPException(status_code=400, detail="Username já cadastrado")
+    check_sysadmin(current_user)
+    return db.query(models.Tenant).all()
 
-    hashed_password = security.get_password_hash(user.password)
-    profile = user.profile if user.profile else 'representante'
+# --- UI Components Management (SysAdmin) ---
 
-    db_new_user = models.User(
-        username=user.username,
-        email=user.email,
-        name=user.name,
-        hashed_password=hashed_password,
-        profile=profile,
-        tenant_id=tenant_id
-    )
-    
-    db.add(db_new_user)
-    db.commit()
-    db.refresh(db_new_user)
-    return db_new_user
-
-@router.get("/users", 
-            response_model=List[schemas.User], 
-            dependencies=[Depends(check_sysadmin_profile)])
-def get_systems_users(
+@router.post("/components", response_model=schemas.SysComponent)
+def create_component(
+    comp: schemas.SysComponentCreate,
+    current_user: models.User = Depends(auth.get_current_user),
     db: Session = Depends(database.get_db)
 ):
-    systems_tenant = db.query(models.Tenant).filter(models.Tenant.name == "Systems").first()
-    if not systems_tenant:
-        return [] 
-    
-    users = db.query(models.User).options(joinedload(models.User.tenant)).filter(
-        models.User.tenant_id == systems_tenant.id,
-        models.User.profile == 'sysadmin'
-    ).order_by(models.User.id).all()
-    
-    return users
+    check_sysadmin(current_user)
+    db_comp = models.SysComponent(**comp.dict())
+    try:
+        db.add(db_comp)
+        db.commit()
+        db.refresh(db_comp)
+    except Exception:
+        db.rollback()
+        raise HTTPException(status_code=400, detail="Component key already exists")
+    return db_comp
 
-@router.get("/all-users", 
-            response_model=List[schemas.User], 
-            dependencies=[Depends(check_sysadmin_profile)])
-def get_all_users_in_system(
-    request: Request,
+@router.get("/components", response_model=List[schemas.SysComponent])
+def list_components(
+    current_user: models.User = Depends(auth.get_current_user),
     db: Session = Depends(database.get_db)
 ):
-    users = db.query(models.User).options(joinedload(models.User.tenant)).order_by(models.User.id).all()
-    return users
+    check_sysadmin(current_user)
+    return db.query(models.SysComponent).all()
+
+# --- Layout Management Helpers ---
+
+def seed_default_layout(db: Session, tenant_id: int):
+    """Cria um menu padrão para novos tenants"""
+    
+    # Busca componentes (assume que já existem no seed global)
+    comp_dash = db.query(models.SysComponent).filter_by(key="DASHBOARD").first()
+    comp_clients = db.query(models.SysComponent).filter_by(key="CLIENT_LIST").first()
+    comp_orders = db.query(models.SysComponent).filter_by(key="ORDER_LIST").first()
+    comp_products = db.query(models.SysComponent).filter_by(key="PRODUCT_LIST").first()
+
+    if not comp_dash: return # Se não tiver componentes base, aborta
+
+    # Área: Principal
+    area_main = models.TenantArea(tenant_id=tenant_id, label="Principal", icon="LayoutDashboard", order=1)
+    db.add(area_main)
+    db.flush()
+
+    db.add(models.TenantPage(area_id=area_main.id, component_id=comp_dash.id, label="Visão Geral", order=1))
+
+    # Área: Vendas
+    if comp_clients and comp_orders:
+        area_sales = models.TenantArea(tenant_id=tenant_id, label="Vendas", icon="ShoppingCart", order=2)
+        db.add(area_sales)
+        db.flush()
+        
+        db.add(models.TenantPage(area_id=area_sales.id, component_id=comp_clients.id, label="Clientes", order=1))
+        db.add(models.TenantPage(area_id=area_sales.id, component_id=comp_orders.id, label="Pedidos", order=2))
+        
+        if comp_products:
+             db.add(models.TenantPage(area_id=area_sales.id, component_id=comp_products.id, label="Catálogo", order=3))

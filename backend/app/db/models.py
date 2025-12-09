@@ -1,115 +1,134 @@
-from sqlalchemy import Column, Integer, String, Float, ForeignKey, JSON, Boolean, Date, DateTime
-from sqlalchemy.orm import relationship
-from datetime import datetime
-from .database import CoreBase, TenantBase
+from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, JSON
+from sqlalchemy.orm import relationship, declarative_base
+from sqlalchemy.sql.schema import MetaData
 
-# ==========================================
-# 🌍 CORE (Schema: public)
-# ==========================================
+# Base compartilhada para metadados
+convention = {
+    "ix": "ix_%(column_0_label)s",
+    "uq": "uq_%(table_name)s_%(column_0_name)s",
+    "ck": "ck_%(table_name)s_%(constraint_name)s",
+    "fk": "fk_%(table_name)s_%(column_0_name)s_%(referred_table_name)s",
+    "pk": "pk_%(table_name)s"
+}
+metadata = MetaData(naming_convention=convention)
+
+# --- CORE MODELS (Schema: public) ---
+CoreBase = declarative_base(metadata=metadata)
 
 class Tenant(CoreBase):
     __tablename__ = "tenants"
+    __table_args__ = {"schema": "public"}
+
     id = Column(Integer, primary_key=True, index=True)
-    name = Column(String, unique=True, nullable=False)
-    slug = Column(String, unique=True, index=True, nullable=False) # Ex: "nike" -> schema "tenant_nike"
-    cnpj = Column(String, nullable=True)
-    status = Column(String, default='active') 
-    tenant_type = Column(String, default='industry')
-    logo_url = Column(String, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    
+    name = Column(String, unique=True, index=True, nullable=False)
+    slug = Column(String, unique=True, index=True, nullable=False)
+    schema_name = Column(String, unique=True, nullable=False)
+    status = Column(String, default="active")
+
     users = relationship("User", back_populates="tenant")
+    areas = relationship("TenantArea", back_populates="tenant", cascade="all, delete-orphan")
 
 class User(CoreBase):
     __tablename__ = "users"
+    __table_args__ = {"schema": "public"}
+
     id = Column(Integer, primary_key=True, index=True)
+    email = Column(String, unique=True, index=True, nullable=False)
     username = Column(String, unique=True, index=True, nullable=False)
-    email = Column(String, nullable=True)
-    hashed_password = Column(String, nullable=False)
-    profile = Column(String, nullable=False) 
-    name = Column(String, nullable=True)
+    password_hash = Column(String, nullable=False)
+    is_active = Column(Boolean, default=True)
+    is_sysadmin = Column(Boolean, default=False)
     
-    tenant_id = Column(Integer, ForeignKey("tenants.id"), nullable=True)
+    tenant_id = Column(Integer, ForeignKey("public.tenants.id"), nullable=True)
     tenant = relationship("Tenant", back_populates="users")
 
-# ==========================================
-# 🏢 TENANT DATA (Schema: tenant_x)
-# ==========================================
+class SysComponent(CoreBase):
+    """Catálogo global de componentes disponíveis no sistema (ex: 'CLIENT_LIST')"""
+    __tablename__ = "sys_components"
+    __table_args__ = {"schema": "public"}
+
+    id = Column(Integer, primary_key=True, index=True)
+    key = Column(String, unique=True, nullable=False) # Identificador para o Frontend (ex: CLIENT_LIST)
+    name = Column(String, nullable=False) # Nome descritivo (ex: Lista de Clientes)
+    default_path = Column(String, nullable=False) # Rota sugerida (ex: /clients)
+
+class TenantArea(CoreBase):
+    """Áreas da Sidebar (ex: Vendas, Estoque)"""
+    __tablename__ = "tenant_areas"
+    __table_args__ = {"schema": "public"}
+
+    id = Column(Integer, primary_key=True, index=True)
+    tenant_id = Column(Integer, ForeignKey("public.tenants.id"), nullable=False)
+    label = Column(String, nullable=False)
+    icon = Column(String, nullable=False) # Nome do ícone Lucide (ex: Users, Package)
+    order = Column(Integer, default=0)
+
+    tenant = relationship("Tenant", back_populates="areas")
+    pages = relationship("TenantPage", back_populates="area", order_by="TenantPage.order", cascade="all, delete-orphan")
+
+class TenantPage(CoreBase):
+    """Páginas dentro de uma Área (ex: Lista de Clientes dentro de Vendas)"""
+    __tablename__ = "tenant_pages"
+    __table_args__ = {"schema": "public"}
+
+    id = Column(Integer, primary_key=True, index=True)
+    area_id = Column(Integer, ForeignKey("public.tenant_areas.id"), nullable=False)
+    component_id = Column(Integer, ForeignKey("public.sys_components.id"), nullable=False)
+    label = Column(String, nullable=False)
+    path_override = Column(String, nullable=True) # Opcional: Sobrescreve o default_path do componente
+    order = Column(Integer, default=0)
+
+    area = relationship("TenantArea", back_populates="pages")
+    component = relationship("SysComponent")
+
+
+# --- TENANT MODELS (Schema: dinâmico) ---
+# Estes modelos NÃO definem __table_args__['schema'] fixo.
+# O schema é injetado via search_path na sessão.
+
+TenantBase = declarative_base(metadata=metadata)
 
 class Client(TenantBase):
     __tablename__ = "clients"
-    id = Column(Integer, primary_key=True, index=True)
-    name = Column(String, index=True, nullable=False)
-    trade_name = Column(String, nullable=True)
-    cnpj = Column(String, nullable=True)
-    status = Column(String, default='active')
-    address_data = Column(JSON, nullable=True)
     
-    # ID do usuário que atende (Referência lógica ao Core)
-    representative_id = Column(Integer, nullable=True) 
-    
-    contacts = relationship("Contact", back_populates="client")
-    orders = relationship("Order", back_populates="client")
-
-class Contact(TenantBase):
-    __tablename__ = "contacts"
     id = Column(Integer, primary_key=True, index=True)
-    client_id = Column(Integer, ForeignKey("clients.id"), nullable=False)
-    name = Column(String, nullable=False)
-    role = Column(String, nullable=True)
-    email = Column(String, nullable=True)
-    phone = Column(String, nullable=True)
-    is_primary = Column(Boolean, default=False)
-    client = relationship("Client", back_populates="contacts")
+    name = Column(String, index=True)
+    email = Column(String, index=True)
+    phone = Column(String)
+    document = Column(String) # CPF/CNPJ
+    address = Column(String)
+    city = Column(String)
 
 class Product(TenantBase):
     __tablename__ = "products"
-    id = Column(Integer, primary_key=True, index=True)
-    name = Column(String, index=True, nullable=False)
-    sku = Column(String, index=True, nullable=True)
-    price = Column(Float, nullable=False)
-    cost_price = Column(Float, nullable=True)
-    stock = Column(Integer, default=0)
-    image_url = Column(String, nullable=True)
-    
-    supplier_id = Column(Integer, ForeignKey("suppliers.id"), nullable=True)
-    supplier = relationship("Supplier", back_populates="products")
 
-class Supplier(TenantBase):
-    __tablename__ = "suppliers"
     id = Column(Integer, primary_key=True, index=True)
-    name = Column(String, nullable=False)
-    commercial_contact = Column(String, nullable=True)
-    products = relationship("Product", back_populates="supplier")
+    name = Column(String, index=True)
+    sku = Column(String, index=True, unique=True)
+    price = Column(Integer) # Centavos
+    stock_quantity = Column(Integer, default=0)
+    description = Column(String, nullable=True)
 
 class Order(TenantBase):
     __tablename__ = "orders"
+
     id = Column(Integer, primary_key=True, index=True)
+    client_id = Column(Integer, ForeignKey("clients.id"))
+    total_amount = Column(Integer, default=0)
     status = Column(String, default="draft")
-    total_value = Column(Float, default=0.0)
-    items = Column(JSON)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(String)
     
-    client_id = Column(Integer, ForeignKey("clients.id"), nullable=False)
-    client = relationship("Client", back_populates="orders")
-    
-    representative_id = Column(Integer, nullable=False) # Lógica
-
-class Route(TenantBase):
-    __tablename__ = "routes"
-    id = Column(Integer, primary_key=True, index=True)
-    name = Column(String, nullable=True)
-    date = Column(Date, nullable=False)
-    status = Column(String, default='planned')
-    representative_id = Column(Integer, nullable=False) # Lógica
-    stops = relationship("RouteStop", back_populates="route")
-
-class RouteStop(TenantBase):
-    __tablename__ = "route_stops"
-    id = Column(Integer, primary_key=True, index=True)
-    route_id = Column(Integer, ForeignKey("routes.id"), nullable=False)
-    client_id = Column(Integer, ForeignKey("clients.id"), nullable=False)
-    sequence = Column(Integer, nullable=False)
-    status = Column(String, default='pending')
-    route = relationship("Route", back_populates="stops")
+    items = relationship("OrderItem", back_populates="order")
     client = relationship("Client")
+
+class OrderItem(TenantBase):
+    __tablename__ = "order_items"
+
+    id = Column(Integer, primary_key=True, index=True)
+    order_id = Column(Integer, ForeignKey("orders.id"))
+    product_id = Column(Integer, ForeignKey("products.id"))
+    quantity = Column(Integer, default=1)
+    unit_price = Column(Integer)
+    
+    order = relationship("Order", back_populates="items")
+    product = relationship("Product")
