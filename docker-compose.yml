@@ -52,7 +52,6 @@ services:
 
   frontend-web:
     build:
-      # O contexto agora aponta para a pasta correta
       context: ./frontend-web
       args:
         - REACT_APP_API_URL=https://repforce.com.br/api 
@@ -62,8 +61,10 @@ services:
       - "127.0.0.1:3000:80"
     networks:
       - repforce_net
-    # O Dockerfile DENTRO de ./frontend-web já copia o nginx.conf
-    # que agora está em ./frontend-web/nginx.conf
+    # --- ADICIONE ISTO AQUI ---
+    depends_on:
+      - backend
+    # --------------------------
 
 networks:
   repforce_net:
