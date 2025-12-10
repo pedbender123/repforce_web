@@ -1,93 +1,97 @@
 import React from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
 import { useSysAdminAuth } from '../context/SysAdminAuthContext';
-import ThemeToggle from './ThemeToggle'; // Adicionado o Toggle de Tema
+import ThemeToggle from './ThemeToggle';
 import { 
   HomeIcon, 
   UserGroupIcon, 
-  ArrowLeftOnRectangleIcon,
   BuildingOfficeIcon,
-  GlobeAltIcon
+  Squares2X2Icon, // Ícone para Áreas
+  ArrowLeftOnRectangleIcon,
+  Cog6ToothIcon // Ícone "App" de Configuração
 } from '@heroicons/react/24/outline';
 
-const navigation = [
-  { name: 'Dashboard', href: '/sysadmin/dashboard', icon: HomeIcon },
-  { name: 'Ver Todos Usuários', href: '/sysadmin/all-users', icon: GlobeAltIcon },
-  { name: 'Gerenciar Tenants', href: '/sysadmin/tenants', icon: BuildingOfficeIcon },
-  { name: 'Gerenciar SysAdmins', href: '/sysadmin/systems-users', icon: UserGroupIcon },
+const tabs = [
+  { name: 'Dashboard', href: '/sysadmin/dashboard' },
+  { name: 'Tenants', href: '/sysadmin/tenants' },
+  { name: 'Usuários', href: '/sysadmin/users' },
+  { name: 'Áreas & Menus', href: '/sysadmin/areas' }, // Nova Aba
 ];
 
-function classNames(...classes) {
-  return classes.filter(Boolean).join(' ')
-}
-
 export default function SysAdminLayout() {
-  const { logout } = useSysAdminAuth();
+  const { logout, userProfile } = useSysAdminAuth();
   const location = useLocation();
 
   return (
     <div className="flex h-screen bg-gray-100 dark:bg-gray-900 transition-colors duration-300">
-      {/* Sidebar */}
-      <div className="w-64 flex flex-col bg-gray-900 dark:bg-black text-white transition-colors"> 
-        <div className="h-16 flex items-center justify-center shadow-md px-4">
-           {/* CORREÇÃO: Adicionada a Logo no lugar do texto */}
-           <img 
-             src="/logo_clara.png" 
-             alt="Repforce SysAdmin" 
-             className="h-8 w-auto object-contain"
-           />
+      
+      {/* 1. SIDEBAR ESTILO SALESFORCE (Fina, apenas ícones) */}
+      <div className="w-16 flex flex-col items-center bg-repforce-dark dark:bg-black text-white py-4 z-20 shadow-xl"> 
+        <div className="mb-6 p-2 bg-blue-600 rounded-lg shadow-lg">
+           {/* Logo Minimalista */}
+           <span className="font-bold text-xl">RF</span>
         </div>
-        <nav className="flex-1 px-2 py-4 space-y-1">
-          {navigation.map((item) => (
-            <Link
-              key={item.name}
-              to={item.href}
-              className={classNames(
-                location.pathname.startsWith(item.href)
-                  ? 'bg-gray-800 text-white'
-                  : 'text-gray-300 hover:bg-gray-700 hover:text-white',
-                'group flex items-center px-2 py-2 text-sm font-medium rounded-md transition-colors'
-              )}
-            >
-              <item.icon
-                className="mr-3 flex-shrink-0 h-6 w-6"
-                aria-hidden="true"
-              />
-              {item.name}
-            </Link>
-          ))}
-        </nav>
-        <div className="p-4 border-t border-gray-700">
-          <button
-            onClick={logout}
-            className="group w-full flex items-center px-2 py-2 text-sm font-medium rounded-md text-gray-300 hover:bg-gray-700 hover:text-white transition-colors"
-          >
-            <ArrowLeftOnRectangleIcon
-              className="mr-3 flex-shrink-0 h-6 w-6"
-              aria-hidden="true"
-            />
-            Sair
+        
+        {/* Ícone do "App" Atual (Admin) */}
+        <div className="p-3 bg-white/10 rounded-md cursor-pointer mb-4 border-l-4 border-blue-500" title="System Admin App">
+            <Cog6ToothIcon className="h-6 w-6 text-white" />
+        </div>
+
+        {/* Espaço para outros apps futuros */}
+        
+        <div className="mt-auto mb-4">
+          <button onClick={logout} title="Sair" className="p-2 hover:bg-red-600 rounded-md transition-colors">
+            <ArrowLeftOnRectangleIcon className="h-6 w-6 text-gray-400 hover:text-white" />
           </button>
         </div>
       </div>
 
-      {/* Conteúdo Principal */}
+      {/* 2. ÁREA DE CONTEÚDO */}
       <div className="flex-1 flex flex-col overflow-hidden">
-        <header className="bg-white dark:bg-gray-800 shadow-sm h-16 z-10 transition-colors">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-full flex items-center justify-between">
-            <h1 className="text-xl font-semibold text-gray-900 dark:text-white">
-              {navigation.find(nav => location.pathname.startsWith(nav.href))?.name || 'Painel do SysAdmin'}
-            </h1>
-            {/* Adicionado Toggle de Tema e Badge */}
-            <div className="flex items-center space-x-4">
-              <ThemeToggle />
-              <div className="px-3 py-1 rounded-full bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200 text-xs font-bold border border-red-200 dark:border-red-800">
-                 SYSADMIN
-               </div>
+        
+        {/* HEADER GLOBAL */}
+        <header className="bg-white dark:bg-gray-800 h-14 border-b dark:border-gray-700 flex items-center justify-between px-6 shadow-sm z-10">
+            <div className="text-sm font-semibold text-gray-500 dark:text-gray-400">
+                REPFORCE <span className="mx-2">/</span> SYSTEM ADMIN
             </div>
-          </div>
+            <div className="flex items-center gap-4">
+                <ThemeToggle />
+                <div className="flex items-center gap-2">
+                    <div className="h-8 w-8 rounded-full bg-red-100 flex items-center justify-center text-red-700 font-bold text-xs border border-red-200">
+                        SA
+                    </div>
+                    <span className="text-sm font-medium text-gray-700 dark:text-gray-200 hidden md:block">
+                        SysAdmin
+                    </span>
+                </div>
+            </div>
         </header>
-        <main className="flex-1 overflow-y-auto p-6 bg-gray-100 dark:bg-gray-900 transition-colors">
+
+        {/* APP SUB-HEADER (As Abas/Tabs) */}
+        <div className="bg-gray-50 dark:bg-gray-900/50 border-b border-gray-200 dark:border-gray-700 px-6 pt-1">
+            <nav className="-mb-px flex space-x-6 overflow-x-auto">
+                {tabs.map((tab) => {
+                    const isActive = location.pathname.startsWith(tab.href);
+                    return (
+                        <Link
+                            key={tab.name}
+                            to={tab.href}
+                            className={`
+                                whitespace-nowrap pb-3 px-1 border-b-2 font-medium text-sm transition-colors
+                                ${isActive 
+                                    ? 'border-repforce-primary text-repforce-primary dark:text-blue-400 dark:border-blue-400' 
+                                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'}
+                            `}
+                        >
+                            {tab.name}
+                        </Link>
+                    );
+                })}
+            </nav>
+        </div>
+
+        {/* MAIN CONTENT */}
+        <main className="flex-1 overflow-y-auto bg-gray-100 dark:bg-gray-900 p-6 relative">
           <Outlet />
         </main>
       </div>
