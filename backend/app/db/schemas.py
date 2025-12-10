@@ -1,5 +1,6 @@
 from pydantic import BaseModel, EmailStr, ConfigDict
 from typing import Optional, List, Dict, Any
+from datetime import date
 
 # --- Auth & User ---
 class Token(BaseModel):
@@ -112,7 +113,6 @@ class Client(ClientBase):
     contacts: List[Contact] = []
     model_config = ConfigDict(from_attributes=True)
 
-# Adicionado para corrigir erro do Catalog
 class SupplierBase(BaseModel):
     name: str
     email: Optional[str] = None
@@ -145,6 +145,11 @@ class OrderItemBase(BaseModel):
     product_id: int
     quantity: int
 
+class OrderItem(OrderItemBase):
+    id: int
+    unit_price: int
+    model_config = ConfigDict(from_attributes=True)
+
 class OrderCreate(BaseModel):
     client_id: int
     items: List[OrderItemBase]
@@ -154,4 +159,35 @@ class Order(BaseModel):
     total_amount: int
     status: str
     client_id: int
+    created_at: Optional[str] = None
+    items: List[OrderItem] = [] # Agora inclui os itens na resposta
+    model_config = ConfigDict(from_attributes=True)
+
+# --- ROTAS DE ENTREGA (NOVO) ---
+
+class RouteStopBase(BaseModel):
+    client_id: int
+    sequence: int
+    status: str = "pending"
+
+class RouteStopCreate(RouteStopBase):
+    pass
+
+class RouteStop(RouteStopBase):
+    id: int
+    route_id: int
+    model_config = ConfigDict(from_attributes=True)
+
+class RouteBase(BaseModel):
+    name: str
+    date: date
+    driver_name: Optional[str] = None
+
+class RouteCreate(RouteBase):
+    stops: List[RouteStopCreate] = []
+
+class Route(RouteBase):
+    id: int
+    status: str
+    stops: List[RouteStop] = []
     model_config = ConfigDict(from_attributes=True)

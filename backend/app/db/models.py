@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, JSON
+from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, JSON, Date
 from sqlalchemy.orm import relationship, declarative_base
 from sqlalchemy.sql.schema import MetaData
 
@@ -108,7 +108,6 @@ class Contact(TenantBase):
     client = relationship("Client", back_populates="contacts")
 
 class Supplier(TenantBase):
-    """Tabela de Fornecedores"""
     __tablename__ = "suppliers"
 
     id = Column(Integer, primary_key=True, index=True)
@@ -116,7 +115,7 @@ class Supplier(TenantBase):
     email = Column(String)
     phone = Column(String)
     city = Column(String)
-    document = Column(String) # CNPJ
+    document = Column(String)
 
 class Product(TenantBase):
     __tablename__ = "products"
@@ -151,3 +150,27 @@ class OrderItem(TenantBase):
     
     order = relationship("Order", back_populates="items")
     product = relationship("Product")
+
+# --- NOVOS MODELS PARA ROTAS ---
+class Route(TenantBase):
+    __tablename__ = "routes"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String)
+    date = Column(Date)
+    status = Column(String, default="planned") # planned, in_progress, completed
+    driver_name = Column(String, nullable=True)
+    
+    stops = relationship("RouteStop", back_populates="route", cascade="all, delete-orphan")
+
+class RouteStop(TenantBase):
+    __tablename__ = "route_stops"
+
+    id = Column(Integer, primary_key=True, index=True)
+    route_id = Column(Integer, ForeignKey("routes.id"))
+    client_id = Column(Integer, ForeignKey("clients.id"))
+    sequence = Column(Integer) # Ordem da parada (1, 2, 3...)
+    status = Column(String, default="pending") # pending, visited, skipped
+    
+    route = relationship("Route", back_populates="stops")
+    client = relationship("Client")
