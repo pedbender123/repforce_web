@@ -3,23 +3,19 @@ import { Outlet, Link, useLocation } from 'react-router-dom';
 import { useSysAdminAuth } from '../context/SysAdminAuthContext';
 import ThemeToggle from './ThemeToggle';
 import { 
-  HomeIcon, 
-  UserGroupIcon, 
-  BuildingOfficeIcon,
-  Squares2X2Icon, // Ícone para Áreas
   ArrowLeftOnRectangleIcon,
-  Cog6ToothIcon // Ícone "App" de Configuração
+  Cog6ToothIcon 
 } from '@heroicons/react/24/outline';
 
 const tabs = [
   { name: 'Dashboard', href: '/sysadmin/dashboard' },
   { name: 'Tenants', href: '/sysadmin/tenants' },
   { name: 'Usuários', href: '/sysadmin/users' },
-  { name: 'Áreas & Menus', href: '/sysadmin/areas' }, // Nova Aba
+  { name: 'Áreas & Menus', href: '/sysadmin/areas' },
 ];
 
 export default function SysAdminLayout() {
-  const { logout, userProfile } = useSysAdminAuth();
+  const { logout } = useSysAdminAuth();
   const location = useLocation();
 
   return (
@@ -28,17 +24,13 @@ export default function SysAdminLayout() {
       {/* 1. SIDEBAR ESTILO SALESFORCE (Fina, apenas ícones) */}
       <div className="w-16 flex flex-col items-center bg-repforce-dark dark:bg-black text-white py-4 z-20 shadow-xl"> 
         <div className="mb-6 p-2 bg-blue-600 rounded-lg shadow-lg">
-           {/* Logo Minimalista */}
            <span className="font-bold text-xl">RF</span>
         </div>
         
-        {/* Ícone do "App" Atual (Admin) */}
         <div className="p-3 bg-white/10 rounded-md cursor-pointer mb-4 border-l-4 border-blue-500" title="System Admin App">
             <Cog6ToothIcon className="h-6 w-6 text-white" />
         </div>
 
-        {/* Espaço para outros apps futuros */}
-        
         <div className="mt-auto mb-4">
           <button onClick={logout} title="Sair" className="p-2 hover:bg-red-600 rounded-md transition-colors">
             <ArrowLeftOnRectangleIcon className="h-6 w-6 text-gray-400 hover:text-white" />
@@ -92,7 +84,10 @@ export default function SysAdminLayout() {
 
         {/* MAIN CONTENT */}
         <main className="flex-1 overflow-y-auto bg-gray-100 dark:bg-gray-900 p-6 relative">
-          <Outlet />
+          {/* Adicionei uma div wrapper para isolar o CSS */}
+          <div className="min-h-full">
+             <Outlet />
+          </div>
         </main>
       </div>
     </div>
