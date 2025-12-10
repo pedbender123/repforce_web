@@ -12,7 +12,11 @@ import SysAdminLogin from './pages/sysadmin/SysAdminLogin';
 import DynamicLayout from './components/DynamicLayout';
 import SysAdminLayout from './components/SysAdminLayout';
 
-// SysAdmin Pages (Rotas Estáticas)
+// Components de Proteção
+import PrivateRoute from './components/PrivateRoute'; // Para usuários normais
+import SysAdminPrivateRoute from './components/SysAdminPrivateRoute'; // Para SysAdmin
+
+// SysAdmin Pages
 import SysAdminDashboard from './pages/sysadmin/SysAdminDashboard';
 import TenantManagement from './pages/sysadmin/TenantManagement';
 import AllUserManagement from './pages/sysadmin/AllUserManagement';
@@ -21,15 +25,13 @@ import AllUserManagement from './pages/sysadmin/AllUserManagement';
 import COMPONENT_MAP from './config/componentMap';
 import apiClient from './api/apiClient';
 
-// --- Componente Gerador de Rotas ---
-// Ele fica dentro do AuthProvider para ter acesso ao token do usuário
 const AppRoutes = () => {
   const { user, loading } = useAuth();
   const [dynamicRoutes, setDynamicRoutes] = useState([]);
   const [menuLoading, setMenuLoading] = useState(false);
 
   useEffect(() => {
-    // Só carrega rotas dinâmicas se for usuário comum (Tenant)
+    // Só carrega rotas dinâmicas se for usuário comum (Tenant) autenticado
     if (user && !user.is_sysadmin) {
       setMenuLoading(true);
       apiClient.get('/navigation/menu')
@@ -37,19 +39,14 @@ const AppRoutes = () => {
           const areas = response.data;
           const routes = [];
           
-          // Achata a estrutura: Áreas -> Páginas -> Lista de Rotas
           areas.forEach(area => {
             area.pages.forEach(page => {
               const Component = COMPONENT_MAP[page.component_key];
               if (Component) {
-                // Remove a barra inicial para rotas aninhadas se necessário, 
-                // mas aqui vamos tratar como paths absolutos dentro do layout
                 routes.push({
                   path: page.path,
                   element: <Component />
                 });
-              } else {
-                  console.warn(`Componente não encontrado no mapa para a chave: ${page.component_key}`);
               }
             });
           });
@@ -68,17 +65,24 @@ const AppRoutes = () => {
       <Route path="/login" element={<Login />} />
       <Route path="/sysadmin/login" element={<SysAdminLogin />} />
 
-      {/* 2. Rotas do SysAdmin (Painel Administrativo Fixo) */}
-      <Route path="/sysadmin" element={<SysAdminLayout />}>
-         <Route index element={<SysAdminDashboard />} />
+      {/* 2. Rotas do SysAdmin (Protegidas) */}
+      <Route path="/sysadmin" element={
+        <SysAdminPrivateRoute>
+          <SysAdminLayout />
+        </SysAdminPrivateRoute>
+      }>
+         <Route index element={<Navigate to="/sysadmin/dashboard" replace />} />
+         <Route path="dashboard" element={<SysAdminDashboard />} />
          <Route path="tenants" element={<TenantManagement />} />
          <Route path="users" element={<AllUserManagement />} />
       </Route>
 
       {/* 3. Rotas do App do Cliente (Dinâmicas) */}
-      <Route path="/" element={user ? <DynamicLayout /> : <Navigate to="/login" />}>
-          
-          {/* Rota padrão: Se acessar a raiz, pede para usar o menu */}
+      <Route path="/" element={
+        <PrivateRoute>
+          <DynamicLayout />
+        </PrivateRoute>
+      }>
           <Route index element={
             <div className="flex flex-col items-center justify-center h-full text-gray-400">
                 <span className="text-4xl mb-4">👋</span>
@@ -87,14 +91,12 @@ const AppRoutes = () => {
             </div>
           } />
 
-          {/* Renderiza as rotas que vieram do banco de dados */}
           {dynamicRoutes.map((route, index) => (
-             // Nota: O path aqui deve bater com o que vem do banco (ex: /clients)
-             // O Router v6 lida bem com paths absolutos aninhados se começarem com /
              <Route key={index} path={route.path.replace(/^\//, '')} element={route.element} />
           ))}
 
-          <Route path="*" element={<div className="p-8 text-red-500 font-bold">404 - Página não encontrada ou acesso negado.</div>} />
+          {/* Rota de Fallback para App */}
+          <Route path="*" element={<div className="p-8 text-red-500">Página não encontrada.</div>} />
       </Route>
 
     </Routes>
