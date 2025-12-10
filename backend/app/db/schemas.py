@@ -1,4 +1,4 @@
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, ConfigDict
 from typing import Optional, List, Dict, Any
 
 # --- Auth & User ---
@@ -24,8 +24,7 @@ class User(UserBase):
     is_sysadmin: bool
     tenant_id: Optional[int] = None
 
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
 # --- Tenant Management ---
 class TenantBase(BaseModel):
@@ -41,8 +40,7 @@ class Tenant(TenantBase):
     schema_name: str
     status: str
 
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
 # --- Navigation / Dynamic UI ---
 
@@ -53,8 +51,7 @@ class SysComponentCreate(BaseModel):
 
 class SysComponent(SysComponentCreate):
     id: int
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
 class TenantPageBase(BaseModel):
     component_id: int
@@ -64,11 +61,10 @@ class TenantPageBase(BaseModel):
 
 class TenantPage(TenantPageBase):
     id: int
-    component_key: Optional[str] = None # Helper para enviar a chave pro front
-    path: Optional[str] = None # Path final resolvido
+    component_key: Optional[str] = None
+    path: Optional[str] = None
     
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
 class TenantAreaBase(BaseModel):
     label: str
@@ -82,10 +78,24 @@ class TenantArea(TenantAreaBase):
     id: int
     pages: List[TenantPage] = []
 
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
 # --- Business Data (Tenant Specific) ---
+
+# Contatos (Adicionado para corrigir o erro)
+class ContactBase(BaseModel):
+    name: str
+    email: Optional[str] = None
+    phone: Optional[str] = None
+    role: Optional[str] = None
+
+class ContactCreate(ContactBase):
+    pass
+
+class Contact(ContactBase):
+    id: int
+    client_id: int
+    model_config = ConfigDict(from_attributes=True)
 
 class ClientBase(BaseModel):
     name: str
@@ -100,8 +110,8 @@ class ClientCreate(ClientBase):
 
 class Client(ClientBase):
     id: int
-    class Config:
-        orm_mode = True
+    contacts: List[Contact] = [] # Inclui contatos na resposta do cliente
+    model_config = ConfigDict(from_attributes=True)
 
 class ProductBase(BaseModel):
     name: str
@@ -115,8 +125,7 @@ class ProductCreate(ProductBase):
 
 class Product(ProductBase):
     id: int
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
 class OrderItemBase(BaseModel):
     product_id: int
@@ -131,5 +140,4 @@ class Order(BaseModel):
     total_amount: int
     status: str
     client_id: int
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)

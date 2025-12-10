@@ -43,31 +43,28 @@ class User(CoreBase):
     tenant = relationship("Tenant", back_populates="users")
 
 class SysComponent(CoreBase):
-    """Catálogo global de componentes disponíveis no sistema (ex: 'CLIENT_LIST')"""
     __tablename__ = "sys_components"
     __table_args__ = {"schema": "public"}
 
     id = Column(Integer, primary_key=True, index=True)
-    key = Column(String, unique=True, nullable=False) # Identificador para o Frontend (ex: CLIENT_LIST)
-    name = Column(String, nullable=False) # Nome descritivo (ex: Lista de Clientes)
-    default_path = Column(String, nullable=False) # Rota sugerida (ex: /clients)
+    key = Column(String, unique=True, nullable=False)
+    name = Column(String, nullable=False)
+    default_path = Column(String, nullable=False)
 
 class TenantArea(CoreBase):
-    """Áreas da Sidebar (ex: Vendas, Estoque)"""
     __tablename__ = "tenant_areas"
     __table_args__ = {"schema": "public"}
 
     id = Column(Integer, primary_key=True, index=True)
     tenant_id = Column(Integer, ForeignKey("public.tenants.id"), nullable=False)
     label = Column(String, nullable=False)
-    icon = Column(String, nullable=False) # Nome do ícone Lucide (ex: Users, Package)
+    icon = Column(String, nullable=False)
     order = Column(Integer, default=0)
 
     tenant = relationship("Tenant", back_populates="areas")
     pages = relationship("TenantPage", back_populates="area", order_by="TenantPage.order", cascade="all, delete-orphan")
 
 class TenantPage(CoreBase):
-    """Páginas dentro de uma Área (ex: Lista de Clientes dentro de Vendas)"""
     __tablename__ = "tenant_pages"
     __table_args__ = {"schema": "public"}
 
@@ -75,7 +72,7 @@ class TenantPage(CoreBase):
     area_id = Column(Integer, ForeignKey("public.tenant_areas.id"), nullable=False)
     component_id = Column(Integer, ForeignKey("public.sys_components.id"), nullable=False)
     label = Column(String, nullable=False)
-    path_override = Column(String, nullable=True) # Opcional: Sobrescreve o default_path do componente
+    path_override = Column(String, nullable=True)
     order = Column(Integer, default=0)
 
     area = relationship("TenantArea", back_populates="pages")
@@ -83,9 +80,6 @@ class TenantPage(CoreBase):
 
 
 # --- TENANT MODELS (Schema: dinâmico) ---
-# Estes modelos NÃO definem __table_args__['schema'] fixo.
-# O schema é injetado via search_path na sessão.
-
 TenantBase = declarative_base(metadata=metadata)
 
 class Client(TenantBase):
@@ -95,9 +89,24 @@ class Client(TenantBase):
     name = Column(String, index=True)
     email = Column(String, index=True)
     phone = Column(String)
-    document = Column(String) # CPF/CNPJ
+    document = Column(String)
     address = Column(String)
     city = Column(String)
+
+    # Relacionamento com Contatos
+    contacts = relationship("Contact", back_populates="client", cascade="all, delete-orphan")
+
+class Contact(TenantBase):
+    __tablename__ = "contacts"
+
+    id = Column(Integer, primary_key=True, index=True)
+    client_id = Column(Integer, ForeignKey("clients.id"))
+    name = Column(String)
+    email = Column(String)
+    phone = Column(String)
+    role = Column(String) # Ex: Gerente, Comprador
+    
+    client = relationship("Client", back_populates="contacts")
 
 class Product(TenantBase):
     __tablename__ = "products"
@@ -105,7 +114,7 @@ class Product(TenantBase):
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, index=True)
     sku = Column(String, index=True, unique=True)
-    price = Column(Integer) # Centavos
+    price = Column(Integer)
     stock_quantity = Column(Integer, default=0)
     description = Column(String, nullable=True)
 
