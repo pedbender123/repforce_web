@@ -1,3 +1,4 @@
+from typing import List  # <--- CORREÇÃO: Import necessário adicionado
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from sqlalchemy import text
@@ -54,9 +55,6 @@ def create_tenant(
     try:
         db.execute(text(f"CREATE SCHEMA {schema_name}"))
         
-        # Opcional: Criar tabelas dentro do schema agora.
-        # Na prática, usamos Alembic ou create_all apontando pro schema.
-        # Aqui, vamos fazer um "hack" rápido para criar as tabelas usando o metadata do TenantBase
         # Mudar search_path para criar tabelas lá
         db.execute(text(f"SET search_path TO {schema_name}, public"))
         models.TenantBase.metadata.create_all(bind=db.get_bind())
@@ -64,14 +62,12 @@ def create_tenant(
         # Voltar para public
         db.execute(text("SET search_path TO public"))
         
-        # 5. Seed Default Layout (Opcional, mas útil)
+        # 5. Seed Default Layout
         seed_default_layout(db, db_tenant.id)
 
         db.commit()
     except Exception as e:
         db.rollback()
-        # Tentar limpar schema se falhou (cuidado em prod)
-        # db.execute(text(f"DROP SCHEMA IF EXISTS {schema_name} CASCADE"))
         raise HTTPException(status_code=500, detail=f"Failed to create tenant schema: {str(e)}")
 
     return db_tenant
