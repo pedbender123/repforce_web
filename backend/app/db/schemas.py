@@ -63,7 +63,7 @@ class TenantAreaBase(BaseModel):
     icon: str
     order: int = 0
 
-# --- CORREÇÃO: Adicionada a classe que faltava ---
+# --- CORREÇÃO: Esta é a classe que estava faltando ---
 class TenantAreaCreate(TenantAreaBase):
     tenant_id: int
 
