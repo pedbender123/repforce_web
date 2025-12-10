@@ -53,6 +53,10 @@ class TenantPageBase(BaseModel):
     order: int = 0
     config_json: Dict[str, Any] = {}
 
+class TenantPageCreate(TenantPageBase):
+    area_id: int
+    component_key: str # Recebe a string (ex: GENERIC_LIST) e o backend busca o ID
+
 class TenantPage(TenantPageBase):
     id: int
     component_key: Optional[str] = None
@@ -63,7 +67,6 @@ class TenantAreaBase(BaseModel):
     icon: str
     order: int = 0
 
-# --- CORREÇÃO: Esta é a classe que estava faltando ---
 class TenantAreaCreate(TenantAreaBase):
     tenant_id: int
 
