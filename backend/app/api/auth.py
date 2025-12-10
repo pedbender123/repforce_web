@@ -4,7 +4,9 @@ from fastapi.security import OAuth2PasswordRequestForm, OAuth2PasswordBearer
 from sqlalchemy.orm import Session
 from jose import JWTError, jwt
 
-from app.core import security, config
+from app.core import security
+# CORREÇÃO: Importamos 'settings' explicitamente para acessar as variáveis
+from app.core.config import settings 
 from app.db import models, schemas, database
 
 router = APIRouter()
@@ -21,7 +23,8 @@ async def get_current_user(
         headers={"WWW-Authenticate": "Bearer"},
     )
     try:
-        payload = jwt.decode(token, config.SECRET_KEY, algorithms=[config.ALGORITHM])
+        # CORREÇÃO: Usar settings.SECRET_KEY e settings.ALGORITHM
+        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
         username: str = payload.get("sub")
         tenant_schema: str = payload.get("tenant_schema")
         
@@ -58,7 +61,8 @@ def login_for_access_token(
         tenant_schema = user.tenant.schema_name
         tenant_slug = user.tenant.slug
 
-    access_token_expires = timedelta(minutes=config.ACCESS_TOKEN_EXPIRE_MINUTES)
+    # CORREÇÃO: Usar settings.ACCESS_TOKEN_EXPIRE_MINUTES
+    access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = security.create_access_token(
         data={
             "sub": user.username,
@@ -91,14 +95,12 @@ def login_sysadmin(
     
     if not security.verify_password(form_data.password, user.password_hash):
         print(f"❌ Senha incorreta para {user.username}")
-        # DEBUG: Print hashes (Remova em produção)
-        # print(f"Senha enviada: {form_data.password}")
-        # print(f"Hash no banco: {user.password_hash}")
         raise HTTPException(status_code=401, detail="Senha incorreta")
 
     print("✅ Login SysAdmin Autorizado!")
     
-    access_token_expires = timedelta(minutes=config.ACCESS_TOKEN_EXPIRE_MINUTES)
+    # CORREÇÃO: Usar settings.ACCESS_TOKEN_EXPIRE_MINUTES
+    access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = security.create_access_token(
         data={
             "sub": user.username,
