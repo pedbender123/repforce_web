@@ -20,7 +20,7 @@ import SysAdminPrivateRoute from './components/SysAdminPrivateRoute';
 import SysAdminDashboard from './pages/sysadmin/SysAdminDashboard';
 import TenantManagement from './pages/sysadmin/TenantManagement';
 import AllUserManagement from './pages/sysadmin/AllUserManagement';
-import AreasManagement from './pages/sysadmin/AreasManagement'; // NOVO
+import AreasManagement from './pages/sysadmin/AreasManagement';
 
 // Configuração Dinâmica
 import COMPONENT_MAP from './config/componentMap';
@@ -38,6 +38,7 @@ const AppRoutes = () => {
         .then(response => {
           const areas = response.data;
           const routes = [];
+          
           areas.forEach(area => {
             area.pages.forEach(page => {
               const Component = COMPONENT_MAP[page.component_key];
@@ -64,17 +65,18 @@ const AppRoutes = () => {
       <Route path="/login" element={<Login />} />
       <Route path="/sysadmin/login" element={<SysAdminLogin />} />
 
-      {/* 2. SysAdmin (Layout Salesforce) */}
+      {/* 2. SysAdmin (Protegidas) */}
       <Route path="/sysadmin" element={
         <SysAdminPrivateRoute>
           <SysAdminLayout />
         </SysAdminPrivateRoute>
       }>
-         <Route index element={<Navigate to="/sysadmin/dashboard" replace />} />
+         {/* CORREÇÃO: Usar 'index' para o Dashboard elimina redirecionamentos desnecessários */}
+         <Route index element={<SysAdminDashboard />} />
          <Route path="dashboard" element={<SysAdminDashboard />} />
          <Route path="tenants" element={<TenantManagement />} />
          <Route path="users" element={<AllUserManagement />} />
-         <Route path="areas" element={<AreasManagement />} /> {/* ROTA NOVA */}
+         <Route path="areas" element={<AreasManagement />} />
       </Route>
 
       {/* 3. Tenant App */}
@@ -91,7 +93,7 @@ const AppRoutes = () => {
           {dynamicRoutes.map((route, index) => (
              <Route key={index} path={route.path.replace(/^\//, '')} element={route.element} />
           ))}
-          <Route path="*" element={<div className="p-8 text-red-500">404</div>} />
+          <Route path="*" element={<div className="p-8 text-red-500">404 - Página não encontrada</div>} />
       </Route>
     </Routes>
   );

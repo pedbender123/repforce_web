@@ -18,6 +18,9 @@ export default function SysAdminLayout() {
   const { logout } = useSysAdminAuth();
   const location = useLocation();
 
+  // Verifica se estamos na raiz do sysadmin para ativar a aba Dashboard visualmente
+  const isDashboard = location.pathname === '/sysadmin' || location.pathname === '/sysadmin/dashboard';
+
   return (
     <div className="flex h-screen bg-gray-100 dark:bg-gray-900 transition-colors duration-300">
       
@@ -63,7 +66,8 @@ export default function SysAdminLayout() {
         <div className="bg-gray-50 dark:bg-gray-900/50 border-b border-gray-200 dark:border-gray-700 px-6 pt-1">
             <nav className="-mb-px flex space-x-6 overflow-x-auto">
                 {tabs.map((tab) => {
-                    const isActive = location.pathname.startsWith(tab.href);
+                    const isActive = tab.href === '/sysadmin/dashboard' ? isDashboard : location.pathname.startsWith(tab.href);
+                    
                     return (
                         <Link
                             key={tab.name}
@@ -84,7 +88,6 @@ export default function SysAdminLayout() {
 
         {/* MAIN CONTENT */}
         <main className="flex-1 overflow-y-auto bg-gray-100 dark:bg-gray-900 p-6 relative">
-          {/* Adicionei uma div wrapper para isolar o CSS */}
           <div className="min-h-full">
              <Outlet />
           </div>
