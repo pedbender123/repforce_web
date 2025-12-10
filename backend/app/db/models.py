@@ -93,7 +93,6 @@ class Client(TenantBase):
     address = Column(String)
     city = Column(String)
 
-    # Relacionamento com Contatos
     contacts = relationship("Contact", back_populates="client", cascade="all, delete-orphan")
 
 class Contact(TenantBase):
@@ -104,9 +103,20 @@ class Contact(TenantBase):
     name = Column(String)
     email = Column(String)
     phone = Column(String)
-    role = Column(String) # Ex: Gerente, Comprador
+    role = Column(String)
     
     client = relationship("Client", back_populates="contacts")
+
+class Supplier(TenantBase):
+    """Tabela de Fornecedores"""
+    __tablename__ = "suppliers"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, index=True)
+    email = Column(String)
+    phone = Column(String)
+    city = Column(String)
+    document = Column(String) # CNPJ
 
 class Product(TenantBase):
     __tablename__ = "products"

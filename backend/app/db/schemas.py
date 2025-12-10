@@ -82,7 +82,6 @@ class TenantArea(TenantAreaBase):
 
 # --- Business Data (Tenant Specific) ---
 
-# Contatos (Adicionado para corrigir o erro)
 class ContactBase(BaseModel):
     name: str
     email: Optional[str] = None
@@ -110,7 +109,22 @@ class ClientCreate(ClientBase):
 
 class Client(ClientBase):
     id: int
-    contacts: List[Contact] = [] # Inclui contatos na resposta do cliente
+    contacts: List[Contact] = []
+    model_config = ConfigDict(from_attributes=True)
+
+# Adicionado para corrigir erro do Catalog
+class SupplierBase(BaseModel):
+    name: str
+    email: Optional[str] = None
+    phone: Optional[str] = None
+    city: Optional[str] = None
+    document: Optional[str] = None
+
+class SupplierCreate(SupplierBase):
+    pass
+
+class Supplier(SupplierBase):
+    id: int
     model_config = ConfigDict(from_attributes=True)
 
 class ProductBase(BaseModel):
