@@ -35,16 +35,20 @@ app.include_router(webhooks.router, prefix="/webhooks", tags=["Webhooks"])
 def startup_event():
     db = database.SessionLocal()
     try:
+        print("🚀 Iniciando Seed do Sistema...")
+        
         # 1. Garante Componentes do Sistema (Templates React)
         components = ["GENERIC_LIST", "ROLE_MANAGER", "TABLE_MANAGER", "DASHBOARD"]
         for key in components:
             if not db.query(models.SysComponent).filter_by(key=key).first():
+                print(f"➕ Criando componente: {key}")
                 db.add(models.SysComponent(key=key, name=key.replace("_", " ").title()))
         db.commit()
 
         # 2. Garante Tenant "Systems" (ID 1)
         sys_tenant = db.query(models.Tenant).filter_by(id=1).first()
         if not sys_tenant:
+            print("➕ Criando Tenant Systems...")
             sys_tenant = models.Tenant(id=1, name="Systems", slug="systems", schema_name="public", status="active")
             db.add(sys_tenant)
             db.commit()
@@ -52,6 +56,7 @@ def startup_event():
         # 3. Garante Usuário SysAdmin
         sysadmin_user = db.query(models.User).filter_by(username="sysadmin").first()
         if not sysadmin_user:
+            print("➕ Criando Usuário SysAdmin...")
             sysadmin_user = models.User(
                 username="sysadmin",
                 email="admin@repforce.com",
@@ -63,10 +68,12 @@ def startup_event():
             db.add(sysadmin_user)
             db.commit()
 
-        # 4. Cria Menu do SysAdmin (Se não existir)
-        # Verifica se já tem áreas para o tenant 1
-        if not db.query(models.TenantArea).filter_by(tenant_id=1).first():
-            print("⚙️ Criando Menu SysAdmin...")
+        # 4. Cria Menu do SysAdmin (Lógica Reforçada)
+        # Verifica se o tenant 1 tem áreas. Se não tiver, CRIA TUDO.
+        existing_areas = db.query(models.TenantArea).filter_by(tenant_id=1).count()
+        
+        if existing_areas == 0:
+            print("⚙️ Menu SysAdmin vazio. Criando estrutura padrão...")
             for area_def in seed_data.SYSADMIN_PAGES:
                 area = models.TenantArea(
                     tenant_id=1,
@@ -76,6 +83,8 @@ def startup_event():
                 )
                 db.add(area)
                 db.flush() # para pegar o ID
+                
+                print(f"  📂 Área criada: {area.label}")
                 
                 for page_def in area_def['pages']:
                     comp = db.query(models.SysComponent).filter_by(key=page_def['component_key']).first()
@@ -88,11 +97,14 @@ def startup_event():
                             config_json=page_def['config']
                         )
                         db.add(page)
+                        print(f"    📄 Página criada: {page.label}")
             db.commit()
-            print("✅ Menu SysAdmin Criado!")
+            print("✅ Menu SysAdmin Criado com Sucesso!")
+        else:
+            print(f"✅ Menu SysAdmin já existe ({existing_areas} áreas encontradas).")
 
     except Exception as e:
-        print(f"❌ Startup Error: {e}")
+        print(f"❌ Erro fatal no Startup Seed: {e}")
         db.rollback()
     finally:
         db.close()
