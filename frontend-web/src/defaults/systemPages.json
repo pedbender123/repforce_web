@@ -1,0 +1,93 @@
+{
+  "sysadmin_pages": [
+    {
+      "area": "SysAdmin",
+      "icon": "ShieldCheckIcon",
+      "pages": [
+        {
+          "label": "Gestão de Tenants",
+          "component_key": "GENERIC_LIST",
+          "config": {
+            "endpoint": "/sysadmin/tenants",
+            "title": "Empresas (Tenants)",
+            "columns": [
+              { "key": "name", "label": "Empresa" },
+              { "key": "cnpj", "label": "CNPJ" },
+              { "key": "status", "label": "Status", "type": "badge" }
+            ],
+            "fields": [
+              { "name": "name", "label": "Nome da Empresa", "required": true },
+              { "name": "slug", "label": "Identificador (Slug)", "required": true },
+              { "name": "sysadmin_email", "label": "Email do Admin", "required": true },
+              { "name": "sysadmin_password", "label": "Senha Inicial", "type": "password", "required": true },
+              { 
+                "name": "tenant_type", 
+                "label": "Tipo", 
+                "type": "select", 
+                "options": [
+                    {"value": "industry", "label": "Indústria"}, 
+                    {"value": "agency", "label": "Agência"}, 
+                    {"value": "reseller", "label": "Revenda"}
+                ],
+                "required": true 
+              }
+            ]
+          }
+        },
+        {
+          "label": "Gestão de Usuários (Sys)",
+          "component_key": "GENERIC_LIST",
+          "config": {
+            "endpoint": "/sysadmin/users",
+            "title": "Usuários do Sistema",
+            "columns": [
+                { "key": "username", "label": "Usuário" },
+                { "key": "email", "label": "Email" }
+            ],
+            "fields": [
+                { "name": "username", "label": "Username", "required": true },
+                { "name": "password", "label": "Senha", "type": "password", "required": true },
+                { "name": "email", "label": "Email", "required": false }
+            ]
+          }
+        },
+        {
+          "label": "Gestão de Tabelas",
+          "component_key": "TABLE_MANAGER",
+          "config": {}
+        }
+      ]
+    }
+  ],
+  "tenant_default_pages": [
+    {
+      "area": "Administrativo",
+      "icon": "Cog6ToothIcon",
+      "pages": [
+        {
+          "label": "Usuários",
+          "component_key": "GENERIC_LIST",
+          "config": {
+            "endpoint": "/api/admin/users",
+            "title": "Usuários da Equipe",
+            "columns": [
+                { "key": "name", "label": "Nome" },
+                { "key": "role", "label": "Cargo" },
+                { "key": "email", "label": "Email" }
+            ],
+            "fields": [
+                { "name": "name", "label": "Nome", "required": true },
+                { "name": "email", "label": "Email", "required": true },
+                { "name": "password", "label": "Senha", "type": "password", "required": true }
+            ]
+          }
+        },
+        {
+          "label": "Cargos e Permissões",
+          "component_key": "ROLE_MANAGER",
+          "config": {}
+        }
+      ]
+    }
+  ]
+}
