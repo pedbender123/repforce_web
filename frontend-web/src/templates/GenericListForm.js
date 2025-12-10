@@ -1,19 +1,15 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import apiClient from '../api/apiClient'; 
+import sysAdminApiClient from '../api/sysAdminApiClient'; // Importação do cliente SysAdmin
 import { PlusIcon, PencilIcon, TrashIcon, XMarkIcon, CheckIcon } from '@heroicons/react/24/outline';
 import { useForm } from 'react-hook-form';
 
-/**
- * Este é o componente "Mágico".
- * Ele recebe configurações (via props ou data do backend) e monta a tela sozinho.
- */
 export default function GenericListForm({ config }) {
   const [isEditing, setIsEditing] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
   const queryClient = useQueryClient();
   
-  // Configurações padrão caso não venham
   const { 
     endpoint, 
     title = 'Gerenciamento', 
@@ -21,30 +17,25 @@ export default function GenericListForm({ config }) {
     fields = [] 
   } = config || {};
 
-  // Hook Form
+  // SELEÇÃO AUTOMÁTICA DE CLIENTE
+  // Se o endpoint for de sysadmin, usa o cliente que envia o token de sysadmin
+  const client = endpoint?.startsWith('/sysadmin') ? sysAdminApiClient : apiClient;
+
   const { register, handleSubmit, reset, setValue } = useForm();
 
-  // 1. Fetch Data (Lista)
+  // 1. Fetch Data
   const { data: items, isLoading } = useQuery([endpoint], async () => {
     if (!endpoint) return [];
-    
-    // Pequena lógica para decidir qual cliente usar (SysAdmin vs App normal)
-    // Se o endpoint começar com /sysadmin, usa o cliente específico (se você tiver um importado dinamicamente ou usar lógica de token)
-    // Por simplificação aqui, usaremos o apiClient padrão e assumimos que o token correto está no localStorage
-    // OBS: Se precisar separar estritamente, pode injetar o cliente via props.
-    
-    // Verifica se é rota de sysadmin para tentar usar o token de sysadmin se necessário
-    // (Isso depende de como você organizou seus clients, mas vamos pelo padrão por enquanto)
-    const res = await apiClient.get(endpoint);
+    const res = await client.get(endpoint);
     return res.data;
   }, { enabled: !!endpoint });
 
-  // 2. Mutation (Create/Update)
+  // 2. Mutation
   const mutation = useMutation(async (formData) => {
     if (editingItem) {
-      return apiClient.put(`${endpoint}/${editingItem.id}`, formData);
+      return client.put(`${endpoint}/${editingItem.id}`, formData);
     } else {
-      return apiClient.post(endpoint, formData);
+      return client.post(endpoint, formData);
     }
   }, {
     onSuccess: () => {
@@ -54,7 +45,6 @@ export default function GenericListForm({ config }) {
     onError: (err) => alert('Erro: ' + (err.response?.data?.detail || err.message))
   });
 
-  // Ações
   const openNew = () => {
     setEditingItem(null);
     reset();
@@ -63,7 +53,6 @@ export default function GenericListForm({ config }) {
 
   const openEdit = (item) => {
     setEditingItem(item);
-    // Popula o form
     fields.forEach(f => setValue(f.name, item[f.name]));
     setIsEditing(true);
   };
@@ -78,9 +67,8 @@ export default function GenericListForm({ config }) {
     mutation.mutate(data);
   };
 
-  if (!endpoint) return <div className="p-4 text-red-500">Erro: Endpoint não definido para este template.</div>;
+  if (!endpoint) return <div className="p-4 text-red-500">Erro: Endpoint não definido na configuração.</div>;
 
-  // --- MODO FORMULÁRIO ---
   if (isEditing) {
     return (
       <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow animate-fade-in h-full">
@@ -127,7 +115,6 @@ export default function GenericListForm({ config }) {
     );
   }
 
-  // --- MODO LISTA ---
   return (
     <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden h-full flex flex-col">
       <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center bg-gray-50 dark:bg-gray-900">
