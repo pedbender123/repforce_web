@@ -8,43 +8,27 @@ services:
       - .env
     networks:
       - repforce_net
-    
-    # --- INÍCIO DA CORREÇÃO ---
-    # Adiciona uma verificação de saúde. O 'backend' vai esperar por isto.
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 5s
       timeout: 5s
       retries: 5
-    # --- FIM DA CORREÇÃO ---
 
   backend:
     build:
       context: ./backend
       dockerfile: Dockerfile
     container_name: repforce_backend
-    
-    # REMOVIDO: O '--reload' não deve ser usado em produção.
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8000
-    
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
     volumes:
       - ./backend:/app
     ports:
-      - "127.0.0.1:8000:8000"
-      
-    # --- INÍCIO DA CORREÇÃO ---
-    # Altera 'depends_on' para esperar pela condição de 'service_healthy'
+      - "8000:8000"
     depends_on:
       db:
         condition: service_healthy
-    # --- FIM DA CORREÇÃO ---
-      
-    # AQUI: Injeta as variáveis do .env (SECRET_KEY, ALGORITHM, etc.)
     env_file:
       - .env
-      
-    # AQUI: Construímos a DATABASE_URL usando as variáveis
-    # que foram injetadas do .env.
     environment:
       DATABASE_URL: "postgresql+psycopg2://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}"
     networks:
@@ -54,17 +38,15 @@ services:
     build:
       context: ./frontend-web
       args:
-        - REACT_APP_API_URL=https://repforce.com.br/api 
+        - REACT_APP_API_URL=/api
       dockerfile: Dockerfile
     container_name: repforce_frontend
     ports:
-      - "127.0.0.1:3000:80"
+      - "3000:80"
     networks:
       - repforce_net
-    # --- ADICIONE ISTO AQUI ---
     depends_on:
       - backend
-    # --------------------------
 
 networks:
   repforce_net:

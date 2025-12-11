@@ -1,9 +1,10 @@
-# Definição das Telas Padrão do Sistema
+# Configurações JSON para Server-Driven UI
 
+# Menu do SysAdmin
 SYSADMIN_PAGES = [
     {
         "area": "SysAdmin",
-        "icon": "ShieldCheckIcon",
+        "icon": "ShieldCheck",
         "order": 1,
         "pages": [
             {
@@ -21,18 +22,17 @@ SYSADMIN_PAGES = [
                     "fields": [
                         { "name": "name", "label": "Nome da Empresa", "required": True },
                         { "name": "slug", "label": "Slug (URL)", "required": True },
-                        { "name": "sysadmin_email", "label": "Email do Admin", "required": True },
+                        { "name": "sysadmin_email", "label": "Email Admin", "required": True },
                         { "name": "sysadmin_password", "label": "Senha Inicial", "type": "password", "required": True },
                         { 
                             "name": "tenant_type", 
                             "label": "Tipo", 
                             "type": "select",
-                            "required": True,
                             "options": [
                                 {"value": "industry", "label": "Indústria"}, 
-                                {"value": "agency", "label": "Agência"}, 
                                 {"value": "reseller", "label": "Revenda"}
-                            ]
+                            ],
+                            "required": True
                         }
                     ]
                 }
@@ -42,111 +42,49 @@ SYSADMIN_PAGES = [
                 "component_key": "GENERIC_LIST",
                 "path": "/sysadmin/users",
                 "config": {
-                    "endpoint": "/sysadmin/all-users",
-                    "title": "Usuários do Sistema (Todos)",
+                    "endpoint": "/sysadmin/users",
+                    "title": "Usuários Globais",
                     "columns": [
                         { "key": "username", "label": "Usuário" },
-                        { "key": "email", "label": "Email" },
-                        { "key": "is_active", "label": "Ativo", "type": "boolean" }
+                        { "key": "is_sysadmin", "label": "SysAdmin", "type": "boolean" }
                     ],
                     "fields": [
                         { "name": "username", "label": "Username", "required": True },
-                        { "name": "email", "label": "Email", "required": True },
                         { "name": "password", "label": "Senha", "type": "password", "required": True },
+                        { "name": "email", "label": "Email", "required": True },
                         { "name": "tenant_id", "label": "Tenant ID (1=Sys)", "type": "number", "required": True }
                     ]
                 }
-            },
-            {
-                "label": "Gestão de Áreas",
-                "component_key": "GENERIC_LIST",
-                "path": "/sysadmin/areas",
-                "config": {
-                    "endpoint": "/sysadmin/areas",
-                    "title": "Áreas do Menu (Tenants)",
-                    "columns": [
-                        { "key": "label", "label": "Nome da Área" },
-                        { "key": "icon", "label": "Ícone" },
-                        { "key": "tenant_id", "label": "Tenant ID" }
-                    ],
-                    "fields": [
-                        { "name": "label", "label": "Rótulo da Área", "required": True },
-                        { "name": "icon", "label": "Nome do Ícone (ex: UsersIcon)", "required": True },
-                        { "name": "tenant_id", "label": "ID do Tenant", "type": "number", "required": True },
-                        { "name": "order", "label": "Ordem", "type": "number", "required": True }
-                    ]
-                }
-            },
-            {
-                "label": "Gestão de Páginas",
-                "component_key": "GENERIC_LIST",
-                "path": "/sysadmin/pages",
-                "config": {
-                    "endpoint": "/sysadmin/pages",
-                    "title": "Páginas do Menu",
-                    "columns": [
-                        { "key": "label", "label": "Nome da Página" },
-                        { "key": "path", "label": "Rota URL" },
-                        { "key": "area_id", "label": "Área ID" }
-                    ],
-                    "fields": [
-                        { "name": "label", "label": "Nome da Página", "required": True },
-                        { "name": "path", "label": "Rota (ex: /app/clients)", "required": True },
-                        { "name": "area_id", "label": "ID da Área Pai", "type": "number", "required": True },
-                        { 
-                            "name": "component_key", 
-                            "label": "Template (ex: GENERIC_LIST)", 
-                            "type": "select", 
-                            "required": True,
-                            "options": [
-                                {"value": "GENERIC_LIST", "label": "Lista Genérica"},
-                                {"value": "TABLE_MANAGER", "label": "Gerenciador de Tabelas"},
-                                {"value": "ROLE_MANAGER", "label": "Gerenciador de Cargos"},
-                                {"value": "DASHBOARD", "label": "Dashboard"}
-                            ]
-                        }
-                    ]
-                }
-            },
-            {
-                "label": "Gestão de Tabelas",
-                "component_key": "TABLE_MANAGER",
-                "path": "/sysadmin/tables",
-                "config": {}
             }
         ]
     }
 ]
 
+# Menu padrão para novos Tenants
 TENANT_DEFAULT_PAGES = [
     {
-        "area": "Administrativo",
-        "icon": "Cog6ToothIcon",
-        "order": 99,
+        "area": "Vendas",
+        "icon": "ShoppingCart",
         "pages": [
             {
-                "label": "Usuários",
+                "label": "Meus Clientes",
                 "component_key": "GENERIC_LIST",
-                "path": "/admin/users",
+                "path": "/app/clients",
                 "config": {
-                    "endpoint": "/api/admin/users",
-                    "title": "Usuários da Equipe",
+                    "endpoint": "/crm/clients",
+                    "title": "Carteira de Clientes",
                     "columns": [
-                        { "key": "username", "label": "Usuário" },
-                        { "key": "email", "label": "Email" }
+                        { "key": "name", "label": "Razão Social" },
+                        { "key": "email", "label": "Email" },
+                        { "key": "document", "label": "Documento" }
                     ],
                     "fields": [
-                        { "name": "username", "label": "Username", "required": True },
-                        { "name": "email", "label": "Email", "required": True },
-                        { "name": "password", "label": "Senha", "type": "password", "required": True }
+                        { "name": "name", "label": "Nome / Razão", "required": True },
+                        { "name": "trade_name", "label": "Nome Fantasia" },
+                        { "name": "email", "label": "Email" },
+                        { "name": "document", "label": "CPF/CNPJ" }
                     ]
                 }
-            },
-            {
-                "label": "Cargos e Permissões",
-                "component_key": "ROLE_MANAGER",
-                "path": "/admin/roles",
-                "config": {}
             }
         ]
     }

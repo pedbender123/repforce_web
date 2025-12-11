@@ -5,17 +5,17 @@ import App from './App';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AuthProvider } from './context/AuthContext';
 import { SysAdminAuthProvider } from './context/SysAdminAuthContext';
-import { ThemeProvider } from './context/ThemeContext'; // <--- ADICIONE ISSO
+import { ThemeProvider } from './context/ThemeContext';
 
 const queryClient = new QueryClient();
-
 const root = ReactDOM.createRoot(document.getElementById('root'));
+
 root.render(
   <React.StrictMode>
     <QueryClientProvider client={queryClient}>
-      <ThemeProvider> {/* <--- ADICIONE ISSO AQUI ENVOLVENDO TUDO */}
-        <AuthProvider>        
-          <SysAdminAuthProvider> 
+      <ThemeProvider>
+        <AuthProvider>
+          <SysAdminAuthProvider>
             <App />
           </SysAdminAuthProvider>
         </AuthProvider>
