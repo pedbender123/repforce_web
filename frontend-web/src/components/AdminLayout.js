@@ -29,7 +29,7 @@ export default function AdminLayout() {
            <img 
              src="/logo_clara.png" 
              alt="Repforce Admin" 
-             className="h-10 w-auto object-contain" // object-contain impede o efeito "linguiça"
+             className="h-10 w-auto object-contain"
            />
         </div>
         <nav className="flex-1 px-2 py-4 space-y-1">
@@ -74,7 +74,6 @@ export default function AdminLayout() {
               {navigation.find(nav => location.pathname.startsWith(nav.href))?.name || 'Admin Dashboard'}
             </h1>
             <div className="flex items-center space-x-4">
-              {/* Botão de Tema PRESENTE */}
               <ThemeToggle />
               <div className="px-3 py-1 rounded-full bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 text-xs font-bold border border-blue-200 dark:border-blue-800">
                  ADMIN (TENANT)

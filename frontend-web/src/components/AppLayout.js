@@ -25,7 +25,7 @@ export default function AppLayout() {
 
   return (
     <div className="flex h-screen bg-gray-100 dark:bg-gray-900 transition-colors duration-300">
-      {/* Sidebar */}
+      {/* Sidebar - Moldura Antiga */}
       <div className="w-64 flex flex-col bg-repforce-dark dark:bg-black text-white transition-colors"> 
         <div className="h-20 flex items-center justify-center shadow-md px-4 border-b border-gray-700">
            {/* Logo Clara para fundo escuro */}
@@ -85,7 +85,7 @@ export default function AppLayout() {
           </div>
         </header>
         
-        {/* AQUI ESTÁ O SEGREDO: O Outlet renderiza a página filha (Dashboard, Clientes, etc) */}
+        {/* Renderiza as páginas Server-Driven ou Estáticas dentro desta moldura */}
         <main className="flex-1 overflow-y-auto p-6 bg-gray-100 dark:bg-gray-900 transition-colors">
           <Outlet />
         </main>
