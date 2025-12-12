@@ -14,7 +14,8 @@ class Tenant(CoreBase):
     slug = Column(String, unique=True, index=True, nullable=False)
     schema_name = Column(String, unique=True, nullable=False)
     status = Column(String, default="active")
-    tenant_type = Column(String, default="industry")
+    # CORREÇÃO: Garantindo que este campo exista para evitar o erro do log
+    tenant_type = Column(String, default="industry") 
 
     users = relationship("User", back_populates="tenant")
 
@@ -81,6 +82,9 @@ class Client(TenantBase):
     trade_name = Column(String)
     email = Column(String)
     document = Column(String)
+    # Adicionando suporte para o formulário rico que usa address_json
+    address_json = Column(JSON, nullable=True)
+    status = Column(String, default='active')
 
 class Order(TenantBase):
     __tablename__ = "orders"
