@@ -1,49 +1,22 @@
-from fastapi import APIRouter, Depends, Request, HTTPException
-from sqlalchemy.orm import Session, joinedload
-from ..db import database, models, schemas
-from typing import List
+from fastapi import APIRouter
+from app.api import auth, admin, sysadmin, catalog, orders, webhooks
 
-router = APIRouter()
+api_router = APIRouter()
 
-@router.post("/routes", response_model=schemas.Route, status_code=201)
-def create_route(
-    route_data: schemas.RouteCreate,
-    request: Request,
-    db: Session = Depends(database.get_db)
-):
-    representative_id = request.state.user_id
-    
-    db_route = models.Route(
-        representative_id=representative_id,
-        date=route_data.date,
-        name=route_data.name,
-        status="planned"
-    )
-    db.add(db_route)
-    db.commit()
-    db.refresh(db_route)
-    
-    for stop in route_data.stops:
-        db_stop = models.RouteStop(
-            route_id=db_route.id,
-            client_id=stop.client_id,
-            sequence=stop.sequence,
-            notes=stop.notes,
-            status="pending"
-        )
-        db.add(db_stop)
-    
-    db.commit()
-    db.refresh(db_route)
-    return db_route
+# Rotas de Autenticação (Login)
+api_router.include_router(auth.router, tags=["login"])
 
-@router.get("/routes", response_model=List[schemas.Route])
-def get_routes(request: Request, db: Session = Depends(database.get_db)):
-    user_id = request.state.user_id
-    routes = db.query(models.Route).options(
-        joinedload(models.Route.stops).joinedload(models.RouteStop.client)
-    ).filter(
-        models.Route.representative_id == user_id
-    ).order_by(models.Route.date.desc()).all()
-    
-    return routes
+# Rotas do SysAdmin (Gestão de Tenants e Usuários Globais)
+api_router.include_router(sysadmin.router, prefix="/sysadmin", tags=["sysadmin"])
+
+# Rotas do Admin do Tenant (Gestão de Produtos, Usuários do Tenant, Configs)
+api_router.include_router(admin.router, prefix="/admin", tags=["admin"])
+
+# Rotas de Catálogo (Visualização de Produtos e Preços para o Vendedor)
+api_router.include_router(catalog.router, prefix="/catalog", tags=["catalog"])
+
+# Rotas de Pedidos (Criação e Gestão de Pedidos)
+api_router.include_router(orders.router, prefix="/orders", tags=["orders"])
+
+# Webhooks (Integrações externas)
+api_router.include_router(webhooks.router, prefix="/webhooks", tags=["webhooks"])

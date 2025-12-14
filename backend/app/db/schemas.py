@@ -1,120 +1,64 @@
 from pydantic import BaseModel, EmailStr
-from typing import List, Optional, Any
-from datetime import date, datetime
+from typing import List, Optional
+from datetime import datetime
+from app.db.models import UserRole, OrderStatus
 
-# --- Tenant ---
+# --- TOKEN ---
+class Token(BaseModel):
+    access_token: str
+    token_type: str
+
+class TokenData(BaseModel):
+    email: Optional[str] = None
+
+# --- TENANT ---
 class TenantBase(BaseModel):
     name: str
-    cnpj: Optional[str] = None
-    email: Optional[EmailStr] = None
-    phone: Optional[str] = None
-    logo_url: Optional[str] = None
-    commercial_info: Optional[str] = None
-    status: Optional[str] = 'inactive'
-    tenant_type: Optional[str] = 'industry' # NOVO
+    cnpj: str
 
 class TenantCreate(TenantBase):
     pass
 
 class Tenant(TenantBase):
     id: int
+    is_active: bool
+    created_at: datetime
+    
     class Config:
-        orm_mode = True
+        from_attributes = True
 
-# --- User ---
+# --- USER ---
 class UserBase(BaseModel):
-    username: str
-    email: Optional[EmailStr] = None
-    name: Optional[str] = None
+    email: EmailStr
+    full_name: str
+    role: UserRole = UserRole.SALES_REP
+    is_active: bool = True
 
 class UserCreate(UserBase):
     password: str
-    profile: Optional[str] = "representante"
     tenant_id: Optional[int] = None
+
+class UserUpdate(BaseModel):
+    full_name: Optional[str] = None
+    password: Optional[str] = None
+    is_active: Optional[bool] = None
 
 class User(UserBase):
     id: int
-    profile: str
-    tenant_id: int
-    tenant: Tenant
+    tenant_id: Optional[int] = None
+
     class Config:
-        orm_mode = True
+        from_attributes = True
 
-# --- Token ---
-class Token(BaseModel):
-    access_token: str
-    token_type: str
-
-# --- Contact ---
-class ContactBase(BaseModel):
-    name: str
-    role: Optional[str] = None
-    email: Optional[str] = None
-    phone: Optional[str] = None
-    is_primary: bool = False
-
-class ContactCreate(ContactBase):
-    pass
-
-class Contact(ContactBase):
-    id: int
-    client_id: int
-    class Config:
-        orm_mode = True
-
-# --- Client ---
-class AddressData(BaseModel):
-    rua: Optional[str] = None
-    numero: Optional[str] = None
-    bairro: Optional[str] = None
-    cidade: Optional[str] = None
-    uf: Optional[str] = None
-    cep: Optional[str] = None
-
-class ClientBase(BaseModel):
-    name: str
-    trade_name: Optional[str] = None
-    cnpj: Optional[str] = None
-    status: str = 'active'
-    address_data: Optional[AddressData] = None
-    lat: Optional[float] = None
-    lon: Optional[float] = None
-
-class ClientCreate(ClientBase):
-    representative_id: Optional[int] = None
-
-class Client(ClientBase):
-    id: int
-    tenant_id: int
-    representative_id: Optional[int] = None
-    contacts: List[Contact] = []
-    class Config:
-        orm_mode = True
-
-# --- Supplier (NOVO) ---
-class SupplierBase(BaseModel):
-    name: str
-    commercial_contact: Optional[str] = None
-    email: Optional[str] = None
-
-class SupplierCreate(SupplierBase):
-    pass
-
-class Supplier(SupplierBase):
-    id: int
-    tenant_id: int
-    class Config:
-        orm_mode = True
-
-# --- Product ---
+# --- PRODUCT ---
 class ProductBase(BaseModel):
+    sku: str
     name: str
-    sku: Optional[str] = None
+    description: Optional[str] = None
     price: float
-    cost_price: Optional[float] = None
-    stock: Optional[int] = 0
+    stock_quantity: int = 0
     image_url: Optional[str] = None
-    supplier_id: Optional[int] = None # NOVO
+    category: Optional[str] = None
 
 class ProductCreate(ProductBase):
     pass
@@ -122,59 +66,64 @@ class ProductCreate(ProductBase):
 class Product(ProductBase):
     id: int
     tenant_id: int
-    supplier: Optional[Supplier] = None # NOVO
-    class Config:
-        orm_mode = True
 
-# --- Order ---
-class OrderItem(BaseModel):
+    class Config:
+        from_attributes = True
+
+# --- CLIENT (Simplificado - Apenas Cadastral) ---
+class ClientBase(BaseModel):
+    fantasy_name: str
+    company_name: str
+    cnpj_cpf: str
+    email: Optional[str] = None
+    phone: Optional[str] = None
+    address: Optional[str] = None
+    city: Optional[str] = None
+    state: Optional[str] = None
+
+class ClientCreate(ClientBase):
+    pass
+
+class Client(ClientBase):
+    id: int
+    tenant_id: int
+
+    class Config:
+        from_attributes = True
+
+# --- ORDER ---
+class OrderItemBase(BaseModel):
     product_id: int
     quantity: int
+
+class OrderItemCreate(OrderItemBase):
+    pass
+
+class OrderItem(OrderItemBase):
+    id: int
     unit_price: float
-    subtotal: Optional[float] = 0
-    name: Optional[str] = None
+    total: float
+    product_name: str = "" # Helper field for display
+
+    class Config:
+        from_attributes = True
 
 class OrderCreate(BaseModel):
     client_id: int
-    items: List[OrderItem]
+    items: List[OrderItemCreate]
+    notes: Optional[str] = None
 
 class Order(BaseModel):
     id: int
-    status: str
-    total_value: float
-    margin_value: Optional[float]
+    external_id: Optional[str] = None
     created_at: datetime
-    items: Any
-    client_id: int
-    tenant_id: int
-    representative_id: int
-    class Config:
-        orm_mode = True
-
-# --- Routes ---
-class RouteStopBase(BaseModel):
-    client_id: int
-    sequence: int
+    status: OrderStatus
+    total_value: float
     notes: Optional[str] = None
+    client_id: int
+    sales_rep_id: int
+    client: Optional[Client] = None
+    items: List[OrderItem] = []
 
-class RouteCreate(BaseModel):
-    name: str
-    date: date
-    stops: List[RouteStopBase]
-
-class RouteStop(RouteStopBase):
-    id: int
-    status: str
-    checkin_time: Optional[datetime]
-    client: Client
     class Config:
-        orm_mode = True
-
-class Route(BaseModel):
-    id: int
-    name: Optional[str]
-    date: date
-    status: str
-    stops: List[RouteStop]
-    class Config:
-        orm_mode = True
+        from_attributes = True

@@ -1,75 +1,96 @@
 import React from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { AuthProvider } from './context/AuthContext';
+import { SysAdminAuthProvider } from './context/SysAdminAuthContext';
+import { ThemeProvider } from './context/ThemeContext';
+import PrivateRoute from './components/PrivateRoute';
+import SysAdminPrivateRoute from './components/SysAdminPrivateRoute';
 
-import Login from './pages/Login';
-import SysAdminLogin from './pages/sysadmin/SysAdminLogin';
-
+// Layouts
 import AppLayout from './components/AppLayout';
 import AdminLayout from './components/AdminLayout';
 import SysAdminLayout from './components/SysAdminLayout';
 
-import PrivateRoute from './components/PrivateRoute';
-import SysAdminPrivateRoute from './components/SysAdminPrivateRoute';
+// Public Pages
+import Login from './pages/Login';
+import SysAdminLogin from './pages/sysadmin/SysAdminLogin';
 
-// --- Páginas App (Representante) ---
+// App Pages (Sales Rep)
 import AppDashboard from './pages/app/AppDashboard';
 import AppClientList from './pages/app/AppClientList';
-import AppClientForm from './pages/app/AppClientForm'; // <--- IMPORTADO
-import AppClientDetails from './pages/app/AppClientDetails';
+import AppClientDetails from './pages/app/AppClientDetails'; // Adaptar para remover abas de CRM
+import AppClientForm from './pages/app/AppClientForm';
 import AppOrderCreate from './pages/app/AppOrderCreate';
 import AppRouteCreate from './pages/app/AppRouteCreate';
 
-// --- Páginas Admin (Tenant) ---
+// Admin Pages (Tenant Admin)
 import AdminDashboard from './pages/admin/AdminDashboard';
-import TenantUserManagement from './pages/admin/UserManagement';
 import ProductList from './pages/admin/ProductList';
 import ProductForm from './pages/admin/ProductForm';
+import UserManagement from './pages/admin/UserManagement';
 
-// --- Páginas SysAdmin ---
+// SysAdmin Pages (Global Admin)
 import SysAdminDashboard from './pages/sysadmin/SysAdminDashboard';
 import TenantManagement from './pages/sysadmin/TenantManagement';
-import SysAdminUserManagement from './pages/sysadmin/UserManagement';
 import AllUserManagement from './pages/sysadmin/AllUserManagement';
 
 function App() {
   return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/login" element={<Login />} />
-        <Route path="/sysadmin/login" element={<SysAdminLogin />} />
+    <Router>
+      <ThemeProvider>
+        <SysAdminAuthProvider>
+          <AuthProvider>
+            <Routes>
+              {/* Public Routes */}
+              <Route path="/login" element={<Login />} />
+              <Route path="/sysadmin/login" element={<SysAdminLogin />} />
+              
+              {/* Root Redirect */}
+              <Route path="/" element={<Navigate to="/app/dashboard" replace />} />
 
-        {/* --- APP REPRESENTANTE --- */}
-        <Route path="/app" element={<PrivateRoute requiredProfile="representante"><AppLayout /></PrivateRoute>}>
-          <Route index element={<Navigate to="dashboard" replace />} />
-          <Route path="dashboard" element={<AppDashboard />} />
-          <Route path="clients" element={<AppClientList />} />
-          <Route path="clients/new" element={<AppClientForm />} /> {/* <--- ROTA NOVA */}
-          <Route path="clients/:id" element={<AppClientDetails />} />
-          <Route path="orders/new" element={<AppOrderCreate />} />
-          <Route path="routes/new" element={<AppRouteCreate />} />
-        </Route>
+              {/* APP ROUTES (Sales Rep) */}
+              <Route path="/app" element={<PrivateRoute><AppLayout /></PrivateRoute>}>
+                <Route path="dashboard" element={<AppDashboard />} />
+                
+                {/* Clientes - Mantidos apenas como cadastro para pedidos */}
+                <Route path="clients" element={<AppClientList />} />
+                <Route path="clients/new" element={<AppClientForm />} />
+                <Route path="clients/:id" element={<AppClientDetails />} />
+                
+                {/* Pedidos */}
+                <Route path="orders/new" element={<AppOrderCreate />} />
+                
+                {/* Rotas (Opcional) */}
+                <Route path="routes/new" element={<AppRouteCreate />} />
+                
+                <Route index element={<Navigate to="dashboard" replace />} />
+              </Route>
 
-        {/* --- ADMIN TENANT --- */}
-        <Route path="/admin" element={<PrivateRoute requiredProfile="admin"><AdminLayout /></PrivateRoute>}>
-          <Route index element={<Navigate to="dashboard" replace />} />
-          <Route path="dashboard" element={<AdminDashboard />} />
-          <Route path="users" element={<TenantUserManagement />} />
-          <Route path="products" element={<ProductList />} />
-          <Route path="products/new" element={<ProductForm />} />
-        </Route>
+              {/* ADMIN ROUTES (Tenant Owner) */}
+              <Route path="/admin" element={<PrivateRoute><AdminLayout /></PrivateRoute>}>
+                <Route path="dashboard" element={<AdminDashboard />} />
+                <Route path="products" element={<ProductList />} />
+                <Route path="products/new" element={<ProductForm />} />
+                <Route path="products/:id" element={<ProductForm />} />
+                <Route path="users" element={<UserManagement />} />
+                <Route index element={<Navigate to="dashboard" replace />} />
+              </Route>
 
-        {/* --- SYSADMIN --- */}
-        <Route path="/sysadmin" element={<SysAdminPrivateRoute><SysAdminLayout /></SysAdminPrivateRoute>}>
-          <Route index element={<Navigate to="dashboard" replace />} />
-          <Route path="dashboard" element={<SysAdminDashboard />} />
-          <Route path="systems-users" element={<SysAdminUserManagement />} />
-          <Route path="tenants" element={<TenantManagement />} />
-          <Route path="all-users" element={<AllUserManagement />} />
-        </Route>
+              {/* SYSADMIN ROUTES (Platform Owner) */}
+              <Route path="/sysadmin" element={<SysAdminLayout />}>
+                <Route path="dashboard" element={<SysAdminDashboard />} />
+                <Route path="tenants" element={<TenantManagement />} />
+                <Route path="users" element={<AllUserManagement />} />
+                <Route index element={<Navigate to="dashboard" replace />} />
+              </Route>
 
-        <Route path="*" element={<Navigate to="/login" replace />} />
-      </Routes>
-    </BrowserRouter>
+              {/* Catch all */}
+              <Route path="*" element={<Navigate to="/login" replace />} />
+            </Routes>
+          </AuthProvider>
+        </SysAdminAuthProvider>
+      </ThemeProvider>
+    </Router>
   );
 }
 
