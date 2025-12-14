@@ -1,42 +1,72 @@
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
-from starlette.responses import JSONResponse
-from .core.security import settings, jwt
+from starlette.responses import Response, JSONResponse
+from .core.security import decode_access_token
+from .core.config import settings
+import jwt
+
+# Rotas públicas (sem o prefixo /api/)
+PUBLIC_ROUTES = [
+    "/auth/token", 
+    "/auth/sysadmin/token", # <-- ROTA DE LOGIN SYSADMIN
+    "/docs", 
+    "/openapi.json"
+]
+
+# --- NOVO: Caminho estático para uploads ---
+# Esta rota também não precisa de autenticação
+STATIC_PATH = "/uploads/"
 
 class TenantMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
-        # 1. Rotas Públicas
-        if request.url.path in ["/auth/token", "/auth/sysadmin/token", "/docs", "/openapi.json"]:
-            return await call_next(request)
         
-        # 2. Ler JWT
+        # --- MUDANÇA: Ignora rotas públicas E rotas de upload ---
+        if any(request.url.path.endswith(route) for route in PUBLIC_ROUTES) or \
+           request.url.path.startswith(STATIC_PATH):
+            response = await call_next(request)
+            return response
+        # --- FIM DA MUDANÇA ---
+
+        # Verifica o header de autorização
         auth_header = request.headers.get("Authorization")
+        
         if not auth_header:
-            return JSONResponse(status_code=401, content={"detail": "Token ausente"})
-        
+            return JSONResponse(
+                status_code=401,
+                content={"detail": "Token de autenticação não fornecido."}
+            )
+
+        # Extrai o token
         try:
-            token = auth_header.split(" ")[1]
-            payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
-        except Exception:
-            return JSONResponse(status_code=401, content={"detail": "Token inválido"})
+            scheme, token = auth_header.split()
+            if scheme.lower() != "bearer":
+                raise ValueError
+        except ValueError:
+            return JSONResponse(
+                status_code=401,
+                content={"detail": "Formato de autorização inválido. Use 'Bearer <token>'."}
+            )
 
-        # 3. Configurar State
-        profile = payload.get("profile")
-        tenant_slug = payload.get("tenant_slug")
-        
-        request.state.user_id = payload.get("sub_id")
-        request.state.profile = profile
+        # Decodifica o token e extrai o payload
+        payload = decode_access_token(token)
+        if payload is None:
+            return JSONResponse(
+                status_code=401,
+                content={"detail": "Token inválido ou expirado."}
+            )
 
-        if profile == 'sysadmin':
-            request.state.tenant_schema = 'public'
-            request.state.tenant_slug = None
-        elif tenant_slug:
-            # Sanitização básica
-            if not tenant_slug.replace("-","").isalnum():
-                return JSONResponse(status_code=400, content={"detail": "Slug inválido"})
-            request.state.tenant_schema = f"tenant_{tenant_slug}"
-            request.state.tenant_slug = tenant_slug
-        else:
-            request.state.tenant_schema = 'public'
+        # Injeta os dados do payload no estado da requisição
+        request.state.user_id = payload.get("sub")
+        request.state.tenant_id = payload.get("tenant_id")
+        request.state.profile = payload.get("profile")
+        request.state.username = payload.get("username")
 
-        return await call_next(request)
+        if not request.state.user_id or not request.state.tenant_id or not request.state.profile:
+            return JSONResponse(
+                status_code=401,
+                content={"detail": "Token com dados incompletos."}
+            )
+
+        # Continua para o endpoint
+        response = await call_next(request)
+        return response

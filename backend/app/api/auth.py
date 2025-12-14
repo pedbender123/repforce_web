@@ -1,33 +1,76 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request, Form
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
-from app.db import database, models, schemas
-from app.core import security, config
+from ..db import database, models, schemas
+from ..core import security
 
 router = APIRouter()
 
-@router.post("/token")
-def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(database.get_db)):
-    # Lógica simplificada: username deve ser único no sistema inteiro
-    # Em produção real, o login deve pedir o tenant_slug explicitamente no form_data
-    user = db.query(models.User).filter(models.User.username == form_data.username).first()
-    
-    if not user or not security.verify_password(form_data.password, user.password_hash):
-        raise HTTPException(status_code=401, detail="Credenciais inválidas")
+def get_user_by_username(db: Session, username: str):
+    return db.query(models.User).filter(models.User.username == username).first()
 
-    tenant_slug = user.tenant.slug if user.tenant else None
+@router.post("/token", response_model=schemas.Token)
+def login_for_access_token(
+    username: str = Form(...),
+    password: str = Form(...),
+    remember_me: bool = Form(False), # Recebe do form
+    db: Session = Depends(database.get_db)
+):
+    """
+    Login para 'admin' e 'representante' com suporte a 'Manter conectado'.
+    """
+    user = get_user_by_username(db, username=username)
     
-    access_token = security.create_access_token(
-        data={
-            "sub": user.username,
-            "sub_id": user.id,
-            "profile": "sysadmin" if user.is_sysadmin else "user",
-            "tenant_slug": tenant_slug
-        }
-    )
+    if not user or not security.verify_password(password, user.hashed_password):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Usuário ou senha incorretos",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+        
+    if user.profile == 'sysadmin':
+        raise HTTPException(status_code=403, detail="Login de SysAdmin deve ser feito na área restrita.")
+    
+    token_data = {
+        "sub": str(user.id), 
+        "profile": user.profile,
+        "tenant_id": user.tenant_id,
+        "username": user.username
+    }
+    
+    # Usa a flag remember_me
+    access_token = security.create_access_token(data=token_data, remember_me=remember_me)
+    
     return {"access_token": access_token, "token_type": "bearer"}
 
-@router.post("/sysadmin/token")
-def login_sysadmin(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(database.get_db)):
-    # Endpoint exclusivo sysadmin
-    return login(form_data, db)
+@router.post("/sysadmin/token", response_model=schemas.Token)
+def sysadmin_login_for_access_token(
+    form_data: OAuth2PasswordRequestForm = Depends(),
+    db: Session = Depends(database.get_db)
+):
+    """Login exclusivo para SysAdmin (sem remember_me por segurança)."""
+    user = get_user_by_username(db, username=form_data.username)
+    
+    if not user or not security.verify_password(form_data.password, user.hashed_password):
+        raise HTTPException(status_code=401, detail="Dados incorretos")
+        
+    if user.profile != 'sysadmin':
+        raise HTTPException(status_code=403, detail="Acesso negado. Área exclusiva SysAdmin.")
+    
+    token_data = {
+        "sub": str(user.id), 
+        "profile": user.profile, 
+        "tenant_id": user.tenant_id, 
+        "username": user.username
+    }
+    access_token = security.create_access_token(data=token_data)
+    
+    return {"access_token": access_token, "token_type": "bearer"}
+
+@router.get("/users/me", response_model=schemas.User)
+def read_users_me(request: Request, db: Session = Depends(database.get_db)):
+    user_id = request.state.user_id
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    if user is None:
+        raise HTTPException(status_code=404, detail="Usuário não encontrado")
+    return user

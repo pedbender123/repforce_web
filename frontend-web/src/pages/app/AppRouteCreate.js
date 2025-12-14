@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
-import apiClient from '../api/apiClient';
+import apiClient from '../../api/apiClient';
 import { MapPinIcon } from '@heroicons/react/24/solid';
 
-export default function RouteCreate() {
+export default function AppRouteCreate() {
   const [routeName, setRouteName] = useState('');
   const [routeDate, setRouteDate] = useState('');
   const [selectedClients, setSelectedClients] = useState([]);
@@ -13,7 +13,7 @@ export default function RouteCreate() {
     return res.data;
   });
 
-  const createRouteMutation = useMutation((data) => apiClient.post('/routes/routes', data), {
+  const createRouteMutation = useMutation((data) => apiClient.post('/routes', data), {
     onSuccess: () => alert('Rota salva com sucesso!')
   });
 
@@ -31,8 +31,8 @@ export default function RouteCreate() {
     const dest = selectedClients[selectedClients.length - 1];
     const waypoints = selectedClients.slice(0, -1);
     
-    // Fallback se não tiver lat/lon real
-    const getLoc = (c) => `${c.name}, ${c.address_json?.cidade || ''}`;
+    // Usa lat/lon se existir, senão usa nome + cidade
+    const getLoc = (c) => (c.lat && c.lon) ? `${c.lat},${c.lon}` : `${c.name}, ${c.address_data?.cidade || ''}`;
     
     let url = `${baseUrl}&destination=${getLoc(dest)}`;
     if (waypoints.length > 0) {
@@ -67,7 +67,7 @@ export default function RouteCreate() {
         />
       </div>
 
-      <div className="flex-1 flex gap-4 overflow-hidden min-h-[400px]">
+      <div className="flex-1 flex gap-4 overflow-hidden">
         {/* Lista Seleção */}
         <div className="w-1/2 bg-white dark:bg-gray-800 rounded-lg shadow flex flex-col">
             <div className="p-3 border-b dark:border-gray-700 font-semibold dark:text-white">Clientes Disponíveis</div>
@@ -81,7 +81,7 @@ export default function RouteCreate() {
                         }`}
                     >
                         <div className="font-medium text-gray-900 dark:text-white">{client.trade_name || client.name}</div>
-                        <div className="text-xs text-gray-500">{client.address_json?.cidade || 'Sem cidade'}</div>
+                        <div className="text-xs text-gray-500">{client.address_data?.cidade || 'Sem cidade'}</div>
                     </div>
                 ))}
             </div>
@@ -93,7 +93,7 @@ export default function RouteCreate() {
             <div className="flex-1 overflow-y-auto p-2">
                 {selectedClients.map((client, idx) => (
                     <div key={client.id} className="flex items-center p-3 mb-2 bg-gray-50 dark:bg-gray-700 rounded relative">
-                        <div className="bg-blue-600 text-white w-6 h-6 rounded-full flex items-center justify-center text-xs mr-3 font-bold">
+                        <div className="bg-repforce-primary text-white w-6 h-6 rounded-full flex items-center justify-center text-xs mr-3 font-bold">
                             {idx + 1}
                         </div>
                         <span className="text-sm dark:text-white truncate">{client.trade_name || client.name}</span>

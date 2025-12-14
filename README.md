@@ -10,8 +10,9 @@ Proxy Reverso (VPS): Nginx (para gerir o domínio e o tráfego)
 
 Backend: FastAPI (Python), SQLAlchemy, PostgreSQL
 
-Frontend: React (com Tailwind CSS, React Que
+Frontend: React (com Tailwind CSS, React Query, Axios)
 
+Deploy: GitHub Actions (para deploy automático na VPS)
 
 🏛️ Arquitetura de Produção
 
@@ -29,7 +30,7 @@ Requisições para repforce.com.br/api/* são enviadas para http://127.0.0.1:800
 
 Todas as outras requisições (/, /login, /sysadmin, etc.) são enviadas para http://127.0.0.1:3000 (o container frontend-web).
 
-Nginx do Container frontend-web (O "Servidor do React")
+Nginx do Container frontend-web (O "Servidor do React"):
 
 Este Nginx vive dentro do container frontend-web.
 

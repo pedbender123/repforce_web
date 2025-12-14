@@ -1,16 +1,15 @@
-# Estágio 1: Construção (Build)
+# Estágio 1: Build do React
 FROM node:18-alpine as build
-
 WORKDIR /app
 
-# Copia APENAS o package.json (ignorando package-lock.json local propositalmente)
-# Isso força o Docker a resolver as versões baseadas no package.json atualizado
+# Copia package.json e package-lock.json
 COPY package.json ./
+COPY package-lock.json ./
 
 # Instala dependências
 RUN npm install
 
-# Copia o restante do código fonte
+# Copia o restante do código-fonte
 COPY . .
 
 # Constrói a aplicação para produção
@@ -18,13 +17,19 @@ RUN npm run build
 
 # Estágio 2: Servir com Nginx
 FROM nginx:alpine
+WORKDIR /usr/share/nginx/html
 
-# Copia os arquivos estáticos do build anterior para o diretório do Nginx
-COPY --from=build /app/build /usr/share/nginx/html
+# Remove o HTML padrão do Nginx
+RUN rm -rf ./*
 
-# Copia a configuração personalizada do Nginx
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+# Copia os arquivos estáticos do estágio de build
+COPY --from=build /app/build .
+
+# --- ESSA É A CORREÇÃO ---
+# Copia a configuração Nginx com um nome diferente de "default.conf"
+# para que os scripts de inicialização da imagem Nginx não a modifiquem.
+COPY nginx.conf /etc/nginx/conf.d/repforce.conf
+# --- FIM DA CORREÇÃO ---
 
 EXPOSE 80
-
 CMD ["nginx", "-g", "daemon off;"]

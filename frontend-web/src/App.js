@@ -1,77 +1,76 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { useAuth } from './context/AuthContext';
-import { useSysAdminAuth } from './context/SysAdminAuthContext';
-import apiClient from './api/apiClient';
-import sysAdminApiClient from './api/sysAdminApiClient';
-import TEMPLATES_MAP from './config/templatesMap';
 
 import Login from './pages/Login';
 import SysAdminLogin from './pages/sysadmin/SysAdminLogin';
-import SysAdminDashboard from './pages/sysadmin/SysAdminDashboard';
-import DynamicLayout from './components/DynamicLayout';
+
+import AppLayout from './components/AppLayout';
+import AdminLayout from './components/AdminLayout';
 import SysAdminLayout from './components/SysAdminLayout';
 
-// Rotas Tenant
-const DynamicTenantRoutes = () => {
-  const [routes, setRoutes] = useState([]);
-  useEffect(() => {
-    apiClient.get('/navigation/menu').then(res => {
-        const r = [];
-        res.data.forEach(area => area.pages.forEach(p => {
-            const Comp = TEMPLATES_MAP[p.component_key];
-            if(Comp) r.push({ path: p.path, element: <Comp config={p.config_json} /> });
-        }));
-        setRoutes(r);
-    }).catch(() => {});
-  }, []);
+import PrivateRoute from './components/PrivateRoute';
+import SysAdminPrivateRoute from './components/SysAdminPrivateRoute';
 
-  return (
-    <Routes>
-      <Route element={<DynamicLayout />}>
-        {routes.map((r, i) => <Route key={i} path={r.path.replace('/app', '')} element={r.element} />)}
-        <Route path="*" element={<div>Bem-vindo ao RepForce</div>} />
-      </Route>
-    </Routes>
-  );
-};
+// --- Páginas App (Representante) ---
+import AppDashboard from './pages/app/AppDashboard';
+import AppClientList from './pages/app/AppClientList';
+import AppClientForm from './pages/app/AppClientForm'; // <--- IMPORTADO
+import AppClientDetails from './pages/app/AppClientDetails';
+import AppOrderCreate from './pages/app/AppOrderCreate';
+import AppRouteCreate from './pages/app/AppRouteCreate';
 
-// Rotas SysAdmin
-const DynamicSysAdminRoutes = () => {
-  const [menu, setMenu] = useState([]);
-  useEffect(() => {
-    sysAdminApiClient.get('/navigation/menu').then(res => setMenu(res.data)).catch(() => {});
-  }, []);
+// --- Páginas Admin (Tenant) ---
+import AdminDashboard from './pages/admin/AdminDashboard';
+import TenantUserManagement from './pages/admin/UserManagement';
+import ProductList from './pages/admin/ProductList';
+import ProductForm from './pages/admin/ProductForm';
 
-  return (
-    <Routes>
-      <Route element={<SysAdminLayout menuItems={menu} />}>
-        <Route path="dashboard" element={<SysAdminDashboard />} />
-        {menu.flatMap(a => a.pages).map((p, i) => {
-             const Comp = TEMPLATES_MAP[p.component_key];
-             const path = p.path.replace('/sysadmin/', '');
-             return Comp ? <Route key={i} path={path} element={<Comp config={p.config_json} />} /> : null;
-        })}
-      </Route>
-    </Routes>
-  );
-};
+// --- Páginas SysAdmin ---
+import SysAdminDashboard from './pages/sysadmin/SysAdminDashboard';
+import TenantManagement from './pages/sysadmin/TenantManagement';
+import SysAdminUserManagement from './pages/sysadmin/UserManagement';
+import AllUserManagement from './pages/sysadmin/AllUserManagement';
 
-export default function App() {
-  const { token } = useAuth();
-  const { token: saToken } = useSysAdminAuth();
-
+function App() {
   return (
     <BrowserRouter>
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route path="/sysadmin/login" element={<SysAdminLogin />} />
-        
-        <Route path="/sysadmin/*" element={saToken ? <DynamicSysAdminRoutes /> : <Navigate to="/sysadmin/login" />} />
-        <Route path="/app/*" element={token ? <DynamicTenantRoutes /> : <Navigate to="/login" />} />
-        
-        <Route path="/" element={<Navigate to="/login" />} />
+
+        {/* --- APP REPRESENTANTE --- */}
+        <Route path="/app" element={<PrivateRoute requiredProfile="representante"><AppLayout /></PrivateRoute>}>
+          <Route index element={<Navigate to="dashboard" replace />} />
+          <Route path="dashboard" element={<AppDashboard />} />
+          <Route path="clients" element={<AppClientList />} />
+          <Route path="clients/new" element={<AppClientForm />} /> {/* <--- ROTA NOVA */}
+          <Route path="clients/:id" element={<AppClientDetails />} />
+          <Route path="orders/new" element={<AppOrderCreate />} />
+          <Route path="routes/new" element={<AppRouteCreate />} />
+        </Route>
+
+        {/* --- ADMIN TENANT --- */}
+        <Route path="/admin" element={<PrivateRoute requiredProfile="admin"><AdminLayout /></PrivateRoute>}>
+          <Route index element={<Navigate to="dashboard" replace />} />
+          <Route path="dashboard" element={<AdminDashboard />} />
+          <Route path="users" element={<TenantUserManagement />} />
+          <Route path="products" element={<ProductList />} />
+          <Route path="products/new" element={<ProductForm />} />
+        </Route>
+
+        {/* --- SYSADMIN --- */}
+        <Route path="/sysadmin" element={<SysAdminPrivateRoute><SysAdminLayout /></SysAdminPrivateRoute>}>
+          <Route index element={<Navigate to="dashboard" replace />} />
+          <Route path="dashboard" element={<SysAdminDashboard />} />
+          <Route path="systems-users" element={<SysAdminUserManagement />} />
+          <Route path="tenants" element={<TenantManagement />} />
+          <Route path="all-users" element={<AllUserManagement />} />
+        </Route>
+
+        <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
     </BrowserRouter>
   );
 }
+
+export default App;

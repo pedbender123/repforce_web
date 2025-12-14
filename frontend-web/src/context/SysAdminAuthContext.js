@@ -1,30 +1,89 @@
-import React, { createContext, useContext, useState } from 'react';
-import sysAdminApiClient from '../api/sysAdminApiClient';
+import React, { createContext, useContext, useState, useEffect } from 'react';
+// CORREÇÃO DE CAMINHO: Apenas um "../" pois estamos em src/context
+import sysAdminApiClient from '../api/sysAdminApiClient'; 
 import { jwtDecode } from 'jwt-decode';
 
-const SysAdminAuthContext = createContext();
+const SYSADMIN_TOKEN_KEY = 'sysadmin_token';
+
+const SysAdminAuthContext = createContext(null);
+
 export const useSysAdminAuth = () => useContext(SysAdminAuthContext);
 
 export const SysAdminAuthProvider = ({ children }) => {
-  const [token, setToken] = useState(localStorage.getItem('sysadmin_token'));
-  const [userProfile, setUserProfile] = useState(token ? jwtDecode(token).profile : null);
+  const [token, setToken] = useState(localStorage.getItem(SYSADMIN_TOKEN_KEY));
+  const [userProfile, setUserProfile] = useState(null);
+  const [isLoadingAuth, setIsLoadingAuth] = useState(true);
+
+  useEffect(() => {
+    const initializeAuth = () => {
+      try {
+        const storedToken = localStorage.getItem(SYSADMIN_TOKEN_KEY);
+        if (storedToken) {
+          const decodedToken = jwtDecode(storedToken);
+          
+          if (decodedToken.exp * 1000 < Date.now()) {
+            throw new Error("Token expirado");
+          }
+
+          setToken(storedToken);
+          setUserProfile(decodedToken.profile);
+        } else {
+          setToken(null);
+          setUserProfile(null);
+        }
+      } catch (error) {
+        console.error("Falha ao inicializar auth SysAdmin:", error.message);
+        localStorage.removeItem(SYSADMIN_TOKEN_KEY);
+        setToken(null);
+        setUserProfile(null);
+      } finally {
+        setIsLoadingAuth(false);
+      }
+    };
+
+    initializeAuth();
+  }, []);
 
   const login = async (username, password) => {
-    const formData = new URLSearchParams();
-    formData.append('username', username);
-    formData.append('password', password);
-    
-    const { data } = await sysAdminApiClient.post('/auth/sysadmin/token', formData);
-    localStorage.setItem('sysadmin_token', data.access_token);
-    setToken(data.access_token);
-    setUserProfile('sysadmin');
+    try {
+      const formData = new URLSearchParams();
+      formData.append('username', username);
+      formData.append('password', password);
+
+      const response = await sysAdminApiClient.post('/auth/sysadmin/token', formData, {
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+      });
+
+      const { access_token } = response.data;
+      const decodedToken = jwtDecode(access_token);
+      const profile = decodedToken.profile;
+
+      localStorage.setItem(SYSADMIN_TOKEN_KEY, access_token);
+      setToken(access_token);
+      setUserProfile(profile);
+
+      return profile;
+    } catch (error) {
+      console.error('Erro no login SysAdmin:', error);
+      throw error;
+    }
   };
 
   const logout = () => {
-    localStorage.removeItem('sysadmin_token');
+    localStorage.removeItem(SYSADMIN_TOKEN_KEY);
     setToken(null);
     setUserProfile(null);
   };
 
-  return <SysAdminAuthContext.Provider value={{ token, userProfile, login, logout }}>{children}</SysAdminAuthContext.Provider>;
+  const value = {
+    token,
+    userProfile,
+    login,
+    logout,
+    isLoadingAuth,
+  };
+
+  return <SysAdminAuthContext.Provider value={value}>{children}</SysAdminAuthContext.Provider>;
 };

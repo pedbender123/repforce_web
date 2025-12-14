@@ -6,46 +6,55 @@ from typing import List
 
 router = APIRouter()
 
+# Dependência para verificar se o usuário é Admin (de Tenant)
 def check_tenant_admin_profile(request: Request):
-    if request.state.profile != 'admin' and request.state.profile != 'sysadmin': 
-        # Sysadmin também pode debuggar, mas o foco é o admin do tenant
-        raise HTTPException(status_code=403, detail="Acesso restrito a administradores.")
+    """
+    Verifica se o usuário logado tem o perfil 'admin' (e NÃO 'sysadmin').
+    """
+    if request.state.profile != 'admin':
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Acesso restrito a administradores de tenant."
+        )
     return True
 
-@router.post("/users", response_model=schemas.User, status_code=201, dependencies=[Depends(check_tenant_admin_profile)])
-def create_tenant_user(
+@router.post("/users", 
+             response_model=schemas.User, 
+             status_code=201, 
+             dependencies=[Depends(check_tenant_admin_profile)])
+def create_tenant_user( # Renomeado para clareza
     user: schemas.UserCreate,
     request: Request,
     db: Session = Depends(database.get_db)
 ):
-    # 1. Identificar o Tenant Alvo
-    tenant_slug = request.state.tenant_slug
-    if not tenant_slug:
-         raise HTTPException(status_code=400, detail="Contexto de tenant ausente")
-
-    tenant = db.query(models.Tenant).filter(models.Tenant.slug == tenant_slug).first()
-    if not tenant:
-        raise HTTPException(status_code=404, detail="Tenant não encontrado.")
-
+    """
+    (Admin de Tenant) Cria um novo usuário (Representante ou Admin) 
+    dentro do SEU PRÓPRIO tenant.
+    """
+    tenant_id = request.state.tenant_id # Tenant do Admin
+    
+    # REGRA DE SEGURANÇA: Admin de Tenant NÃO PODE criar SysAdmin
     if user.profile == 'sysadmin':
-        raise HTTPException(status_code=403, detail="Não é permitido criar usuários SysAdmin aqui")
+        raise HTTPException(status_code=403, detail="Não é permitido criar usuários SysAdmin")
 
-    # 2. Verificar duplicidade
+    # Garante que o perfil seja 'admin' ou 'representante'
+    profile = user.profile if user.profile in ['admin', 'representante'] else 'representante'
+
+    # --- MUDANÇA 1: Usar 'username' para verificação de unicidade ---
     db_user = db.query(models.User).filter(models.User.username == user.username).first()
     if db_user:
         raise HTTPException(status_code=400, detail="Username já cadastrado")
+    # --- FIM MUDANÇA 1 ---
 
-    # 3. Criar Usuário
     hashed_password = security.get_password_hash(user.password)
     
     db_new_user = models.User(
-        username=user.username,
-        email=user.email,
-        # name=user.name, # Ajuste conforme seu schema schemas.UserCreate se tiver 'name'
-        password_hash=hashed_password, # CORREÇÃO AQUI
-        # profile=user.profile, # Role system replaces profile string
-        tenant_id=tenant.id,
-        is_active=True
+        username=user.username, # NOVO: Usando username do input
+        email=user.email, # Usando email do input (agora opcional)
+        name=user.name,
+        hashed_password=hashed_password,
+        profile=profile,
+        tenant_id=tenant_id
     )
     
     db.add(db_new_user)
@@ -53,12 +62,16 @@ def create_tenant_user(
     db.refresh(db_new_user)
     return db_new_user
 
-@router.get("/users", response_model=List[schemas.User], dependencies=[Depends(check_tenant_admin_profile)])
+@router.get("/users", 
+            response_model=List[schemas.User], 
+            dependencies=[Depends(check_tenant_admin_profile)])
 def get_users_in_tenant(
     request: Request,
     db: Session = Depends(database.get_db)
 ):
-    tenant = db.query(models.Tenant).filter(models.Tenant.slug == request.state.tenant_slug).first()
-    if not tenant: return []
-
-    return db.query(models.User).filter(models.User.tenant_id == tenant.id).all()
+    """
+    (Admin de Tenant) Lista todos os usuários do SEU PRÓPRIO tenant.
+    """
+    tenant_id = request.state.tenant_id
+    users = db.query(models.User).filter(models.User.tenant_id == tenant_id).all()
+    return users

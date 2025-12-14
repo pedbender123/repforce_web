@@ -38,6 +38,7 @@ export default function SysAdminLogin() {
 
       <div className="w-full max-w-md bg-white dark:bg-gray-800 p-8 md:p-12 rounded-lg shadow-xl border-t-4 border-red-600 dark:border-red-500 transition-colors">
         <div className="mb-8 text-center">
+          {/* Container escuro para a logo aparecer bem em ambos os modos */}
           <div className="bg-gray-900 p-4 rounded-lg inline-block mb-4">
              <img 
                src="/logo_clara.png" 

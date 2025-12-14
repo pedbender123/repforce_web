@@ -1,14 +1,51 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.db import database, models
-from app.api import auth, sysadmin, navigation
-from app.middleware import TenantMiddleware
-from app.core import seed_data, security
+from fastapi.staticfiles import StaticFiles 
+import os 
+from .middleware import TenantMiddleware
+from .db import models, database
+from .core import security
+from sqlalchemy.orm import Session
 
-# Inicializa Tabelas Públicas
-models.CoreBase.metadata.create_all(bind=database.engine)
+# Importa todas as rotas
+from .api import auth, crm, catalog, orders, admin, sysadmin, routes, webhooks
 
-app = FastAPI()
+# Recria tabelas (NOTA: Em prod use Alembic para migrações)
+models.Base.metadata.create_all(bind=database.engine)
+
+app = FastAPI(
+    title="Repforce API",
+    version="0.2.0"
+)
+
+# Servir uploads
+upload_dir = "/app/uploads"
+os.makedirs(upload_dir, exist_ok=True)
+app.mount("/uploads", StaticFiles(directory=upload_dir), name="uploads")
+
+@app.on_event("startup")
+def create_initial_admin():
+    db: Session = database.SessionLocal()
+    try:
+        tenant_name = "Systems"
+        tenant = db.query(models.Tenant).filter(models.Tenant.name == tenant_name).first()
+        if not tenant:
+            tenant = models.Tenant(name=tenant_name, status="active", cnpj="000")
+            db.add(tenant)
+            db.commit()
+            db.refresh(tenant)
+        
+        admin_username = "sysadmin"
+        admin_user = db.query(models.User).filter(models.User.username == admin_username).first()
+        if not admin_user:
+            hashed_password = security.get_password_hash("12345678")
+            new_admin = models.User(username=admin_username, name="SysAdmin", hashed_password=hashed_password, profile="sysadmin", tenant_id=tenant.id)
+            db.add(new_admin)
+            db.commit()
+    except Exception as e:
+        print(f"Erro no seeding: {e}")
+    finally:
+        db.close()
 
 app.add_middleware(
     CORSMiddleware,
@@ -17,61 +54,18 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
 app.add_middleware(TenantMiddleware)
 
-app.include_router(auth.router, prefix="/auth", tags=["Auth"])
+@app.get("/")
+def read_root():
+    return {"message": "Repforce API Online"}
+
+app.include_router(auth.router, prefix="/auth", tags=["Autenticação"])
+app.include_router(crm.router, prefix="/crm", tags=["CRM"])
+app.include_router(catalog.router, prefix="/catalog", tags=["Catálogo"])
+app.include_router(orders.router, prefix="/orders", tags=["Pedidos"])
+app.include_router(routes.router, prefix="/routes", tags=["Rotas"])
+app.include_router(admin.router, prefix="/admin", tags=["Admin Tenant"])
 app.include_router(sysadmin.router, prefix="/sysadmin", tags=["SysAdmin"])
-app.include_router(navigation.router, prefix="/navigation", tags=["Navigation"])
-
-@app.on_event("startup")
-def startup_event():
-    db = database.SessionLocal()
-    try:
-        # 1. Tenant System
-        if not db.query(models.Tenant).filter_by(id=1).first():
-            db.add(models.Tenant(id=1, name="System", slug="system", schema_name="public", status="active"))
-            db.commit()
-
-        # 2. Usuário SysAdmin
-        if not db.query(models.User).filter_by(username="sysadmin").first():
-            user = models.User(
-                username="sysadmin",
-                email="admin@repforce.com",
-                password_hash=security.get_password_hash("12345678"),
-                is_sysadmin=True,
-                tenant_id=1
-            )
-            db.add(user)
-            db.commit()
-
-        # 3. Componentes
-        components = ["GENERIC_LIST", "ROLE_MANAGER", "TABLE_MANAGER", "DASHBOARD"]
-        for key in components:
-            if not db.query(models.SysComponent).filter_by(key=key).first():
-                db.add(models.SysComponent(key=key, name=key))
-        db.commit()
-
-        # 4. Seed SysAdmin Menu
-        if db.query(models.TenantArea).filter_by(tenant_id=1).count() == 0:
-            for area_def in seed_data.SYSADMIN_PAGES:
-                area = models.TenantArea(tenant_id=1, label=area_def['area'], icon=area_def['icon'])
-                db.add(area)
-                db.flush()
-                for page_def in area_def['pages']:
-                    comp = db.query(models.SysComponent).filter_by(key=page_def['component_key']).first()
-                    page = models.TenantPage(
-                        area_id=area.id,
-                        component_id=comp.id,
-                        label=page_def['label'],
-                        path=page_def['path'],
-                        config_json=page_def['config']
-                    )
-                    db.add(page)
-            db.commit()
-            print("✅ Seed SysAdmin concluído.")
-
-    except Exception as e:
-        print(f"Erro no seed: {e}")
-        db.rollback()
-    finally:
-        db.close()
+app.include_router(webhooks.router, prefix="/webhooks", tags=["Webhooks"])

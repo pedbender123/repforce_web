@@ -1,24 +1,21 @@
-from sqlalchemy import create_engine, text
+from sqlalchemy import create_engine
+from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from ..core.config import settings
-from fastapi import Request
 
-engine = create_engine(settings.DATABASE_URL, pool_pre_ping=True)
+#SQLALCHEMY_DATABASE_URL = "sqlite:///./test.db" # Para testes locais rápidos
+SQLALCHEMY_DATABASE_URL = settings.DATABASE_URL
+
+engine = create_engine(SQLALCHEMY_DATABASE_URL)
+
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
-def get_db(request: Request):
-    """
-    Injeta o schema correto (search_path) baseado no middleware.
-    """
+Base = declarative_base()
+
+# Dependency Generator para obter a sessão do DB em endpoints
+def get_db():
     db = SessionLocal()
     try:
-        if hasattr(request.state, "tenant_schema") and request.state.tenant_schema:
-            schema = request.state.tenant_schema
-            # Define o path de busca: primeiro o tenant, depois public
-            db.execute(text(f"SET search_path TO {schema}, public"))
-        else:
-            db.execute(text("SET search_path TO public"))
-        
         yield db
     finally:
         db.close()
