@@ -1,4 +1,4 @@
-import React, { useContext, useState } from 'react';
+import React, { useContext, useState, useEffect } from 'react';
 import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 import { ThemeContext } from '../context/ThemeContext';
@@ -12,8 +12,10 @@ import {
   Sun, 
   Moon,
   Map,
-  ChevronRight,
-  ChevronLeft
+  Package,
+  Settings,
+  Briefcase,
+  Phone
 } from 'lucide-react';
 
 const AppLayout = () => {
@@ -22,64 +24,119 @@ const AppLayout = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  
-  // Estado para controlar se a sidebar está minimizada (padrão: expandida)
   const [isCollapsed, setIsCollapsed] = useState(false);
+
+  // --- LÓGICA DE ÁREAS E CARGOS ---
+  
+  // Mapeamento de Ícones para string
+  const iconMap = {
+    'LayoutDashboard': <LayoutDashboard size={20} />,
+    'Users': <Users size={20} />,
+    'ShoppingCart': <ShoppingCart size={20} />,
+    'Map': <Map size={20} />,
+    'Package': <Package size={20} />,
+    'Settings': <Settings size={20} />,
+    'Briefcase': <Briefcase size={20} />, // Ícone genérico para Área de Vendas
+    'Phone': <Phone size={20} /> // Ícone genérico para SAC
+  };
+
+  /**
+   * Mock/Definição Padrão de Áreas se o Backend não retornar ainda.
+   * Isso garante que seu sistema funcione IMEDIATAMENTE com a nova lógica.
+   */
+  const defaultAreas = [
+    {
+      id: 'sales_area',
+      name: 'Vendas',
+      icon: 'Briefcase',
+      pages: [
+        { label: 'Dashboard', path: '/app/dashboard' },
+        { label: 'Novo Pedido', path: '/app/orders/new' },
+        { label: 'Clientes', path: '/app/clients' },
+        { label: 'Rotas', path: '/app/routes/new' }
+      ]
+    },
+    {
+      id: 'admin_area',
+      name: 'Administrativo',
+      icon: 'Settings',
+      pages: [
+        { label: 'Dashboard Admin', path: '/admin/dashboard' },
+        { label: 'Produtos', path: '/admin/products' },
+        { label: 'Usuários', path: '/admin/users' }
+      ]
+    }
+  ];
+
+  // Se o usuário vier com "role_obj.areas", usamos. Senão, usamos o default.
+  // Nota: Filtramos por perfil para não mostrar Admin para Representante comum se não tiver cargo.
+  const userAreas = user?.role_obj?.areas?.length > 0 
+    ? user.role_obj.areas 
+    : (user?.profile === 'admin' ? defaultAreas : [defaultAreas[0]]); // Vendedor vê só Vendas
+
+  // Estado da Área Ativa (Selecionada na Sidebar)
+  const [activeArea, setActiveArea] = useState(userAreas[0]);
+
+  // Atualiza a Área Ativa se a URL mudar (para manter sintonizado se o usuário der F5)
+  useEffect(() => {
+    const foundArea = userAreas.find(area => 
+      area.pages?.some(page => location.pathname.startsWith(page.path))
+    );
+    if (foundArea) {
+      setActiveArea(foundArea);
+    }
+  }, [location.pathname, userAreas]);
 
   const handleLogout = () => {
     logout();
     navigate('/login');
   };
 
-  const navItems = [
-    { name: 'Dashboard', path: '/app/dashboard', icon: <LayoutDashboard size={20} /> },
-    { name: 'Clientes', path: '/app/clients', icon: <Users size={20} /> },
-    { name: 'Novo Pedido', path: '/app/orders/new', icon: <ShoppingCart size={20} /> },
-    // { name: 'Rotas', path: '/app/routes/new', icon: <Map size={20} /> }, 
-  ];
-
-  const isActive = (path) => location.pathname === path;
-
   return (
     <div className="flex h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-200">
-      {/* Sidebar Desktop */}
+      
+      {/* --- SIDEBAR: ÁREAS DO TENANT --- */}
       <aside 
         className={`hidden md:flex flex-col bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 transition-all duration-300 ease-in-out ${
           isCollapsed ? 'w-20' : 'w-64'
         }`}
       >
-        {/* Header da Sidebar - Clicável para colapsar */}
         <div 
           className="h-16 flex items-center justify-center border-b border-gray-200 dark:border-gray-700 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
           onClick={() => setIsCollapsed(!isCollapsed)}
-          title={isCollapsed ? "Expandir Menu" : "Minimizar Menu"}
         >
-           <img src="/logo_clara.png" alt="RepForce" className="h-8" />
-           {!isCollapsed && (
-             <span className="ml-2 text-xl font-bold text-blue-600 dark:text-blue-400 whitespace-nowrap overflow-hidden">
-               RepForce
-             </span>
-           )}
+           <img src="/logo_clara.png" alt="RepForce" className="h-8 object-contain" />
         </div>
         
         <nav className="flex-1 overflow-y-auto py-4 overflow-x-hidden">
+          <p className={`px-4 text-xs font-semibold text-gray-400 uppercase mb-2 ${isCollapsed ? 'text-center' : ''}`}>
+             {isCollapsed ? 'Áreas' : 'Áreas de Trabalho'}
+          </p>
           <ul className="space-y-1 px-3">
-            {navItems.map((item) => (
-              <li key={item.path}>
-                <Link
-                  to={item.path}
-                  className={`flex items-center py-3 text-sm font-medium rounded-lg transition-colors duration-150 ${
+            {userAreas.map((area) => (
+              <li key={area.id || area.name}>
+                <button
+                  onClick={() => {
+                      setActiveArea(area);
+                      // Navega para a primeira página da área automaticamente
+                      if (area.pages && area.pages.length > 0) {
+                          navigate(area.pages[0].path);
+                      }
+                  }}
+                  className={`w-full flex items-center py-3 text-sm font-medium rounded-lg transition-colors duration-150 ${
                     isCollapsed ? 'justify-center px-0' : 'px-4'
                   } ${
-                    isActive(item.path)
-                      ? 'bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
+                    activeArea?.name === area.name
+                      ? 'bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 shadow-sm'
                       : 'text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700'
                   }`}
-                  title={isCollapsed ? item.name : ''}
+                  title={isCollapsed ? area.name : ''}
                 >
-                  <span className={`${isCollapsed ? '' : 'mr-3'}`}>{item.icon}</span>
-                  {!isCollapsed && <span className="whitespace-nowrap">{item.name}</span>}
-                </Link>
+                  <span className={`${isCollapsed ? '' : 'mr-3'}`}>
+                    {iconMap[area.icon] || <Briefcase size={20}/>}
+                  </span>
+                  {!isCollapsed && <span className="whitespace-nowrap">{area.name}</span>}
+                </button>
               </li>
             ))}
           </ul>
@@ -87,40 +144,31 @@ const AppLayout = () => {
 
         <div className="p-4 border-t border-gray-200 dark:border-gray-700">
           {!isCollapsed ? (
-            // Versão Expandida do Footer
             <>
               <div className="flex items-center justify-between mb-4 px-2">
                  <div className="flex flex-col overflow-hidden">
                     <span className="text-sm font-medium text-gray-700 dark:text-gray-300 truncate" title={user?.full_name}>
-                        {user?.full_name || 'Usuário'}
+                        {user?.full_name || user?.name || 'Usuário'}
                     </span>
                     <span className="text-xs text-gray-500 dark:text-gray-400 truncate">
-                        Vendedor
+                        {user?.role_obj?.name || (user?.profile === 'admin' ? 'Administrador' : 'Vendedor')}
                     </span>
                  </div>
                  <button onClick={toggleTheme} className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700">
                     {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
                  </button>
               </div>
-              <button
-                onClick={handleLogout}
-                className="flex items-center w-full px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50 rounded-lg dark:text-red-400 dark:hover:bg-red-900/20 transition-colors"
-              >
+              <button onClick={handleLogout} className="flex items-center w-full px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50 rounded-lg dark:text-red-400 dark:hover:bg-red-900/20 transition-colors">
                 <LogOut size={18} className="mr-2" />
                 Sair
               </button>
             </>
           ) : (
-            // Versão Minimizada do Footer
             <div className="flex flex-col items-center space-y-4">
                <button onClick={toggleTheme} className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700">
                   {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
                </button>
-               <button
-                onClick={handleLogout}
-                className="text-red-600 hover:bg-red-50 rounded-lg dark:text-red-400 dark:hover:bg-red-900/20 p-2 transition-colors"
-                title="Sair"
-              >
+               <button onClick={handleLogout} className="text-red-600 hover:bg-red-50 rounded-lg dark:text-red-400 dark:hover:bg-red-900/20 p-2 transition-colors">
                 <LogOut size={20} />
               </button>
             </div>
@@ -128,42 +176,77 @@ const AppLayout = () => {
         </div>
       </aside>
 
-      {/* Mobile Header & Menu (Mantido igual) */}
       <div className="flex-1 flex flex-col overflow-hidden">
+        {/* --- HEADER MOBILE --- */}
         <header className="md:hidden flex items-center justify-between p-4 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
           <div className="flex items-center">
-            <img src="/logo_clara.png" alt="RepForce" className="h-6 mr-2" />
-            <span className="font-bold text-gray-800 dark:text-white">RepForce</span>
+            <img src="/logo_clara.png" alt="RepForce" className="h-6 mr-2 object-contain" />
           </div>
           <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="text-gray-600 dark:text-gray-300">
             {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
           </button>
         </header>
 
+        {/* --- MENU SUPERIOR (TABS DA ÁREA ATIVA) --- */}
+        <div className="hidden md:flex bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 px-6 py-0 items-end h-16 shadow-sm z-10">
+            {activeArea?.pages?.map((page) => {
+                const isPageActive = location.pathname === page.path;
+                return (
+                    <Link
+                        key={page.path}
+                        to={page.path}
+                        className={`mr-6 py-4 text-sm font-medium border-b-2 transition-colors ${
+                            isPageActive 
+                            ? 'border-blue-600 text-blue-600 dark:text-blue-400 dark:border-blue-400' 
+                            : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:border-gray-300'
+                        }`}
+                    >
+                        {page.label}
+                    </Link>
+                );
+            })}
+        </div>
+
+        {/* Mobile Menu (Simplificado para mostrar páginas da área ativa) */}
         {isMobileMenuOpen && (
           <div className="md:hidden absolute top-16 left-0 w-full bg-white dark:bg-gray-800 z-50 border-b border-gray-200 dark:border-gray-700 shadow-lg">
             <nav className="p-4">
+               <p className="text-xs font-semibold text-gray-400 uppercase mb-2">Área: {activeArea?.name}</p>
               <ul className="space-y-2">
-                {navItems.map((item) => (
-                  <li key={item.path}>
+                {activeArea?.pages?.map((page) => (
+                  <li key={page.path}>
                     <Link
-                      to={item.path}
+                      to={page.path}
                       onClick={() => setIsMobileMenuOpen(false)}
                       className={`flex items-center px-4 py-3 text-sm font-medium rounded-lg ${
-                        isActive(item.path)
+                        location.pathname === page.path
                           ? 'bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
                           : 'text-gray-700 dark:text-gray-300'
                       }`}
                     >
-                      <span className="mr-3">{item.icon}</span>
-                      {item.name}
+                      {page.label}
                     </Link>
                   </li>
                 ))}
+                 {/* Seletor de Área Mobile (Opção extra para trocar de área) */}
+                 <li className="pt-4 border-t border-gray-100 dark:border-gray-700 mt-2">
+                    <p className="text-xs font-semibold text-gray-400 uppercase mb-2">Trocar Área</p>
+                    <div className="flex gap-2 overflow-x-auto pb-2">
+                        {userAreas.map(area => (
+                            <button 
+                                key={area.id}
+                                onClick={() => { setActiveArea(area); setIsMobileMenuOpen(false); navigate(area.pages[0].path); }}
+                                className="px-3 py-1 text-xs border rounded dark:text-white dark:border-gray-600"
+                            >
+                                {area.name}
+                            </button>
+                        ))}
+                    </div>
+                 </li>
                 <li className="pt-2 border-t border-gray-100 dark:border-gray-700 mt-2">
                    <button onClick={toggleTheme} className="flex items-center w-full px-4 py-3 text-sm text-gray-700 dark:text-gray-300">
                       {theme === 'dark' ? <Sun size={18} className="mr-3"/> : <Moon size={18} className="mr-3"/>}
-                      Alterar Tema
+                      Tema
                    </button>
                 </li>
                 <li>
@@ -180,8 +263,7 @@ const AppLayout = () => {
           </div>
         )}
 
-        {/* Main Content */}
-        <main className="flex-1 overflow-y-auto p-4 md:p-6">
+        <main className="flex-1 overflow-y-auto p-4 md:p-6 bg-gray-50 dark:bg-gray-900">
           <Outlet />
         </main>
       </div>

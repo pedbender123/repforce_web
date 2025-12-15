@@ -15,7 +15,7 @@ import {
 } from 'lucide-react';
 
 const SysAdminLayout = () => {
-  const { sysAdminUser, logout } = useContext(SysAdminAuthContext);
+  const { logout } = useContext(SysAdminAuthContext);
   const { theme, toggleTheme } = useContext(ThemeContext);
   const navigate = useNavigate();
   const location = useLocation();
@@ -48,12 +48,8 @@ const SysAdminLayout = () => {
           onClick={() => setIsCollapsed(!isCollapsed)}
           title="Clique para alternar o menu"
         >
-          <img src="/logo_clara.png" alt="RepForce" className="h-8" />
-           {!isCollapsed && (
-             <span className="ml-2 text-xl font-bold text-white whitespace-nowrap">
-               SysAdmin
-             </span>
-           )}
+          {/* CORREÇÃO: Texto removido para dar destaque total à logo */}
+          <img src="/logo_clara.png" alt="RepForce" className="h-8 w-auto object-contain" />
         </div>
         
         <nav className="flex-1 overflow-y-auto py-4 overflow-x-hidden">
@@ -116,12 +112,12 @@ const SysAdminLayout = () => {
         </div>
       </aside>
 
-      {/* Mobile Header (Mantido) */}
+      {/* Mobile Header */}
       <div className="flex-1 flex flex-col overflow-hidden">
         <header className="md:hidden flex items-center justify-between p-4 bg-gray-900 text-white border-b border-gray-800">
           <div className="flex items-center">
              <img src="/logo_clara.png" alt="RepForce" className="h-6 mr-2" />
-             <span className="font-bold">SysAdmin</span>
+             {/* Texto removido no mobile também para consistência */}
           </div>
           <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="text-gray-300">
             {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}

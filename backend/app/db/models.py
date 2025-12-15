@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, Float, DateTime, Text, Enum, JSON
+from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, Float, DateTime, Text, Enum, JSON, Table
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from app.db.database import Base
@@ -17,17 +17,24 @@ class OrderStatus(str, enum.Enum):
     REJECTED = "rejected"
     CANCELED = "canceled"
 
+# --- TABELAS DE ASSOCIAÇÃO (Many-to-Many) ---
+
+# Tabela de ligação: Um Cargo pode ter várias Áreas, e uma Área pode estar em vários Cargos
+role_area_association = Table(
+    'role_area_association',
+    Base.metadata,
+    Column('role_id', Integer, ForeignKey('roles.id')),
+    Column('area_id', Integer, ForeignKey('areas.id'))
+)
+
 # --- CORE ---
 class Tenant(Base):
     __tablename__ = "tenants"
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, index=True)
     cnpj = Column(String, unique=True, index=True)
-    
-    # CORREÇÃO: Adicionada a coluna status que faltava
     status = Column(String, default="active") 
     is_active = Column(Boolean, default=True)
-    
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     tenant_type = Column(String, default="industry") 
     commercial_info = Column(Text, nullable=True)
@@ -39,6 +46,44 @@ class Tenant(Base):
     orders = relationship("Order", back_populates="tenant")
     suppliers = relationship("Supplier", back_populates="tenant")
     routes = relationship("VisitRoute", back_populates="tenant")
+    
+    # Novos relacionamentos de configuração
+    roles = relationship("Role", back_populates="tenant")
+    areas = relationship("Area", back_populates="tenant")
+
+class Area(Base):
+    """
+    Representa uma Área de Trabalho (ex: Vendas, SAC, Estoque).
+    Contém uma lista de páginas (menu items) em JSON.
+    """
+    __tablename__ = "areas"
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String) # Ex: "Vendas", "SAC"
+    icon = Column(String, nullable=True) # Ex: "ShoppingCart", "Phone"
+    
+    # Estrutura JSON esperada: [{"label": "Novo Pedido", "path": "/app/orders/new"}, ...]
+    pages_json = Column(JSON, default=[]) 
+    
+    tenant_id = Column(Integer, ForeignKey("tenants.id"))
+    tenant = relationship("Tenant", back_populates="areas")
+    
+    roles = relationship("Role", secondary=role_area_association, back_populates="areas")
+
+class Role(Base):
+    """
+    Representa um Cargo (ex: Vendedor, Gerente, Atendente).
+    Define quais Áreas o usuário pode ver.
+    """
+    __tablename__ = "roles"
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String) # Ex: "Vendedor Externo"
+    description = Column(String, nullable=True)
+    
+    tenant_id = Column(Integer, ForeignKey("tenants.id"))
+    tenant = relationship("Tenant", back_populates="roles")
+    
+    areas = relationship("Area", secondary=role_area_association, back_populates="roles")
+    users = relationship("User", back_populates="role_obj")
 
 class User(Base):
     __tablename__ = "users"
@@ -48,11 +93,18 @@ class User(Base):
     hashed_password = Column(String)
     name = Column(String)
     full_name = Column(String, nullable=True)
-    profile = Column(String, default="sales_rep")
+    
+    # Mantemos 'profile' para distinguir SysAdmin vs Usuário de Tenant
+    profile = Column(String, default="sales_rep") 
     is_active = Column(Boolean, default=True)
     
     tenant_id = Column(Integer, ForeignKey("tenants.id"), nullable=True)
     tenant = relationship("Tenant", back_populates="users")
+    
+    # Novo: Link para o Cargo (Role)
+    role_id = Column(Integer, ForeignKey("roles.id"), nullable=True)
+    role_obj = relationship("Role", back_populates="users")
+
     orders = relationship("Order", back_populates="sales_rep")
     routes = relationship("VisitRoute", back_populates="user")
 
@@ -95,18 +147,13 @@ class Client(Base):
     email = Column(String, nullable=True)
     phone = Column(String, nullable=True)
     status = Column(String, default="active")
-    
-    # Endereço (Flattened)
     address = Column(String, nullable=True)
     city = Column(String, nullable=True)
     state = Column(String, nullable=True)
     zip_code = Column(String, nullable=True)
-    
     tenant_id = Column(Integer, ForeignKey("tenants.id"))
     tenant = relationship("Tenant", back_populates="clients")
     orders = relationship("Order", back_populates="client")
-    
-    # Relacionamento com Contatos
     contacts = relationship("Contact", back_populates="client", cascade="all, delete-orphan")
 
 class Contact(Base):
@@ -117,7 +164,6 @@ class Contact(Base):
     email = Column(String, nullable=True)
     phone = Column(String, nullable=True)
     is_primary = Column(Boolean, default=False)
-    
     client_id = Column(Integer, ForeignKey("clients.id"))
     client = relationship("Client", back_populates="contacts")
 
@@ -131,7 +177,6 @@ class Order(Base):
     total_value = Column(Float, default=0.0)
     margin_value = Column(Float, default=0.0)
     notes = Column(Text, nullable=True)
-    
     tenant_id = Column(Integer, ForeignKey("tenants.id"))
     tenant = relationship("Tenant", back_populates="orders")
     client_id = Column(Integer, ForeignKey("clients.id"))
@@ -156,11 +201,9 @@ class VisitRoute(Base):
     __tablename__ = "visit_routes"
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String)
-    date = Column(String) # YYYY-MM-DD
-    stops = Column(JSON) # Lista de clientes/paradas
-    
+    date = Column(String)
+    stops = Column(JSON)
     tenant_id = Column(Integer, ForeignKey("tenants.id"))
     tenant = relationship("Tenant", back_populates="routes")
-    
     user_id = Column(Integer, ForeignKey("users.id"))
     user = relationship("User", back_populates="routes")

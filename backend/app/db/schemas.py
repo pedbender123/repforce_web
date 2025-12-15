@@ -1,7 +1,40 @@
 from pydantic import BaseModel, EmailStr
-from typing import List, Optional, Any
+from typing import List, Optional, Any, Dict
 from datetime import datetime
 from app.db.models import UserRole, OrderStatus
+
+# --- SCHEMAS AUXILIARES PARA ÁREAS E CARGOS ---
+class PageItem(BaseModel):
+    label: str
+    path: str
+
+class AreaBase(BaseModel):
+    name: str
+    icon: Optional[str] = "LayoutDashboard"
+    pages_json: List[PageItem] = []
+
+class AreaCreate(AreaBase):
+    pass
+
+class Area(AreaBase):
+    id: int
+    tenant_id: int
+    class Config:
+        from_attributes = True
+
+class RoleBase(BaseModel):
+    name: str
+    description: Optional[str] = None
+
+class RoleCreate(RoleBase):
+    area_ids: List[int] = []
+
+class Role(RoleBase):
+    id: int
+    tenant_id: int
+    areas: List[Area] = []
+    class Config:
+        from_attributes = True
 
 # --- TOKEN ---
 class Token(BaseModel):
@@ -12,6 +45,7 @@ class TokenData(BaseModel):
     username: Optional[str] = None
     profile: Optional[str] = None
     tenant_id: Optional[int] = None
+    role_id: Optional[int] = None # Adicionado
 
 # --- TENANT ---
 class TenantBase(BaseModel):
@@ -44,15 +78,17 @@ class UserBase(BaseModel):
 class UserCreate(UserBase):
     password: str
     tenant_id: Optional[int] = None
+    role_id: Optional[int] = None # Novo campo
 
 class User(UserBase):
     id: int
     tenant_id: Optional[int] = None
     tenant: Optional[Tenant] = None 
+    role_obj: Optional[Role] = None # Inclui o objeto Role completo
     class Config:
         from_attributes = True
 
-# --- CONTACT (NOVO) ---
+# --- CONTACT ---
 class ContactBase(BaseModel):
     name: str
     role: Optional[str] = None
@@ -124,11 +160,11 @@ class Client(ClientBase):
     tenant_id: int
     city: Optional[str] = None
     state: Optional[str] = None
-    contacts: List[Contact] = [] # Inclui contatos
+    contacts: List[Contact] = []
     class Config:
         from_attributes = True
 
-# --- ROUTES (NOVO) ---
+# --- ROUTES ---
 class RouteStop(BaseModel):
     client_id: int
     sequence: int
