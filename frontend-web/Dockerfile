@@ -1,35 +1,23 @@
-# Estágio 1: Build do React
+# Estágio 1: Build
 FROM node:18-alpine as build
+
 WORKDIR /app
 
-# Copia package.json e package-lock.json
-COPY package.json ./
-COPY package-lock.json ./
+# MÁGICA AQUI: O asterisco (*) faz copiar o package-lock.json APENAS se ele existir.
+# Se não existir, ele copia só o package.json e não dá erro.
+COPY package*.json ./
 
-# Instala dependências
+# Instala as dependências (cria o lockfile internamente se precisar)
 RUN npm install
 
-# Copia o restante do código-fonte
+# Copia o restante do código fonte
 COPY . .
 
-# Constrói a aplicação para produção
+# Cria o build de produção
 RUN npm run build
 
 # Estágio 2: Servir com Nginx
 FROM nginx:alpine
-WORKDIR /usr/share/nginx/html
-
-# Remove o HTML padrão do Nginx
-RUN rm -rf ./*
-
-# Copia os arquivos estáticos do estágio de build
-COPY --from=build /app/build .
-
-# --- ESSA É A CORREÇÃO ---
-# Copia a configuração Nginx com um nome diferente de "default.conf"
-# para que os scripts de inicialização da imagem Nginx não a modifiquem.
-COPY nginx.conf /etc/nginx/conf.d/repforce.conf
-# --- FIM DA CORREÇÃO ---
-
+COPY --from=build /app/build /usr/share/nginx/html
 EXPOSE 80
 CMD ["nginx", "-g", "daemon off;"]
