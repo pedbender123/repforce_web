@@ -9,18 +9,25 @@ class Token(BaseModel):
     token_type: str
 
 class TokenData(BaseModel):
-    email: Optional[str] = None
+    username: Optional[str] = None
+    profile: Optional[str] = None
+    tenant_id: Optional[int] = None
 
 # --- TENANT ---
 class TenantBase(BaseModel):
     name: str
-    cnpj: str
+    cnpj: Optional[str] = None
+    tenant_type: Optional[str] = 'industry'
 
 class TenantCreate(TenantBase):
-    pass
+    email: Optional[EmailStr] = None
+    phone: Optional[str] = None
+    status: Optional[str] = 'inactive'
+    commercial_info: Optional[str] = None
 
 class Tenant(TenantBase):
     id: int
+    status: Optional[str] = 'active'
     is_active: bool
     created_at: datetime
     
@@ -29,9 +36,10 @@ class Tenant(TenantBase):
 
 # --- USER ---
 class UserBase(BaseModel):
-    email: EmailStr
-    full_name: str
-    role: UserRole = UserRole.SALES_REP
+    username: str
+    email: Optional[EmailStr] = None
+    name: str
+    profile: str = "sales_rep"
     is_active: bool = True
 
 class UserCreate(UserBase):
@@ -39,26 +47,46 @@ class UserCreate(UserBase):
     tenant_id: Optional[int] = None
 
 class UserUpdate(BaseModel):
-    full_name: Optional[str] = None
+    name: Optional[str] = None
     password: Optional[str] = None
     is_active: Optional[bool] = None
 
 class User(UserBase):
     id: int
     tenant_id: Optional[int] = None
+    tenant: Optional[Tenant] = None 
+
+    class Config:
+        from_attributes = True
+
+# --- SUPPLIER (NOVO - Faltava e quebrava o backend) ---
+class SupplierBase(BaseModel):
+    name: str
+    cnpj: Optional[str] = None
+    email: Optional[EmailStr] = None
+    phone: Optional[str] = None
+
+class SupplierCreate(SupplierBase):
+    pass
+
+class Supplier(SupplierBase):
+    id: int
+    tenant_id: int
 
     class Config:
         from_attributes = True
 
 # --- PRODUCT ---
 class ProductBase(BaseModel):
-    sku: str
+    sku: Optional[str] = None
     name: str
     description: Optional[str] = None
     price: float
-    stock_quantity: int = 0
+    cost_price: Optional[float] = None
+    stock: int = 0
     image_url: Optional[str] = None
     category: Optional[str] = None
+    supplier_id: Optional[int] = None
 
 class ProductCreate(ProductBase):
     pass
@@ -66,23 +94,22 @@ class ProductCreate(ProductBase):
 class Product(ProductBase):
     id: int
     tenant_id: int
+    supplier: Optional[Supplier] = None
 
     class Config:
         from_attributes = True
 
-# --- CLIENT (Simplificado - Apenas Cadastral) ---
+# --- CLIENT ---
 class ClientBase(BaseModel):
-    fantasy_name: str
-    company_name: str
-    cnpj_cpf: str
+    name: str
+    trade_name: Optional[str] = None
+    cnpj: str
     email: Optional[str] = None
     phone: Optional[str] = None
-    address: Optional[str] = None
-    city: Optional[str] = None
-    state: Optional[str] = None
+    status: Optional[str] = 'active'
 
 class ClientCreate(ClientBase):
-    pass
+    address_data: Optional[dict] = None # Para receber JSON do front
 
 class Client(ClientBase):
     id: int
@@ -95,6 +122,7 @@ class Client(ClientBase):
 class OrderItemBase(BaseModel):
     product_id: int
     quantity: int
+    unit_price: Optional[float] = None # Opcional na criação, backend preenche
 
 class OrderItemCreate(OrderItemBase):
     pass
@@ -103,7 +131,9 @@ class OrderItem(OrderItemBase):
     id: int
     unit_price: float
     total: float
-    product_name: str = "" # Helper field for display
+    
+    # Helper field para UI
+    name: Optional[str] = None 
 
     class Config:
         from_attributes = True
@@ -115,13 +145,14 @@ class OrderCreate(BaseModel):
 
 class Order(BaseModel):
     id: int
-    external_id: Optional[str] = None
     created_at: datetime
-    status: OrderStatus
+    status: str
     total_value: float
     notes: Optional[str] = None
     client_id: int
-    sales_rep_id: int
+    # representative_id: int
+    
+    # Relações
     client: Optional[Client] = None
     items: List[OrderItem] = []
 
