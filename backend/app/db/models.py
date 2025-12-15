@@ -23,7 +23,11 @@ class Tenant(Base):
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, index=True)
     cnpj = Column(String, unique=True, index=True)
+    
+    # CORREÇÃO: Adicionada a coluna status que faltava
+    status = Column(String, default="active") 
     is_active = Column(Boolean, default=True)
+    
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     tenant_type = Column(String, default="industry") 
     commercial_info = Column(Text, nullable=True)
@@ -34,7 +38,7 @@ class Tenant(Base):
     clients = relationship("Client", back_populates="tenant")
     orders = relationship("Order", back_populates="tenant")
     suppliers = relationship("Supplier", back_populates="tenant")
-    routes = relationship("VisitRoute", back_populates="tenant") # NOVO
+    routes = relationship("VisitRoute", back_populates="tenant")
 
 class User(Base):
     __tablename__ = "users"
@@ -50,7 +54,7 @@ class User(Base):
     tenant_id = Column(Integer, ForeignKey("tenants.id"), nullable=True)
     tenant = relationship("Tenant", back_populates="users")
     orders = relationship("Order", back_populates="sales_rep")
-    routes = relationship("VisitRoute", back_populates="user") # NOVO
+    routes = relationship("VisitRoute", back_populates="user")
 
 # --- CATALOG ---
 class Supplier(Base):
@@ -102,7 +106,7 @@ class Client(Base):
     tenant = relationship("Tenant", back_populates="clients")
     orders = relationship("Order", back_populates="client")
     
-    # Relacionamento com Contatos (NOVO)
+    # Relacionamento com Contatos
     contacts = relationship("Contact", back_populates="client", cascade="all, delete-orphan")
 
 class Contact(Base):
@@ -147,7 +151,7 @@ class OrderItem(Base):
     order = relationship("Order", back_populates="items")
     product = relationship("Product")
 
-# --- VISITS & ROUTES (NOVO) ---
+# --- VISITS & ROUTES ---
 class VisitRoute(Base):
     __tablename__ = "visit_routes"
     id = Column(Integer, primary_key=True, index=True)
