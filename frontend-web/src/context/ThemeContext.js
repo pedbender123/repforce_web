@@ -30,4 +30,8 @@ export const ThemeProvider = ({ children }) => {
 };
 
 // Hook personalizado opcional para facilitar o uso
-export const useTheme = () => useContext(ThemeContext);
+export const useAuth = () => {
+    const context = useContext(AuthContext);
+    // ... validação ...
+    return context;
+};
