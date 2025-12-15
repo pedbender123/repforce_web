@@ -1,10 +1,10 @@
-import { createContext, useState, useEffect } from 'react';
+import { createContext, useState, useEffect, useContext } from 'react';
 import { jwtDecode } from 'jwt-decode';
 
-// Exportação NOMEADA (Isso corrige o erro do build)
+// 1. Exportação do Contexto
 export const AuthContext = createContext({});
 
-// Exportação do Provider
+// 2. Exportação do Provider
 export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -14,9 +14,7 @@ export const AuthProvider = ({ children }) => {
             const token = localStorage.getItem('token');
             if (token) {
                 try {
-                    // Tenta decodificar o token se existir
                     const decoded = jwtDecode(token);
-                    // Verifica se o token não expirou (opcional, mas recomendado)
                     const currentTime = Date.now() / 1000;
                     if (decoded.exp && decoded.exp < currentTime) {
                         logout();
@@ -50,4 +48,13 @@ export const AuthProvider = ({ children }) => {
             {children}
         </AuthContext.Provider>
     );
+};
+
+// 3. Exportação do Hook Personalizado (Adicionado corretamente aqui)
+export const useAuth = () => {
+    const context = useContext(AuthContext);
+    if (!context) {
+        throw new Error('useAuth deve ser usado dentro de um AuthProvider');
+    }
+    return context;
 };

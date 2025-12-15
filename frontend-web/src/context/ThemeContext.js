@@ -1,20 +1,15 @@
 import React, { createContext, useState, useEffect, useContext } from 'react';
 
-// Exportação NOMEADA essencial para corrigir o erro do build
+// Exportação do Contexto
 export const ThemeContext = createContext();
 
 export const ThemeProvider = ({ children }) => {
-  // Verifica se já existe preferência salva ou usa 'light' como padrão
   const [theme, setTheme] = useState(localStorage.getItem('theme') || 'light');
 
   useEffect(() => {
     const root = window.document.documentElement;
-    
-    // Remove a classe antiga e adiciona a nova (dark/light) no elemento HTML
     root.classList.remove(theme === 'dark' ? 'light' : 'dark');
     root.classList.add(theme);
-
-    // Salva a preferência
     localStorage.setItem('theme', theme);
   }, [theme]);
 
@@ -29,9 +24,11 @@ export const ThemeProvider = ({ children }) => {
   );
 };
 
-// Hook personalizado opcional para facilitar o uso
-export const useAuth = () => {
-    const context = useContext(AuthContext);
-    // ... validação ...
+// Hook personalizado para o TEMA (Corrigido)
+export const useTheme = () => {
+    const context = useContext(ThemeContext);
+    if (!context) {
+        throw new Error('useTheme deve ser usado dentro de um ThemeProvider');
+    }
     return context;
 };
