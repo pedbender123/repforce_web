@@ -1,24 +1,20 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useState, useEffect, useContext } from 'react';
 
-const ThemeContext = createContext();
-
-export const useTheme = () => useContext(ThemeContext);
+// Exportação NOMEADA essencial para corrigir o erro do build
+export const ThemeContext = createContext();
 
 export const ThemeProvider = ({ children }) => {
-  // Verifica se o usuário já escolheu um tema antes, ou pega do sistema
-  const [theme, setTheme] = useState(() => {
-    const savedTheme = localStorage.getItem('theme');
-    if (savedTheme) {
-      return savedTheme;
-    }
-    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-  });
+  // Verifica se já existe preferência salva ou usa 'light' como padrão
+  const [theme, setTheme] = useState(localStorage.getItem('theme') || 'light');
 
-  // Aplica a classe 'dark' ou 'light' no HTML da página
   useEffect(() => {
     const root = window.document.documentElement;
-    root.classList.remove('light', 'dark');
+    
+    // Remove a classe antiga e adiciona a nova (dark/light) no elemento HTML
+    root.classList.remove(theme === 'dark' ? 'light' : 'dark');
     root.classList.add(theme);
+
+    // Salva a preferência
     localStorage.setItem('theme', theme);
   }, [theme]);
 
@@ -32,3 +28,6 @@ export const ThemeProvider = ({ children }) => {
     </ThemeContext.Provider>
   );
 };
+
+// Hook personalizado opcional para facilitar o uso
+export const useTheme = () => useContext(ThemeContext);
