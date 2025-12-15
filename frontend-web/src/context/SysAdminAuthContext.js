@@ -1,11 +1,11 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-// CORREÇÃO DE CAMINHO: Apenas um "../" pois estamos em src/context
 import sysAdminApiClient from '../api/sysAdminApiClient'; 
 import { jwtDecode } from 'jwt-decode';
 
 const SYSADMIN_TOKEN_KEY = 'sysadmin_token';
 
-const SysAdminAuthContext = createContext(null);
+// CORREÇÃO: Adicionado 'export' aqui. Isso resolve o erro do build.
+export const SysAdminAuthContext = createContext(null);
 
 export const useSysAdminAuth = () => useContext(SysAdminAuthContext);
 
