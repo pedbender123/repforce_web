@@ -1,5 +1,5 @@
 from pydantic import BaseModel, EmailStr
-from typing import List, Optional
+from typing import List, Optional, Any
 from datetime import datetime
 from app.db.models import UserRole, OrderStatus
 
@@ -30,7 +30,6 @@ class Tenant(TenantBase):
     status: Optional[str] = 'active'
     is_active: bool
     created_at: datetime
-    
     class Config:
         from_attributes = True
 
@@ -46,20 +45,31 @@ class UserCreate(UserBase):
     password: str
     tenant_id: Optional[int] = None
 
-class UserUpdate(BaseModel):
-    name: Optional[str] = None
-    password: Optional[str] = None
-    is_active: Optional[bool] = None
-
 class User(UserBase):
     id: int
     tenant_id: Optional[int] = None
     tenant: Optional[Tenant] = None 
-
     class Config:
         from_attributes = True
 
-# --- SUPPLIER (NOVO - Faltava e quebrava o backend) ---
+# --- CONTACT (NOVO) ---
+class ContactBase(BaseModel):
+    name: str
+    role: Optional[str] = None
+    email: Optional[str] = None
+    phone: Optional[str] = None
+    is_primary: bool = False
+
+class ContactCreate(ContactBase):
+    pass
+
+class Contact(ContactBase):
+    id: int
+    client_id: int
+    class Config:
+        from_attributes = True
+
+# --- SUPPLIER ---
 class SupplierBase(BaseModel):
     name: str
     cnpj: Optional[str] = None
@@ -72,7 +82,6 @@ class SupplierCreate(SupplierBase):
 class Supplier(SupplierBase):
     id: int
     tenant_id: int
-
     class Config:
         from_attributes = True
 
@@ -95,7 +104,6 @@ class Product(ProductBase):
     id: int
     tenant_id: int
     supplier: Optional[Supplier] = None
-
     class Config:
         from_attributes = True
 
@@ -103,18 +111,38 @@ class Product(ProductBase):
 class ClientBase(BaseModel):
     name: str
     trade_name: Optional[str] = None
-    cnpj: str
+    cnpj: Optional[str] = None
     email: Optional[str] = None
     phone: Optional[str] = None
     status: Optional[str] = 'active'
 
 class ClientCreate(ClientBase):
-    address_data: Optional[dict] = None # Para receber JSON do front
+    address_data: Optional[dict] = None 
 
 class Client(ClientBase):
     id: int
     tenant_id: int
+    city: Optional[str] = None
+    state: Optional[str] = None
+    contacts: List[Contact] = [] # Inclui contatos
+    class Config:
+        from_attributes = True
 
+# --- ROUTES (NOVO) ---
+class RouteStop(BaseModel):
+    client_id: int
+    sequence: int
+
+class VisitRouteCreate(BaseModel):
+    name: str
+    date: str
+    stops: List[RouteStop]
+
+class VisitRoute(BaseModel):
+    id: int
+    name: str
+    date: str
+    stops: Any
     class Config:
         from_attributes = True
 
@@ -122,7 +150,6 @@ class Client(ClientBase):
 class OrderItemBase(BaseModel):
     product_id: int
     quantity: int
-    unit_price: Optional[float] = None # Opcional na criação, backend preenche
 
 class OrderItemCreate(OrderItemBase):
     pass
@@ -131,10 +158,7 @@ class OrderItem(OrderItemBase):
     id: int
     unit_price: float
     total: float
-    
-    # Helper field para UI
     name: Optional[str] = None 
-
     class Config:
         from_attributes = True
 
@@ -150,11 +174,7 @@ class Order(BaseModel):
     total_value: float
     notes: Optional[str] = None
     client_id: int
-    # representative_id: int
-    
-    # Relações
     client: Optional[Client] = None
     items: List[OrderItem] = []
-
     class Config:
         from_attributes = True
