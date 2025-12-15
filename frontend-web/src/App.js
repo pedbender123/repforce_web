@@ -18,7 +18,7 @@ import SysAdminLogin from './pages/sysadmin/SysAdminLogin';
 // App Pages (Sales Rep)
 import AppDashboard from './pages/app/AppDashboard';
 import AppClientList from './pages/app/AppClientList';
-import AppClientDetails from './pages/app/AppClientDetails'; // Adaptar para remover abas de CRM
+import AppClientDetails from './pages/app/AppClientDetails';
 import AppClientForm from './pages/app/AppClientForm';
 import AppOrderCreate from './pages/app/AppOrderCreate';
 import AppRouteCreate from './pages/app/AppRouteCreate';
@@ -33,6 +33,7 @@ import UserManagement from './pages/admin/UserManagement';
 import SysAdminDashboard from './pages/sysadmin/SysAdminDashboard';
 import TenantManagement from './pages/sysadmin/TenantManagement';
 import AllUserManagement from './pages/sysadmin/AllUserManagement';
+import AreaManagement from './pages/sysadmin/AreaManagement'; // NOVO
 
 function App() {
   return (
@@ -51,18 +52,11 @@ function App() {
               {/* APP ROUTES (Sales Rep) */}
               <Route path="/app" element={<PrivateRoute><AppLayout /></PrivateRoute>}>
                 <Route path="dashboard" element={<AppDashboard />} />
-                
-                {/* Clientes - Mantidos apenas como cadastro para pedidos */}
                 <Route path="clients" element={<AppClientList />} />
                 <Route path="clients/new" element={<AppClientForm />} />
                 <Route path="clients/:id" element={<AppClientDetails />} />
-                
-                {/* Pedidos */}
                 <Route path="orders/new" element={<AppOrderCreate />} />
-                
-                {/* Rotas (Opcional) */}
                 <Route path="routes/new" element={<AppRouteCreate />} />
-                
                 <Route index element={<Navigate to="dashboard" replace />} />
               </Route>
 
@@ -81,6 +75,7 @@ function App() {
                 <Route path="dashboard" element={<SysAdminDashboard />} />
                 <Route path="tenants" element={<TenantManagement />} />
                 <Route path="users" element={<AllUserManagement />} />
+                <Route path="areas" element={<AreaManagement />} /> {/* NOVO */}
                 <Route index element={<Navigate to="dashboard" replace />} />
               </Route>
 

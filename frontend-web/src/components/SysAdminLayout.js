@@ -11,7 +11,8 @@ import {
   ShieldAlert,
   Settings,
   Database,
-  Server
+  Server,
+  Layout
 } from 'lucide-react';
 
 const SysAdminLayout = () => {
@@ -22,15 +23,14 @@ const SysAdminLayout = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
 
-  // Mapeamento de ícones
   const iconMap = {
     'ShieldAlert': <ShieldAlert size={20} />,
     'Settings': <Settings size={20} />,
     'Database': <Database size={20} />,
-    'Server': <Server size={20} />
+    'Server': <Server size={20} />,
+    'Layout': <Layout size={20} />
   };
 
-  // Definição PADRÃO das Áreas do SysAdmin (Garante que o menu nunca fique vazio)
   const defaultSysAdminAreas = [
     {
       id: 'sys_core',
@@ -38,27 +38,15 @@ const SysAdminLayout = () => {
       icon: 'ShieldAlert',
       pages: [
         { label: 'Dashboard', path: '/sysadmin/dashboard' },
-        { label: 'Tenants (Empresas)', path: '/sysadmin/tenants' },
+        { label: 'Tenants', path: '/sysadmin/tenants' },
         { label: 'Usuários Globais', path: '/sysadmin/users' },
+        { label: 'Áreas de Trabalho', path: '/sysadmin/areas' } // Adicionado
       ]
     },
-    // Exemplo de como seria uma segunda área (futuro)
-    /* {
-      id: 'sys_infra',
-      name: 'Infraestrutura',
-      icon: 'Server',
-      pages: [
-        { label: 'Logs', path: '/sysadmin/logs' },
-        { label: 'Health Check', path: '/sysadmin/health' }
-      ]
-    }
-    */
   ];
 
-  // Estado da Área Ativa
   const [activeArea, setActiveArea] = useState(defaultSysAdminAreas[0]);
 
-  // Sincroniza a aba ativa com a URL atual
   useEffect(() => {
     const foundArea = defaultSysAdminAreas.find(area => 
       area.pages?.some(page => location.pathname.startsWith(page.path))
@@ -76,7 +64,7 @@ const SysAdminLayout = () => {
   return (
     <div className="flex h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-200">
       
-      {/* --- SIDEBAR: ÁREAS --- */}
+      {/* Sidebar Desktop */}
       <aside 
         className={`hidden md:flex flex-col bg-gray-900 dark:bg-black border-r border-gray-800 transition-all duration-300 ease-in-out ${
           isCollapsed ? 'w-20' : 'w-64'
@@ -156,7 +144,6 @@ const SysAdminLayout = () => {
       </aside>
 
       <div className="flex-1 flex flex-col overflow-hidden">
-        {/* --- HEADER MOBILE --- */}
         <header className="md:hidden flex items-center justify-between p-4 bg-gray-900 text-white border-b border-gray-800">
           <div className="flex items-center">
              <img src="/logo_clara.png" alt="RepForce" className="h-6 mr-2" />
@@ -166,7 +153,6 @@ const SysAdminLayout = () => {
           </button>
         </header>
 
-        {/* --- MENU SUPERIOR (ABAS DA ÁREA ATIVA) --- */}
         <div className="hidden md:flex bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-0 items-end h-16 shadow-sm z-10">
             {activeArea?.pages?.map((page) => {
                 const isPageActive = location.pathname === page.path;
@@ -207,20 +193,6 @@ const SysAdminLayout = () => {
                     </Link>
                   </li>
                 ))}
-                 <li className="pt-4 border-t border-gray-800 mt-2">
-                   <p className="text-xs font-semibold text-gray-500 uppercase mb-2">Trocar Área</p>
-                   <div className="flex gap-2 overflow-x-auto pb-2">
-                      {defaultSysAdminAreas.map(area => (
-                          <button 
-                              key={area.id}
-                              onClick={() => { setActiveArea(area); setIsMobileMenuOpen(false); navigate(area.pages[0].path); }}
-                              className="px-3 py-1 text-xs border border-gray-700 rounded text-gray-300"
-                          >
-                              {area.name}
-                          </button>
-                      ))}
-                   </div>
-                </li>
                 <li className="pt-2 border-t border-gray-800 mt-2">
                    <button onClick={toggleTheme} className="flex items-center w-full px-4 py-3 text-sm text-gray-400">
                       {theme === 'dark' ? <Sun size={18} className="mr-3"/> : <Moon size={18} className="mr-3"/>}

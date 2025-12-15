@@ -14,7 +14,8 @@ class AreaBase(BaseModel):
     pages_json: List[PageItem] = []
 
 class AreaCreate(AreaBase):
-    pass
+    tenant_id: int
+    allowed_role_ids: List[int] = []
 
 class Area(AreaBase):
     id: int
@@ -32,7 +33,7 @@ class RoleCreate(RoleBase):
 class Role(RoleBase):
     id: int
     tenant_id: int
-    areas: List[Area] = []
+    # areas: List[Area] = [] # Comentado para evitar recursão infinita se não tratado
     class Config:
         from_attributes = True
 
@@ -45,7 +46,7 @@ class TokenData(BaseModel):
     username: Optional[str] = None
     profile: Optional[str] = None
     tenant_id: Optional[int] = None
-    role_id: Optional[int] = None # Adicionado
+    role_id: Optional[int] = None
 
 # --- TENANT ---
 class TenantBase(BaseModel):
@@ -78,13 +79,13 @@ class UserBase(BaseModel):
 class UserCreate(UserBase):
     password: str
     tenant_id: Optional[int] = None
-    role_id: Optional[int] = None # Novo campo
+    role_id: Optional[int] = None
 
 class User(UserBase):
     id: int
     tenant_id: Optional[int] = None
     tenant: Optional[Tenant] = None 
-    role_obj: Optional[Role] = None # Inclui o objeto Role completo
+    role_obj: Optional[Role] = None
     class Config:
         from_attributes = True
 
