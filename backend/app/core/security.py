@@ -1,7 +1,7 @@
 from passlib.context import CryptContext
 from datetime import datetime, timedelta
 from typing import Optional, Union, Any
-from jose import jwt
+from jose import jwt, JWTError
 from .config import settings
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -21,16 +21,26 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None, r
     if expires_delta:
         expire = datetime.utcnow() + expires_delta
     else:
-        # Se 'remember_me' for True, token dura 7 dias, senão 12 horas (padrão de trabalho)
-        minutes = 10080 if remember_me else 720 # 7 dias ou 12h
+        # Se 'remember_me' for True, token dura 7 dias, senão 12 horas
+        minutes = 10080 if remember_me else 720 
         expire = datetime.utcnow() + timedelta(minutes=minutes)
         
-    # Garante que 'exp' é um timestamp numérico (padrão JWT)
     to_encode.update({"exp": expire})
     
-    # Garante que 'sub' é string
     if "sub" in to_encode:
         to_encode["sub"] = str(to_encode["sub"])
 
     encoded_jwt = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
+
+# --- FUNÇÃO QUE FALTAVA ---
+def decode_access_token(token: str):
+    """
+    Decodifica o token JWT e retorna o payload.
+    Lança JWTError se o token for inválido ou expirado.
+    """
+    try:
+        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[ALGORITHM])
+        return payload
+    except JWTError:
+        return None
