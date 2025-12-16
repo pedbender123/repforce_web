@@ -1,7 +1,9 @@
 import React, { useContext, useState, useEffect } from 'react';
 import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { SysAdminAuthContext } from '../context/SysAdminAuthContext';
 import { ThemeContext } from '../context/ThemeContext';
+import sysAdminApiClient from '../api/sysAdminApiClient';
 import { 
   LogOut, 
   Menu, 
@@ -12,11 +14,24 @@ import {
   Settings,
   Database,
   Server,
-  Layout
+  Layout,
+  Briefcase
 } from 'lucide-react';
 
+const fetchMyAreas = async () => {
+    // Busca áreas onde tenant_id pertence ao Systems (o backend deve filtrar pelo token se não passar ID, 
+    // mas aqui vamos confiar que o sysadmin só vê suas áreas ou filtrar no front se vier tudo)
+    // O ideal é um endpoint /sysadmin/my-areas ou filtrar o get_all_areas
+    const { data: allAreas } = await sysAdminApiClient.get('/sysadmin/areas');
+    // Filtra apenas as áreas do tenant "Systems" (assumindo que o SysAdmin só quer ver seu menu)
+    // Precisamos saber qual é o ID do tenant Systems. Geralmente é 1.
+    // Uma abordagem melhor: o backend manda as áreas do usuário logado.
+    // Como simplificação, vamos pegar todas as áreas que têm páginas começando com /sysadmin
+    return allAreas.filter(a => a.pages_json && a.pages_json.some(p => p.path.startsWith('/sysadmin')));
+};
+
 const SysAdminLayout = () => {
-  const { logout, userProfile } = useContext(SysAdminAuthContext);
+  const { logout } = useContext(SysAdminAuthContext);
   const { theme, toggleTheme } = useContext(ThemeContext);
   const navigate = useNavigate();
   const location = useLocation();
@@ -28,33 +43,44 @@ const SysAdminLayout = () => {
     'Settings': <Settings size={20} />,
     'Database': <Database size={20} />,
     'Server': <Server size={20} />,
-    'Layout': <Layout size={20} />
+    'Layout': <Layout size={20} />,
+    'Briefcase': <Briefcase size={20} />
   };
 
-  const defaultSysAdminAreas = [
-    {
-      id: 'sys_core',
+  // Áreas Padrão (Fallback)
+  const defaultArea = {
+      id: 'default',
       name: 'Gestão do Sistema',
       icon: 'ShieldAlert',
       pages: [
         { label: 'Dashboard', path: '/sysadmin/dashboard' },
         { label: 'Tenants', path: '/sysadmin/tenants' },
         { label: 'Usuários Globais', path: '/sysadmin/users' },
-        { label: 'Áreas de Trabalho', path: '/sysadmin/areas' } // Adicionado
+        { label: 'Áreas de Trabalho', path: '/sysadmin/areas' }
       ]
-    },
-  ];
+  };
 
-  const [activeArea, setActiveArea] = useState(defaultSysAdminAreas[0]);
+  const { data: areas, isLoading } = useQuery(['sysAdminMenuAreas'], fetchMyAreas);
 
+  // Combina áreas do banco ou usa default se vazio
+  const displayAreas = areas && areas.length > 0 ? areas : [defaultArea];
+
+  const [activeArea, setActiveArea] = useState(displayAreas[0]);
+
+  // Sincroniza área ativa com URL
   useEffect(() => {
-    const foundArea = defaultSysAdminAreas.find(area => 
-      area.pages?.some(page => location.pathname.startsWith(page.path))
-    );
-    if (foundArea) {
-      setActiveArea(foundArea);
+    if (displayAreas.length > 0) {
+        const foundArea = displayAreas.find(area => 
+            // Verifica se pages_json existe e é um array antes de chamar some
+            Array.isArray(area.pages_json) && area.pages_json.some(page => location.pathname.startsWith(page.path))
+        );
+        if (foundArea) {
+            setActiveArea(foundArea);
+        } else if (!activeArea) {
+            setActiveArea(displayAreas[0]);
+        }
     }
-  }, [location.pathname]);
+  }, [location.pathname, displayAreas, activeArea]);
 
   const handleLogout = () => {
     logout();
@@ -82,19 +108,22 @@ const SysAdminLayout = () => {
              {isCollapsed ? 'Áreas' : 'Áreas do Sistema'}
           </p>
           <ul className="space-y-1 px-3">
-            {defaultSysAdminAreas.map((area) => (
-              <li key={area.id}>
+            {displayAreas.map((area) => (
+              <li key={area.id || area.name}>
                 <button
                   onClick={() => {
                       setActiveArea(area);
-                      if (area.pages && area.pages.length > 0) {
-                          navigate(area.pages[0].path);
+                      // Navega para a primeira página válida
+                      if (area.pages_json && area.pages_json.length > 0) {
+                          navigate(area.pages_json[0].path);
+                      } else if (area.pages && area.pages.length > 0) {
+                          navigate(area.pages[0].path); // Fallback para estrutura antiga
                       }
                   }}
                   className={`w-full flex items-center py-3 text-sm font-medium rounded-lg transition-colors duration-150 ${
                     isCollapsed ? 'justify-center px-0' : 'px-4'
                   } ${
-                    activeArea?.id === area.id
+                    (activeArea?.id === area.id || activeArea?.name === area.name)
                       ? 'bg-blue-600 text-white shadow-md'
                       : 'text-gray-400 hover:bg-gray-800 hover:text-white'
                   }`}
@@ -122,10 +151,7 @@ const SysAdminLayout = () => {
                         {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
                      </button>
                   </div>
-                  <button
-                    onClick={handleLogout}
-                    className="flex items-center w-full px-4 py-2 text-sm font-medium text-red-400 hover:bg-red-900/30 rounded-lg transition-colors"
-                  >
+                  <button onClick={handleLogout} className="flex items-center w-full px-4 py-2 text-sm font-medium text-red-400 hover:bg-red-900/30 rounded-lg transition-colors">
                     <LogOut size={18} className="mr-2" />
                     Sair
                   </button>
@@ -153,14 +179,15 @@ const SysAdminLayout = () => {
           </button>
         </header>
 
-        <div className="hidden md:flex bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-0 items-end h-16 shadow-sm z-10">
-            {activeArea?.pages?.map((page) => {
-                const isPageActive = location.pathname === page.path;
+        {/* --- MENU SUPERIOR --- */}
+        <div className="hidden md:flex bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-0 items-end h-16 shadow-sm z-10 overflow-x-auto">
+            {(activeArea?.pages_json || activeArea?.pages)?.map((page) => {
+                const isPageActive = location.pathname.startsWith(page.path);
                 return (
                     <Link
                         key={page.path}
                         to={page.path}
-                        className={`mr-6 py-4 text-sm font-medium border-b-2 transition-colors ${
+                        className={`mr-6 py-4 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
                             isPageActive 
                             ? 'border-blue-600 text-blue-600 dark:text-blue-400 dark:border-blue-400' 
                             : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:border-gray-300'
@@ -178,13 +205,13 @@ const SysAdminLayout = () => {
             <nav className="p-4">
               <p className="text-xs font-semibold text-gray-500 uppercase mb-2">Páginas de {activeArea?.name}</p>
               <ul className="space-y-2">
-                {activeArea?.pages?.map((page) => (
+                {(activeArea?.pages_json || activeArea?.pages)?.map((page) => (
                   <li key={page.path}>
                     <Link
                       to={page.path}
                       onClick={() => setIsMobileMenuOpen(false)}
                       className={`flex items-center px-4 py-3 text-sm font-medium rounded-lg ${
-                        location.pathname === page.path
+                        location.pathname.startsWith(page.path)
                           ? 'bg-blue-600 text-white'
                           : 'text-gray-400'
                       }`}
@@ -193,21 +220,6 @@ const SysAdminLayout = () => {
                     </Link>
                   </li>
                 ))}
-                <li className="pt-2 border-t border-gray-800 mt-2">
-                   <button onClick={toggleTheme} className="flex items-center w-full px-4 py-3 text-sm text-gray-400">
-                      {theme === 'dark' ? <Sun size={18} className="mr-3"/> : <Moon size={18} className="mr-3"/>}
-                      Tema
-                   </button>
-                </li>
-                <li>
-                  <button
-                    onClick={() => { handleLogout(); setIsMobileMenuOpen(false); }}
-                    className="flex items-center w-full px-4 py-3 text-sm text-red-400"
-                  >
-                    <LogOut size={18} className="mr-3" />
-                    Sair
-                  </button>
-                </li>
               </ul>
             </nav>
           </div>
