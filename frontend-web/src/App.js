@@ -4,7 +4,6 @@ import { AuthProvider } from './context/AuthContext';
 import { SysAdminAuthProvider } from './context/SysAdminAuthContext';
 import { ThemeProvider } from './context/ThemeContext';
 import PrivateRoute from './components/PrivateRoute';
-import SysAdminPrivateRoute from './components/SysAdminPrivateRoute';
 
 // Layouts
 import AppLayout from './components/AppLayout';
@@ -28,12 +27,13 @@ import AdminDashboard from './pages/admin/AdminDashboard';
 import ProductList from './pages/admin/ProductList';
 import ProductForm from './pages/admin/ProductForm';
 import UserManagement from './pages/admin/UserManagement';
+import RoleManagement from './pages/admin/RoleManagement'; // NOVO
 
 // SysAdmin Pages (Global Admin)
 import SysAdminDashboard from './pages/sysadmin/SysAdminDashboard';
 import TenantManagement from './pages/sysadmin/TenantManagement';
 import AllUserManagement from './pages/sysadmin/AllUserManagement';
-import AreaManagement from './pages/sysadmin/AreaManagement'; // NOVO
+import AreaManagement from './pages/sysadmin/AreaManagement';
 
 function App() {
   return (
@@ -67,6 +67,7 @@ function App() {
                 <Route path="products/new" element={<ProductForm />} />
                 <Route path="products/:id" element={<ProductForm />} />
                 <Route path="users" element={<UserManagement />} />
+                <Route path="roles" element={<RoleManagement />} /> {/* NOVO */}
                 <Route index element={<Navigate to="dashboard" replace />} />
               </Route>
 
@@ -75,7 +76,7 @@ function App() {
                 <Route path="dashboard" element={<SysAdminDashboard />} />
                 <Route path="tenants" element={<TenantManagement />} />
                 <Route path="users" element={<AllUserManagement />} />
-                <Route path="areas" element={<AreaManagement />} /> {/* NOVO */}
+                <Route path="areas" element={<AreaManagement />} />
                 <Route index element={<Navigate to="dashboard" replace />} />
               </Route>
 

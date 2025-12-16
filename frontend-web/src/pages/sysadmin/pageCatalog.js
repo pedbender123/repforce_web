@@ -17,6 +17,7 @@ export const SYSTEM_PAGES = [
     { label: 'Admin - Dashboard', path: '/admin/dashboard', category: 'Admin' },
     { label: 'Admin - Produtos', path: '/admin/products', category: 'Admin' },
     { label: 'Admin - Equipe (Usuários)', path: '/admin/users', category: 'Admin' },
+    { label: 'Admin - Cargos e Permissões', path: '/admin/roles', category: 'Admin' }, // NOVO
   ];
   
   export const getPagesByCategory = () => {

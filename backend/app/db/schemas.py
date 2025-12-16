@@ -30,10 +30,14 @@ class RoleBase(BaseModel):
 class RoleCreate(RoleBase):
     area_ids: List[int] = []
 
+class RoleUpdate(RoleBase):
+    area_ids: Optional[List[int]] = None
+
 class Role(RoleBase):
     id: int
     tenant_id: int
-    # areas: List[Area] = [] # Comentado para evitar recursão infinita se não tratado
+    # Importante: Usamos Area aqui. O Pydantic resolve a referência pois Area já foi definido acima.
+    areas: List[Area] = [] 
     class Config:
         from_attributes = True
 

@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Request, Form
 from fastapi.security import OAuth2PasswordRequestForm
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from ..db import database, models, schemas
 from ..core import security
 
@@ -70,7 +70,14 @@ def sysadmin_login_for_access_token(
 @router.get("/users/me", response_model=schemas.User)
 def read_users_me(request: Request, db: Session = Depends(database.get_db)):
     user_id = request.state.user_id
-    user = db.query(models.User).filter(models.User.id == user_id).first()
+    
+    # PASSO 1: Carregamento Eager dos relacionamentos
+    # Carrega Tenant, Cargo e as Áreas vinculadas ao Cargo
+    user = db.query(models.User).options(
+        joinedload(models.User.tenant),
+        joinedload(models.User.role_obj).joinedload(models.Role.areas)
+    ).filter(models.User.id == user_id).first()
+    
     if user is None:
         raise HTTPException(status_code=404, detail="Usuário não encontrado")
     return user

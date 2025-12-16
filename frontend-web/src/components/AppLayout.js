@@ -15,7 +15,11 @@ import {
   Package,
   Settings,
   Briefcase,
-  Phone
+  Phone,
+  ShieldAlert,
+  Server,
+  Database,
+  Layout
 } from 'lucide-react';
 
 const AppLayout = () => {
@@ -26,9 +30,7 @@ const AppLayout = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
 
-  // --- LÓGICA DE ÁREAS E CARGOS ---
-  
-  // Mapeamento de Ícones para string
+  // Mapeamento de Ícones para string (igual ao SysAdmin)
   const iconMap = {
     'LayoutDashboard': <LayoutDashboard size={20} />,
     'Users': <Users size={20} />,
@@ -36,61 +38,62 @@ const AppLayout = () => {
     'Map': <Map size={20} />,
     'Package': <Package size={20} />,
     'Settings': <Settings size={20} />,
-    'Briefcase': <Briefcase size={20} />, // Ícone genérico para Área de Vendas
-    'Phone': <Phone size={20} /> // Ícone genérico para SAC
+    'Briefcase': <Briefcase size={20} />,
+    'Phone': <Phone size={20} />,
+    'ShieldAlert': <ShieldAlert size={20} />,
+    'Server': <Server size={20} />,
+    'Database': <Database size={20} />,
+    'Layout': <Layout size={20} />
   };
 
   /**
-   * Mock/Definição Padrão de Áreas se o Backend não retornar ainda.
-   * Isso garante que seu sistema funcione IMEDIATAMENTE com a nova lógica.
+   * Áreas Padrão (Fallback caso o usuário não tenha cargo ou o backend falhe)
    */
   const defaultAreas = [
     {
-      id: 'sales_area',
-      name: 'Vendas',
+      id: 'default_sales',
+      name: 'Vendas (Padrão)',
       icon: 'Briefcase',
-      pages: [
+      pages_json: [
         { label: 'Dashboard', path: '/app/dashboard' },
         { label: 'Novo Pedido', path: '/app/orders/new' },
         { label: 'Clientes', path: '/app/clients' },
         { label: 'Rotas', path: '/app/routes/new' }
       ]
-    },
-    {
-      id: 'admin_area',
-      name: 'Administrativo',
-      icon: 'Settings',
-      pages: [
-        { label: 'Dashboard Admin', path: '/admin/dashboard' },
-        { label: 'Produtos', path: '/admin/products' },
-        { label: 'Usuários', path: '/admin/users' }
-      ]
     }
   ];
 
-  // Se o usuário vier com "role_obj.areas", usamos. Senão, usamos o default.
-  // Nota: Filtramos por perfil para não mostrar Admin para Representante comum se não tiver cargo.
+  // PASSO 5: Lógica de Seleção de Áreas
+  // 1. Tenta pegar do Cargo (role_obj.areas)
+  // 2. Se não tiver cargo, usa Fallback baseado no perfil
   const userAreas = user?.role_obj?.areas?.length > 0 
     ? user.role_obj.areas 
-    : (user?.profile === 'admin' ? defaultAreas : [defaultAreas[0]]); // Vendedor vê só Vendas
+    : defaultAreas;
 
   // Estado da Área Ativa (Selecionada na Sidebar)
   const [activeArea, setActiveArea] = useState(userAreas[0]);
 
-  // Atualiza a Área Ativa se a URL mudar (para manter sintonizado se o usuário der F5)
+  // Atualiza a Área Ativa se a URL mudar (Sincronização)
   useEffect(() => {
-    const foundArea = userAreas.find(area => 
-      area.pages?.some(page => location.pathname.startsWith(page.path))
-    );
-    if (foundArea) {
-      setActiveArea(foundArea);
+    if (userAreas.length > 0) {
+        const foundArea = userAreas.find(area => 
+            area.pages_json?.some(page => location.pathname.startsWith(page.path))
+        );
+        if (foundArea) {
+            setActiveArea(foundArea);
+        } else if (!activeArea) {
+            setActiveArea(userAreas[0]);
+        }
     }
-  }, [location.pathname, userAreas]);
+  }, [location.pathname, userAreas, activeArea]);
 
   const handleLogout = () => {
     logout();
     navigate('/login');
   };
+
+  // Helper para renderizar ícone com fallback
+  const renderIcon = (iconName) => iconMap[iconName] || <Briefcase size={20}/>;
 
   return (
     <div className="flex h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-200">
@@ -110,7 +113,7 @@ const AppLayout = () => {
         
         <nav className="flex-1 overflow-y-auto py-4 overflow-x-hidden">
           <p className={`px-4 text-xs font-semibold text-gray-400 uppercase mb-2 ${isCollapsed ? 'text-center' : ''}`}>
-             {isCollapsed ? 'Áreas' : 'Áreas de Trabalho'}
+             {isCollapsed ? 'Apps' : 'Meus Aplicativos'}
           </p>
           <ul className="space-y-1 px-3">
             {userAreas.map((area) => (
@@ -118,22 +121,22 @@ const AppLayout = () => {
                 <button
                   onClick={() => {
                       setActiveArea(area);
-                      // Navega para a primeira página da área automaticamente
-                      if (area.pages && area.pages.length > 0) {
-                          navigate(area.pages[0].path);
+                      // Navega para a primeira página da área
+                      if (area.pages_json && area.pages_json.length > 0) {
+                          navigate(area.pages_json[0].path);
                       }
                   }}
                   className={`w-full flex items-center py-3 text-sm font-medium rounded-lg transition-colors duration-150 ${
                     isCollapsed ? 'justify-center px-0' : 'px-4'
                   } ${
-                    activeArea?.name === area.name
+                    activeArea?.id === area.id || activeArea?.name === area.name
                       ? 'bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 shadow-sm'
                       : 'text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700'
                   }`}
                   title={isCollapsed ? area.name : ''}
                 >
                   <span className={`${isCollapsed ? '' : 'mr-3'}`}>
-                    {iconMap[area.icon] || <Briefcase size={20}/>}
+                    {renderIcon(area.icon)}
                   </span>
                   {!isCollapsed && <span className="whitespace-nowrap">{area.name}</span>}
                 </button>
@@ -151,7 +154,7 @@ const AppLayout = () => {
                         {user?.full_name || user?.name || 'Usuário'}
                     </span>
                     <span className="text-xs text-gray-500 dark:text-gray-400 truncate">
-                        {user?.role_obj?.name || (user?.profile === 'admin' ? 'Administrador' : 'Vendedor')}
+                        {user?.role_obj?.name || user?.profile}
                     </span>
                  </div>
                  <button onClick={toggleTheme} className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700">
@@ -188,14 +191,14 @@ const AppLayout = () => {
         </header>
 
         {/* --- MENU SUPERIOR (TABS DA ÁREA ATIVA) --- */}
-        <div className="hidden md:flex bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 px-6 py-0 items-end h-16 shadow-sm z-10">
-            {activeArea?.pages?.map((page) => {
-                const isPageActive = location.pathname === page.path;
+        <div className="hidden md:flex bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 px-6 py-0 items-end h-16 shadow-sm z-10 overflow-x-auto">
+            {activeArea?.pages_json?.map((page) => {
+                const isPageActive = location.pathname.startsWith(page.path);
                 return (
                     <Link
                         key={page.path}
                         to={page.path}
-                        className={`mr-6 py-4 text-sm font-medium border-b-2 transition-colors ${
+                        className={`mr-6 py-4 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
                             isPageActive 
                             ? 'border-blue-600 text-blue-600 dark:text-blue-400 dark:border-blue-400' 
                             : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:border-gray-300'
@@ -205,21 +208,24 @@ const AppLayout = () => {
                     </Link>
                 );
             })}
+             {(!activeArea?.pages_json || activeArea.pages_json.length === 0) && (
+                <span className="py-4 text-sm text-gray-400 italic">Esta área não possui páginas.</span>
+             )}
         </div>
 
-        {/* Mobile Menu (Simplificado para mostrar páginas da área ativa) */}
+        {/* Mobile Menu */}
         {isMobileMenuOpen && (
           <div className="md:hidden absolute top-16 left-0 w-full bg-white dark:bg-gray-800 z-50 border-b border-gray-200 dark:border-gray-700 shadow-lg">
             <nav className="p-4">
                <p className="text-xs font-semibold text-gray-400 uppercase mb-2">Área: {activeArea?.name}</p>
               <ul className="space-y-2">
-                {activeArea?.pages?.map((page) => (
+                {activeArea?.pages_json?.map((page) => (
                   <li key={page.path}>
                     <Link
                       to={page.path}
                       onClick={() => setIsMobileMenuOpen(false)}
                       className={`flex items-center px-4 py-3 text-sm font-medium rounded-lg ${
-                        location.pathname === page.path
+                        location.pathname.startsWith(page.path)
                           ? 'bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
                           : 'text-gray-700 dark:text-gray-300'
                       }`}
@@ -228,15 +234,19 @@ const AppLayout = () => {
                     </Link>
                   </li>
                 ))}
-                 {/* Seletor de Área Mobile (Opção extra para trocar de área) */}
+                 {/* Seletor de Área Mobile */}
                  <li className="pt-4 border-t border-gray-100 dark:border-gray-700 mt-2">
                     <p className="text-xs font-semibold text-gray-400 uppercase mb-2">Trocar Área</p>
                     <div className="flex gap-2 overflow-x-auto pb-2">
                         {userAreas.map(area => (
                             <button 
                                 key={area.id}
-                                onClick={() => { setActiveArea(area); setIsMobileMenuOpen(false); navigate(area.pages[0].path); }}
-                                className="px-3 py-1 text-xs border rounded dark:text-white dark:border-gray-600"
+                                onClick={() => { setActiveArea(area); setIsMobileMenuOpen(false); if(area.pages_json?.[0]) navigate(area.pages_json[0].path); }}
+                                className={`px-3 py-1 text-xs border rounded transition-colors whitespace-nowrap ${
+                                    activeArea?.id === area.id 
+                                    ? 'bg-blue-600 text-white border-blue-600'
+                                    : 'dark:text-white dark:border-gray-600'
+                                }`}
                             >
                                 {area.name}
                             </button>
