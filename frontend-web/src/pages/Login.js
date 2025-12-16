@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
-import { useAuth } from '../context/AuthContext';
-import { useNavigate, Navigate } from 'react-router-dom';
+import React, { useState, useContext } from 'react';
+import { AuthContext } from '../context/AuthContext';
+import { Navigate } from 'react-router-dom';
 import ThemeToggle from '../components/ThemeToggle';
 import apiClient from '../api/apiClient';
 import { jwtDecode } from 'jwt-decode';
@@ -10,23 +10,28 @@ export default function Login() {
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
   const [error, setError] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
   
-  const { token, userProfile } = useAuth();
-  const navigate = useNavigate();
-
+  const { token, userProfile } = useContext(AuthContext);
+  
+  // Mapeamento de perfis para rotas
   const getRedirectPath = (profile) => {
     switch (profile) {
-      case 'admin': return '/admin';
-      case 'representante': return '/app';
-      default: return '/login';
+      case 'admin': return '/admin/dashboard';
+      case 'representante': return '/app/dashboard';
+      case 'sysadmin': return '/sysadmin/dashboard';
+      default: return '/app/dashboard';
     }
   };
 
+  // Se já estiver logado (e o contexto já tiver carregado), redireciona
   if (token) return <Navigate to={getRedirectPath(userProfile)} replace />;
 
   const handleLogin = async (e) => {
     e.preventDefault();
     setError(null);
+    setIsLoading(true);
+
     try {
         const formData = new URLSearchParams();
         formData.append('username', username);
@@ -38,10 +43,30 @@ export default function Login() {
         });
 
         const { access_token } = response.data;
+        
+        // --- LÓGICA CRÍTICA DE LOGIN ---
+        // 1. Salva o token diretamente no storage
         localStorage.setItem('token', access_token);
-        window.location.reload(); // Recarrega para atualizar AuthContext
+        
+        // 2. Decodifica para saber o destino (sem atualizar estado do React)
+        let targetPath = '/app/dashboard';
+        try {
+            const decoded = jwtDecode(access_token);
+            // Verifica o profile no token. Fallback para 'representante' se não vier.
+            const profile = decoded.profile || 'representante';
+            targetPath = getRedirectPath(profile);
+        } catch (decodeError) {
+            console.warn("Erro decoding token:", decodeError);
+        }
+
+        // 3. Força o navegador a ir para a nova URL. 
+        // Isso garante que o App recarregue do zero com o novo token no localStorage.
+        window.location.href = targetPath;
+
     } catch (err) {
-        setError('Login falhou. Verifique suas credenciais.');
+        console.error("Login Error:", err);
+        setError('Login falhou. Verifique usuário e senha.');
+        setIsLoading(false);
     }
   };
 
@@ -71,8 +96,14 @@ export default function Login() {
               <input id="remember" type="checkbox" checked={rememberMe} onChange={e => setRememberMe(e.target.checked)} className="h-4 w-4 text-blue-600 border-gray-300 rounded"/>
               <label htmlFor="remember" className="ml-2 block text-sm text-gray-900 dark:text-gray-300">Manter conectado</label>
             </div>
-            {error && <p className="text-red-500 text-sm text-center">{error}</p>}
-            <button type="submit" className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-repforce-primary hover:bg-blue-700">Entrar</button>
+            {error && <p className="text-red-500 text-sm text-center bg-red-50 p-2 rounded">{error}</p>}
+            <button 
+                type="submit" 
+                disabled={isLoading}
+                className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-repforce-primary hover:bg-blue-700 disabled:opacity-50 transition-colors"
+            >
+                {isLoading ? 'Entrando...' : 'Entrar'}
+            </button>
           </form>
         </div>
       </div>
