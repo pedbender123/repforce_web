@@ -19,15 +19,13 @@ import {
 } from 'lucide-react';
 
 const fetchMyAreas = async () => {
-    // Busca áreas onde tenant_id pertence ao Systems (o backend deve filtrar pelo token se não passar ID, 
-    // mas aqui vamos confiar que o sysadmin só vê suas áreas ou filtrar no front se vier tudo)
-    // O ideal é um endpoint /sysadmin/my-areas ou filtrar o get_all_areas
-    const { data: allAreas } = await sysAdminApiClient.get('/sysadmin/areas');
-    // Filtra apenas as áreas do tenant "Systems" (assumindo que o SysAdmin só quer ver seu menu)
-    // Precisamos saber qual é o ID do tenant Systems. Geralmente é 1.
-    // Uma abordagem melhor: o backend manda as áreas do usuário logado.
-    // Como simplificação, vamos pegar todas as áreas que têm páginas começando com /sysadmin
-    return allAreas.filter(a => a.pages_json && a.pages_json.some(p => p.path.startsWith('/sysadmin')));
+    try {
+        const { data: allAreas } = await sysAdminApiClient.get('/sysadmin/areas');
+        // Filtra apenas áreas que explicitamente tenham páginas do sysadmin
+        return allAreas.filter(a => a.pages_json && a.pages_json.some(p => p.path.startsWith('/sysadmin')));
+    } catch (e) {
+        return [];
+    }
 };
 
 const SysAdminLayout = () => {
@@ -47,45 +45,52 @@ const SysAdminLayout = () => {
     'Briefcase': <Briefcase size={20} />
   };
 
-  // Áreas Padrão (Fallback)
-  const defaultArea = {
-      id: 'default',
+  // ÁREA PADRÃO DE GESTÃO DO SISTEMA (SEMPRE VISÍVEL)
+  const systemManagementArea = {
+      id: 'sys_default',
       name: 'Gestão do Sistema',
       icon: 'ShieldAlert',
       pages: [
         { label: 'Dashboard', path: '/sysadmin/dashboard' },
-        { label: 'Tenants', path: '/sysadmin/tenants' },
+        { label: 'Tenants (Empresas)', path: '/sysadmin/tenants' },
         { label: 'Usuários Globais', path: '/sysadmin/users' },
-        { label: 'Áreas de Trabalho', path: '/sysadmin/areas' }
+        { label: 'Gestão de Áreas', path: '/sysadmin/areas' }
       ]
   };
 
-  const { data: areas, isLoading } = useQuery(['sysAdminMenuAreas'], fetchMyAreas);
+  const { data: fetchedAreas, isLoading } = useQuery(['sysAdminMenuAreas'], fetchMyAreas);
 
-  // Combina áreas do banco ou usa default se vazio
-  const displayAreas = areas && areas.length > 0 ? areas : [defaultArea];
+  // Combina a área padrão (primeira) com quaisquer áreas dinâmicas que o usuário tenha criado
+  // Isso garante que o menu "Gestão do Sistema" nunca suma
+  const displayAreas = fetchedAreas && fetchedAreas.length > 0 
+    ? [systemManagementArea, ...fetchedAreas] 
+    : [systemManagementArea];
 
-  const [activeArea, setActiveArea] = useState(displayAreas[0]);
+  const [activeArea, setActiveArea] = useState(systemManagementArea);
 
   // Sincroniza área ativa com URL
   useEffect(() => {
-    if (displayAreas.length > 0) {
-        const foundArea = displayAreas.find(area => 
-            // Verifica se pages_json existe e é um array antes de chamar some
-            Array.isArray(area.pages_json) && area.pages_json.some(page => location.pathname.startsWith(page.path))
-        );
-        if (foundArea) {
-            setActiveArea(foundArea);
-        } else if (!activeArea) {
-            setActiveArea(displayAreas[0]);
-        }
+    const foundArea = displayAreas.find(area => {
+        // Verifica pages_json (dinâmico) ou pages (estático/padrão)
+        const pages = area.pages_json || area.pages;
+        return Array.isArray(pages) && pages.some(page => location.pathname.startsWith(page.path));
+    });
+
+    if (foundArea) {
+        setActiveArea(foundArea);
+    } else {
+        // Fallback inteligente: se nada bater, mantenha a atual ou volte para a padrão
+        // Não reseta agressivamente para evitar flickers
     }
-  }, [location.pathname, displayAreas, activeArea]);
+  }, [location.pathname, displayAreas]);
 
   const handleLogout = () => {
     logout();
     navigate('/sysadmin/login');
   };
+
+  // Helper para pegar as páginas da área ativa de forma segura
+  const activePages = activeArea?.pages_json || activeArea?.pages || [];
 
   return (
     <div className="flex h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-200">
@@ -113,11 +118,10 @@ const SysAdminLayout = () => {
                 <button
                   onClick={() => {
                       setActiveArea(area);
-                      // Navega para a primeira página válida
-                      if (area.pages_json && area.pages_json.length > 0) {
-                          navigate(area.pages_json[0].path);
-                      } else if (area.pages && area.pages.length > 0) {
-                          navigate(area.pages[0].path); // Fallback para estrutura antiga
+                      // Navega para a primeira página da área
+                      const pages = area.pages_json || area.pages;
+                      if (pages && pages.length > 0) {
+                          navigate(pages[0].path);
                       }
                   }}
                   className={`w-full flex items-center py-3 text-sm font-medium rounded-lg transition-colors duration-150 ${
@@ -179,9 +183,9 @@ const SysAdminLayout = () => {
           </button>
         </header>
 
-        {/* --- MENU SUPERIOR --- */}
+        {/* --- MENU SUPERIOR (TABS DA ÁREA ATIVA) --- */}
         <div className="hidden md:flex bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-0 items-end h-16 shadow-sm z-10 overflow-x-auto">
-            {(activeArea?.pages_json || activeArea?.pages)?.map((page) => {
+            {activePages.map((page) => {
                 const isPageActive = location.pathname.startsWith(page.path);
                 return (
                     <Link
@@ -205,7 +209,7 @@ const SysAdminLayout = () => {
             <nav className="p-4">
               <p className="text-xs font-semibold text-gray-500 uppercase mb-2">Páginas de {activeArea?.name}</p>
               <ul className="space-y-2">
-                {(activeArea?.pages_json || activeArea?.pages)?.map((page) => (
+                {activePages.map((page) => (
                   <li key={page.path}>
                     <Link
                       to={page.path}

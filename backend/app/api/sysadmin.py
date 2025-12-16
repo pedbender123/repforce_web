@@ -30,9 +30,9 @@ def create_tenant(
     db: Session = Depends(database.get_db),
     name: str = Form(...),
     cnpj: Optional[str] = Form(None),
-    email: Optional[EmailStr] = Form(None),
-    phone: Optional[str] = Form(None),
-    status: Optional[str] = Form('active'), # Default agora é active
+    email: Optional[EmailStr] = Form(None), # Recebe, mas não salva no model Tenant (campo inexistente)
+    phone: Optional[str] = Form(None),      # Recebe, mas não salva no model Tenant (campo inexistente)
+    status: Optional[str] = Form('active'), 
     tenant_type: Optional[str] = Form('industry'),
     commercial_info: Optional[str] = Form(None),
     logo: Optional[UploadFile] = File(None)
@@ -57,12 +57,12 @@ def create_tenant(
         finally:
             logo.file.close()
 
-    # 1. Cria o Tenant
+    # 1. Cria o Tenant (CORREÇÃO: Removidos email e phone que não existem no model)
     new_tenant = models.Tenant(
         name=name,
         cnpj=cnpj,
-        email=email,
-        phone=phone,
+        # email=email, # Removido pois não existe na tabela tenants
+        # phone=phone, # Removido pois não existe na tabela tenants
         status=status,
         tenant_type=tenant_type,
         commercial_info=commercial_info,
@@ -73,7 +73,6 @@ def create_tenant(
     db.refresh(new_tenant)
 
     # 2. Criação Automática do Cargo "Admin"
-    # Este cargo terá acesso a todas as áreas criadas futuramente (lógica no create_area)
     admin_role = models.Role(name="Admin", description="Administrador do Tenant", tenant_id=new_tenant.id)
     db.add(admin_role)
     db.commit()
@@ -145,7 +144,7 @@ def create_sysadmin_user_entry(
         
         admin_role = db.query(models.Role).filter(models.Role.name == "Admin", models.Role.tenant_id == tenant_id).first()
         if not admin_role:
-            # Fallback de segurança: cria se não existir
+            # Fallback de segurança
             admin_role = models.Role(name="Admin", tenant_id=tenant_id)
             db.add(admin_role)
             db.commit()
@@ -153,7 +152,6 @@ def create_sysadmin_user_entry(
         role_id = admin_role.id
     
     else:
-        # Outros perfis (ex: representantes criados pelo sysadmin, se necessário)
         pass
 
     hashed_password = security.get_password_hash(user.password)
@@ -165,7 +163,7 @@ def create_sysadmin_user_entry(
         hashed_password=hashed_password,
         profile=user.profile,
         tenant_id=tenant_id,
-        role_id=role_id # Associa o cargo
+        role_id=role_id
     )
     
     db.add(db_new_user)
@@ -180,7 +178,7 @@ def get_all_users_in_system(db: Session = Depends(database.get_db)):
     users = db.query(models.User).options(joinedload(models.User.tenant), joinedload(models.User.role_obj)).order_by(models.User.id).all()
     return users
 
-# --- AREAS (NOVO) ---
+# --- AREAS ---
 
 @router.get("/areas", response_model=List[schemas.Area], dependencies=[Depends(check_sysadmin_profile)])
 def get_all_areas(db: Session = Depends(database.get_db), tenant_id: Optional[int] = None):
@@ -194,7 +192,6 @@ def create_area(
     area_in: schemas.AreaCreate,
     db: Session = Depends(database.get_db)
 ):
-    # 1. Cria a Área
     db_area = models.Area(
         name=area_in.name,
         icon=area_in.icon,
@@ -205,8 +202,6 @@ def create_area(
     db.commit()
     db.refresh(db_area)
 
-    # 2. Associa aos Cargos
-    # IMPORTANTE: O cargo "Admin" do tenant DEVE ter acesso
     roles_to_add = set(area_in.allowed_role_ids)
     
     admin_role = db.query(models.Role).filter(models.Role.name == "Admin", models.Role.tenant_id == area_in.tenant_id).first()
@@ -221,7 +216,6 @@ def create_area(
 
     return db_area
 
-# --- ROLES (Auxiliar para o form de Áreas) ---
 @router.get("/roles", response_model=List[schemas.Role], dependencies=[Depends(check_sysadmin_profile)])
 def get_roles_by_tenant(tenant_id: int, db: Session = Depends(database.get_db)):
     return db.query(models.Role).filter(models.Role.tenant_id == tenant_id).all()
