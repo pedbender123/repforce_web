@@ -3,7 +3,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm, useFieldArray } from 'react-hook-form';
 import sysAdminApiClient from '../../api/sysAdminApiClient';
 import { XMarkIcon, PlusIcon, TrashIcon } from '@heroicons/react/24/outline';
-import { SYSTEM_PAGES } from '../../utils/pageCatalog';
+// CORREÇÃO: Importando do mesmo diretório (já que o arquivo está em pages/sysadmin)
+import { SYSTEM_PAGES } from './pageCatalog';
 
 // API Calls
 const fetchAreas = async () => {
@@ -25,6 +26,9 @@ const createArea = async (data) => {
 };
 
 const iconOptions = ['LayoutDashboard', 'ShoppingCart', 'Users', 'Map', 'Package', 'Settings', 'Briefcase', 'Phone', 'ShieldAlert', 'Server', 'Database', 'Layout'];
+
+// Classe padrão para inputs para garantir visibilidade no Dark Mode
+const inputClass = "w-full p-2 border border-gray-300 rounded bg-white text-gray-900 dark:bg-gray-700 dark:text-white dark:border-gray-600 focus:ring-blue-500 focus:border-blue-500";
 
 export default function AreaManagement() {
   const [isCreating, setIsCreating] = useState(false);
@@ -67,11 +71,10 @@ export default function AreaManagement() {
       mutation.mutate(payload);
   };
 
-  // Função auxiliar para preencher path automaticamente ao escolher a label
   const handlePageSelect = (index, pathValue) => {
       const page = SYSTEM_PAGES.find(p => p.path === pathValue);
       if (page) {
-          setValue(`pages_json.${index}.label`, page.label.split(' - ')[1] || page.label); // Limpa o prefixo do label
+          setValue(`pages_json.${index}.label`, page.label.split(' - ')[1] || page.label);
           setValue(`pages_json.${index}.path`, page.path);
       }
   };
@@ -81,34 +84,34 @@ export default function AreaManagement() {
           <div className="max-w-4xl mx-auto bg-white dark:bg-gray-800 p-8 rounded-lg shadow transition-colors">
               <div className="flex justify-between items-center mb-6">
                   <h2 className="text-2xl font-bold dark:text-white">Nova Área de Trabalho</h2>
-                  <button onClick={() => setIsCreating(false)}><XMarkIcon className="w-6 h-6 text-gray-500"/></button>
+                  <button onClick={() => setIsCreating(false)}><XMarkIcon className="w-6 h-6 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-white"/></button>
               </div>
               <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
-                          <label className="block text-sm font-medium dark:text-gray-300">Nome da Área</label>
-                          <input {...register("name", { required: true })} className="w-full p-2 border rounded dark:bg-gray-700 dark:text-white dark:border-gray-600"/>
+                          <label className="block text-sm font-medium dark:text-gray-300 mb-1">Nome da Área</label>
+                          <input {...register("name", { required: true })} className={inputClass} placeholder="Ex: Vendas"/>
                       </div>
                       <div>
-                          <label className="block text-sm font-medium dark:text-gray-300">Ícone</label>
-                          <select {...register("icon")} className="w-full p-2 border rounded dark:bg-gray-700 dark:text-white dark:border-gray-600">
+                          <label className="block text-sm font-medium dark:text-gray-300 mb-1">Ícone</label>
+                          <select {...register("icon")} className={inputClass}>
                               {iconOptions.map(i => <option key={i} value={i}>{i}</option>)}
                           </select>
                       </div>
                   </div>
 
                   <div>
-                      <label className="block text-sm font-medium dark:text-gray-300">Tenant (Empresa)</label>
-                      <select {...register("tenant_id", { required: true })} className="w-full p-2 border rounded dark:bg-gray-700 dark:text-white dark:border-gray-600">
+                      <label className="block text-sm font-medium dark:text-gray-300 mb-1">Tenant (Empresa)</label>
+                      <select {...register("tenant_id", { required: true })} className={inputClass}>
                           <option value="">Selecione...</option>
                           {tenants?.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
                       </select>
                   </div>
 
                   {/* Seleção de Páginas com Dropdown */}
-                  <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded border dark:border-gray-600">
+                  <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded border border-gray-200 dark:border-gray-600">
                       <div className="flex justify-between mb-2">
-                          <h3 className="font-semibold dark:text-white">Páginas do Menu (Max 8)</h3>
+                          <h3 className="font-semibold text-gray-700 dark:text-white">Páginas do Menu (Max 8)</h3>
                           <button type="button" onClick={() => append({ label: '', path: '' })} className="text-sm text-blue-600 hover:text-blue-400 font-medium">+ Adicionar Página</button>
                       </div>
                       {fields.map((item, index) => (
@@ -116,7 +119,7 @@ export default function AreaManagement() {
                               {/* Dropdown de Páginas */}
                               <select 
                                 onChange={(e) => handlePageSelect(index, e.target.value)}
-                                className="flex-1 p-2 border rounded text-sm dark:bg-gray-600 dark:text-white dark:border-gray-500"
+                                className={`flex-1 ${inputClass} text-sm`}
                               >
                                   <option value="">Selecione uma página...</option>
                                   {SYSTEM_PAGES.map(p => (
@@ -124,21 +127,21 @@ export default function AreaManagement() {
                                   ))}
                               </select>
 
-                              {/* Input editável para Label (caso queira mudar o nome) */}
+                              {/* Input editável para Label */}
                               <input 
                                 {...register(`pages_json.${index}.label`)} 
                                 placeholder="Nome no Menu" 
-                                className="flex-1 p-2 border rounded text-sm dark:bg-gray-600 dark:text-white dark:border-gray-500"
+                                className={`flex-1 ${inputClass} text-sm`}
                               />
                               
-                              {/* Input Hidden ou Readonly para o Path */}
+                              {/* Input Readonly para o Path */}
                               <input 
                                 {...register(`pages_json.${index}.path`)} 
                                 readOnly
-                                className="flex-1 p-2 border rounded text-sm bg-gray-100 dark:bg-gray-800 dark:text-gray-400 cursor-not-allowed"
+                                className="flex-1 p-2 border border-gray-300 rounded bg-gray-100 text-gray-500 text-sm cursor-not-allowed dark:bg-gray-600 dark:border-gray-500 dark:text-gray-400"
                               />
                               
-                              <button type="button" onClick={() => remove(index)} className="text-red-500 hover:text-red-400 p-1"><TrashIcon className="w-4 h-4"/></button>
+                              <button type="button" onClick={() => remove(index)} className="text-red-500 hover:text-red-700 p-1"><TrashIcon className="w-5 h-5"/></button>
                           </div>
                       ))}
                   </div>
@@ -150,9 +153,9 @@ export default function AreaManagement() {
                           <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
                               {roles?.map(role => (
                                   role.name !== 'Admin' && (
-                                    <label key={role.id} className="flex items-center space-x-2 bg-gray-50 dark:bg-gray-700 p-2 rounded border border-gray-200 dark:border-gray-600 cursor-pointer">
-                                        <input type="checkbox" value={role.id} {...register("role_ids")} className="rounded text-blue-600 bg-white dark:bg-gray-600 border-gray-300 dark:border-gray-500"/>
-                                        <span className="text-sm dark:text-white">{role.name}</span>
+                                    <label key={role.id} className="flex items-center space-x-2 bg-gray-50 dark:bg-gray-700 p-2 rounded border border-gray-200 dark:border-gray-600 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600">
+                                        <input type="checkbox" value={role.id} {...register("role_ids")} className="rounded text-blue-600 border-gray-300 dark:border-gray-500 dark:bg-gray-600 focus:ring-blue-500"/>
+                                        <span className="text-sm text-gray-700 dark:text-white">{role.name}</span>
                                     </label>
                                   )
                               ))}
@@ -163,7 +166,7 @@ export default function AreaManagement() {
                       </div>
                   )}
 
-                  <button type="submit" className="w-full bg-green-600 text-white py-3 rounded font-bold hover:bg-green-700 shadow-md">Criar Área</button>
+                  <button type="submit" className="w-full bg-green-600 text-white py-3 rounded font-bold hover:bg-green-700 shadow-md transition-colors">Criar Área</button>
               </form>
           </div>
       );
@@ -171,9 +174,9 @@ export default function AreaManagement() {
 
   return (
     <div className="bg-white dark:bg-gray-800 shadow rounded-lg h-full flex flex-col transition-colors">
-      <div className="px-6 py-4 border-b dark:border-gray-700 flex justify-between items-center">
-        <h2 className="text-xl font-bold dark:text-white">Gerenciar Áreas</h2>
-        <button onClick={() => setIsCreating(true)} className="bg-blue-600 text-white px-4 py-2 rounded flex items-center gap-2 hover:bg-blue-700">
+      <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
+        <h2 className="text-xl font-bold text-gray-800 dark:text-white">Gerenciar Áreas</h2>
+        <button onClick={() => setIsCreating(true)} className="bg-blue-600 text-white px-4 py-2 rounded flex items-center gap-2 hover:bg-blue-700 transition-colors">
             <PlusIcon className="w-5 h-5"/> Nova Área
         </button>
       </div>
@@ -186,11 +189,10 @@ export default function AreaManagement() {
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Páginas</th>
                 </tr>
             </thead>
-            <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+            <tbody className="divide-y divide-gray-200 dark:divide-gray-700 bg-white dark:bg-gray-800">
                 {areas?.map(a => (
-                    <tr key={a.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
-                        <td className="px-6 py-4 dark:text-white font-medium flex items-center gap-2">
-                            {/* Renderiza ícone se possível, senão apenas texto */}
+                    <tr key={a.id} className="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+                        <td className="px-6 py-4 font-medium text-gray-900 dark:text-white flex items-center gap-2">
                             {a.name}
                         </td>
                         <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">{tenants?.find(t=>t.id===a.tenant_id)?.name}</td>
