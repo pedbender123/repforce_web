@@ -13,7 +13,7 @@ from .api import auth, catalog, orders, admin, sysadmin, webhooks, crm, routes
 # Cria tabelas
 models.Base.metadata.create_all(bind=database.engine)
 
-app = FastAPI(title="Repforce API", version="0.3.0")
+app = FastAPI(title="Repforce API", version="0.3.1")
 
 # Uploads
 upload_dir = "/app/uploads"
@@ -32,11 +32,12 @@ def create_initial_seed():
             db.commit()
             db.refresh(tenant)
         
-        # 2. Área do SysAdmin (Criação Automática)
+        # 2. Área do SysAdmin (Correção: Incluindo Gestão de Áreas)
         sysadmin_pages = [
             {"label": "Dashboard", "path": "/sysadmin/dashboard"},
             {"label": "Tenants (Empresas)", "path": "/sysadmin/tenants"},
-            {"label": "Usuários do Sistema", "path": "/sysadmin/users"}
+            {"label": "Usuários Globais", "path": "/sysadmin/users"},
+            {"label": "Gestão de Áreas", "path": "/sysadmin/areas"} # <-- Adicionado
         ]
         
         area_name = "Gestão do Sistema"
@@ -51,13 +52,17 @@ def create_initial_seed():
             db.add(area)
             db.commit()
             db.refresh(area)
+        else:
+            # Atualiza as páginas se a área já existir mas estiver desatualizada
+            area.pages_json = sysadmin_pages
+            db.commit()
 
         # 3. Cargo Super Admin
         role_name = "Super Admin"
         role = db.query(models.Role).filter(models.Role.name == role_name, models.Role.tenant_id == tenant.id).first()
         if not role:
             role = models.Role(name=role_name, tenant_id=tenant.id)
-            role.areas.append(area) # Vincula a área ao cargo
+            role.areas.append(area)
             db.add(role)
             db.commit()
             db.refresh(role)
@@ -72,7 +77,7 @@ def create_initial_seed():
                 hashed_password=hashed_pw, 
                 profile="sysadmin", 
                 tenant_id=tenant.id,
-                role_id=role.id # Vincula o usuário ao cargo
+                role_id=role.id
             )
             db.add(new_admin)
             db.commit()

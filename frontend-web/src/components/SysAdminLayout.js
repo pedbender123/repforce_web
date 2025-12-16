@@ -21,8 +21,7 @@ import {
 const fetchMyAreas = async () => {
     try {
         const { data: allAreas } = await sysAdminApiClient.get('/sysadmin/areas');
-        // Filtra apenas áreas que explicitamente tenham páginas do sysadmin
-        return allAreas.filter(a => a.pages_json && a.pages_json.some(p => p.path.startsWith('/sysadmin')));
+        return allAreas;
     } catch (e) {
         return [];
     }
@@ -45,51 +44,53 @@ const SysAdminLayout = () => {
     'Briefcase': <Briefcase size={20} />
   };
 
-  // ÁREA PADRÃO DE GESTÃO DO SISTEMA (SEMPRE VISÍVEL)
+  // --- ÁREA LOCAL COMPLETA (Priority) ---
   const systemManagementArea = {
-      id: 'sys_default',
+      id: 'sys_local_override', // ID único para evitar conflito
       name: 'Gestão do Sistema',
       icon: 'ShieldAlert',
-      pages: [
+      pages_json: [
         { label: 'Dashboard', path: '/sysadmin/dashboard' },
         { label: 'Tenants (Empresas)', path: '/sysadmin/tenants' },
         { label: 'Usuários Globais', path: '/sysadmin/users' },
-        { label: 'Gestão de Áreas', path: '/sysadmin/areas' }
+        { label: 'Gestão de Áreas', path: '/sysadmin/areas' } // Página faltante adicionada
       ]
   };
 
   const { data: fetchedAreas, isLoading } = useQuery(['sysAdminMenuAreas'], fetchMyAreas);
 
-  // Combina a área padrão (primeira) com quaisquer áreas dinâmicas que o usuário tenha criado
-  // Isso garante que o menu "Gestão do Sistema" nunca suma
-  const displayAreas = fetchedAreas && fetchedAreas.length > 0 
-    ? [systemManagementArea, ...fetchedAreas] 
-    : [systemManagementArea];
+  // LÓGICA DE DEDUPLICAÇÃO:
+  // 1. Pegamos as áreas do banco.
+  // 2. Filtramos qualquer área que tenha o nome "Gestão do Sistema" para evitar duplicidade com a nossa local.
+  // 3. Colocamos a nossa systemManagementArea local (completa) sempre em primeiro.
+  const filteredFetchedAreas = fetchedAreas 
+    ? fetchedAreas.filter(a => a.name !== 'Gestão do Sistema') 
+    : [];
+
+  const displayAreas = [systemManagementArea, ...filteredFetchedAreas];
 
   const [activeArea, setActiveArea] = useState(systemManagementArea);
 
   // Sincroniza área ativa com URL
   useEffect(() => {
+    // Tenta encontrar a área correspondente à URL atual
     const foundArea = displayAreas.find(area => {
-        // Verifica pages_json (dinâmico) ou pages (estático/padrão)
         const pages = area.pages_json || area.pages;
         return Array.isArray(pages) && pages.some(page => location.pathname.startsWith(page.path));
     });
 
     if (foundArea) {
         setActiveArea(foundArea);
-    } else {
-        // Fallback inteligente: se nada bater, mantenha a atual ou volte para a padrão
-        // Não reseta agressivamente para evitar flickers
     }
-  }, [location.pathname, displayAreas]);
+    // Não colocamos "else" para evitar resetar para a primeira área se o usuário estiver em uma sub-rota não mapeada
+  }, [location.pathname, fetchedAreas]); // Dependência em fetchedAreas para re-executar quando os dados chegarem
 
   const handleLogout = () => {
     logout();
     navigate('/sysadmin/login');
   };
 
-  // Helper para pegar as páginas da área ativa de forma segura
+  // Helper seguro para páginas
   const activePages = activeArea?.pages_json || activeArea?.pages || [];
 
   return (

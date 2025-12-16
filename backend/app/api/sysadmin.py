@@ -30,8 +30,8 @@ def create_tenant(
     db: Session = Depends(database.get_db),
     name: str = Form(...),
     cnpj: Optional[str] = Form(None),
-    email: Optional[EmailStr] = Form(None), # Recebe, mas não salva no model Tenant (campo inexistente)
-    phone: Optional[str] = Form(None),      # Recebe, mas não salva no model Tenant (campo inexistente)
+    # Email e Phone removidos do Form pois não existem no model Tenant
+    # Se quiser salvá-los, adicione ao model em models.py e aqui novamente
     status: Optional[str] = Form('active'), 
     tenant_type: Optional[str] = Form('industry'),
     commercial_info: Optional[str] = Form(None),
@@ -57,12 +57,10 @@ def create_tenant(
         finally:
             logo.file.close()
 
-    # 1. Cria o Tenant (CORREÇÃO: Removidos email e phone que não existem no model)
+    # 1. Cria o Tenant
     new_tenant = models.Tenant(
         name=name,
         cnpj=cnpj,
-        # email=email, # Removido pois não existe na tabela tenants
-        # phone=phone, # Removido pois não existe na tabela tenants
         status=status,
         tenant_type=tenant_type,
         commercial_info=commercial_info,
@@ -117,7 +115,6 @@ def create_sysadmin_user_entry(
 ):
     """
     Cria usuários no sistema.
-    Se o perfil for 'admin', associa automaticamente ao cargo 'Admin' do tenant.
     """
     if db.query(models.User).filter(models.User.username == user.username).first():
         raise HTTPException(status_code=400, detail="Username já cadastrado")
@@ -127,33 +124,35 @@ def create_sysadmin_user_entry(
 
     # Lógica de Tenant e Cargo
     if user.profile == 'sysadmin':
-        # SysAdmin vai para o tenant Systems
         sys_tenant = db.query(models.Tenant).filter(models.Tenant.name == "Systems").first()
         if not sys_tenant:
              raise HTTPException(status_code=500, detail="Tenant Systems não encontrado")
         tenant_id = sys_tenant.id
-        # Busca cargo padrão SysAdmin se houver, ou cria
         role = db.query(models.Role).filter(models.Role.name == "Super Admin", models.Role.tenant_id == tenant_id).first()
         if role:
             role_id = role.id
             
     elif user.profile == 'admin':
-        # Admin de Tenant: Busca o cargo "Admin" criado automaticamente
         if not tenant_id:
             raise HTTPException(status_code=400, detail="Tenant ID obrigatório para Admin")
         
+        # 1. Busca ou Cria o Cargo Admin
         admin_role = db.query(models.Role).filter(models.Role.name == "Admin", models.Role.tenant_id == tenant_id).first()
         if not admin_role:
-            # Fallback de segurança
             admin_role = models.Role(name="Admin", tenant_id=tenant_id)
             db.add(admin_role)
             db.commit()
             db.refresh(admin_role)
+        
         role_id = admin_role.id
-    
-    else:
-        pass
 
+        # 2. (IMPORTANTE) Atualiza o cargo Admin para ter acesso a TODAS as áreas do tenant
+        # Isso garante que o admin criado possa ver algo ao logar
+        tenant_areas = db.query(models.Area).filter(models.Area.tenant_id == tenant_id).all()
+        # Limpa e reassocia para garantir
+        admin_role.areas = tenant_areas
+        db.commit()
+    
     hashed_password = security.get_password_hash(user.password)
 
     db_new_user = models.User(
