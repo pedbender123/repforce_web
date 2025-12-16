@@ -37,7 +37,7 @@ def create_initial_seed():
             {"label": "Dashboard", "path": "/sysadmin/dashboard"},
             {"label": "Tenants (Empresas)", "path": "/sysadmin/tenants"},
             {"label": "Usuários Globais", "path": "/sysadmin/users"},
-            {"label": "Gestão de Áreas", "path": "/sysadmin/areas"} # <-- Adicionado
+            {"label": "Gestão de Áreas", "path": "/sysadmin/areas"} # <-- Pagina Faltante
         ]
         
         area_name = "Gestão do Sistema"
@@ -53,7 +53,7 @@ def create_initial_seed():
             db.commit()
             db.refresh(area)
         else:
-            # Atualiza as páginas se a área já existir mas estiver desatualizada
+            # Atualiza o menu se a área já existir (Self-Healing)
             area.pages_json = sysadmin_pages
             db.commit()
 

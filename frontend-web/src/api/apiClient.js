@@ -1,6 +1,8 @@
 import axios from 'axios';
 
-const API_URL = 'http://localhost:8000'; // Ajuste conforme necessário
+// CORREÇÃO: Usar rota relativa (/api) para passar pelo Nginx da VPS.
+// Não usar localhost, pois o browser do cliente não tem acesso direto ao container.
+const API_URL = '/api'; 
 
 const apiClient = axios.create({
   baseURL: API_URL,
@@ -22,7 +24,7 @@ export const login = async (email, password) => {
     const formData = new FormData();
     formData.append('username', email);
     formData.append('password', password);
-    const response = await apiClient.post('/login', formData);
+    const response = await apiClient.post('/auth/token', formData);
     return response.data;
 };
 
@@ -32,41 +34,31 @@ export const getCatalog = async () => {
   return response.data;
 };
 
-// --- CLIENTES (Agora apenas cadastro básico, sem CRM) ---
-// Nota: Se a rota de clientes estava em /crm/clients, ela deve ser movida no backend para /catalog ou /orders
-// Assumindo que o backend agora serve clientes básicos em /orders/clients ou similar, 
-// ou mantendo a rota mas sabendo que ela precisa existir no backend. 
-// Vamos assumir que listagem de clientes para pedidos está em /orders/clients-list ou similar.
-// Se não houver rota específica no código anterior, use a do Admin ou crie uma no Orders.
-// Por simplificação, vou apontar para /orders/clients (precisa ser criada no orders.py se não existir)
-// ou se o usuário SalesRep pode ler do /admin/clients (menos provável).
-// Vou assumir que existe uma rota de leitura de clientes em /catalog/clients ou /orders/clients.
-// Padrão atual: GET /admin/clients (se o vendedor tiver permissão) ou GET /catalog/clients.
-
+// --- CLIENTES ---
 export const getClients = async () => {
-  // Ajuste a rota no backend para onde os clientes são listados para o app
-  const response = await apiClient.get('/orders/clients'); 
+  // Ajustado para rota CRM
+  const response = await apiClient.get('/crm/clients'); 
   return response.data;
 };
 
 export const createClient = async (clientData) => {
-    const response = await apiClient.post('/orders/clients', clientData);
+    const response = await apiClient.post('/crm/clients', clientData);
     return response.data;
 };
 
 // --- PEDIDOS ---
 export const getOrders = async () => {
-    const response = await apiClient.get('/orders/');
+    const response = await apiClient.get('/orders/orders'); // Verifique se a rota backend é /orders ou /orders/orders
     return response.data;
 };
 
 export const createOrder = async (orderData) => {
-    const response = await apiClient.post('/orders/', orderData);
+    const response = await apiClient.post('/orders/orders', orderData);
     return response.data;
 };
 
 export const getOrderDetails = async (orderId) => {
-    const response = await apiClient.get(`/orders/${orderId}`);
+    const response = await apiClient.get(`/orders/orders/${orderId}`);
     return response.data;
 };
 

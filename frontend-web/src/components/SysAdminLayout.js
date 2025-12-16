@@ -44,25 +44,24 @@ const SysAdminLayout = () => {
     'Briefcase': <Briefcase size={20} />
   };
 
-  // --- ÁREA LOCAL COMPLETA (Priority) ---
+  // --- ÁREA LOCAL COMPLETA (Garantia de Menu) ---
   const systemManagementArea = {
-      id: 'sys_local_override', // ID único para evitar conflito
+      id: 'sys_local_override', 
       name: 'Gestão do Sistema',
       icon: 'ShieldAlert',
       pages_json: [
         { label: 'Dashboard', path: '/sysadmin/dashboard' },
         { label: 'Tenants (Empresas)', path: '/sysadmin/tenants' },
         { label: 'Usuários Globais', path: '/sysadmin/users' },
-        { label: 'Gestão de Áreas', path: '/sysadmin/areas' } // Página faltante adicionada
+        { label: 'Gestão de Áreas', path: '/sysadmin/areas' } // Página adicionada
       ]
   };
 
   const { data: fetchedAreas, isLoading } = useQuery(['sysAdminMenuAreas'], fetchMyAreas);
 
-  // LÓGICA DE DEDUPLICAÇÃO:
-  // 1. Pegamos as áreas do banco.
-  // 2. Filtramos qualquer área que tenha o nome "Gestão do Sistema" para evitar duplicidade com a nossa local.
-  // 3. Colocamos a nossa systemManagementArea local (completa) sempre em primeiro.
+  // LÓGICA DE DEDUPLICAÇÃO E PRIORIDADE:
+  // 1. Remove do fetch qualquer área que tenha o mesmo nome da nossa área padrão
+  // 2. Coloca a nossa área padrão (com o menu completo) sempre no topo
   const filteredFetchedAreas = fetchedAreas 
     ? fetchedAreas.filter(a => a.name !== 'Gestão do Sistema') 
     : [];
@@ -73,7 +72,6 @@ const SysAdminLayout = () => {
 
   // Sincroniza área ativa com URL
   useEffect(() => {
-    // Tenta encontrar a área correspondente à URL atual
     const foundArea = displayAreas.find(area => {
         const pages = area.pages_json || area.pages;
         return Array.isArray(pages) && pages.some(page => location.pathname.startsWith(page.path));
@@ -82,15 +80,14 @@ const SysAdminLayout = () => {
     if (foundArea) {
         setActiveArea(foundArea);
     }
-    // Não colocamos "else" para evitar resetar para a primeira área se o usuário estiver em uma sub-rota não mapeada
-  }, [location.pathname, fetchedAreas]); // Dependência em fetchedAreas para re-executar quando os dados chegarem
+  }, [location.pathname, fetchedAreas]); 
 
   const handleLogout = () => {
     logout();
     navigate('/sysadmin/login');
   };
 
-  // Helper seguro para páginas
+  // Helper seguro
   const activePages = activeArea?.pages_json || activeArea?.pages || [];
 
   return (
@@ -119,7 +116,6 @@ const SysAdminLayout = () => {
                 <button
                   onClick={() => {
                       setActiveArea(area);
-                      // Navega para a primeira página da área
                       const pages = area.pages_json || area.pages;
                       if (pages && pages.length > 0) {
                           navigate(pages[0].path);
@@ -184,7 +180,7 @@ const SysAdminLayout = () => {
           </button>
         </header>
 
-        {/* --- MENU SUPERIOR (TABS DA ÁREA ATIVA) --- */}
+        {/* --- MENU SUPERIOR (TABS) --- */}
         <div className="hidden md:flex bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-0 items-end h-16 shadow-sm z-10 overflow-x-auto">
             {activePages.map((page) => {
                 const isPageActive = location.pathname.startsWith(page.path);
