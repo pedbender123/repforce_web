@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, Request, HTTPException
 from sqlalchemy.orm import Session, joinedload
 from ..db import database, models, schemas
+from ..core.permissions import get_user_scope
 from typing import List
 
 router = APIRouter()
@@ -13,8 +14,20 @@ def get_clients(
     db: Session = Depends(database.get_db)
 ):
     tenant_id = request.state.tenant_id
-    clients = db.query(models.Client).filter(models.Client.tenant_id == tenant_id).all()
-    return clients
+    user_id = request.state.user_id
+    
+    # 1. Pergunta ao Antigravity: "O que esse cara pode ver?"
+    scope = get_user_scope(request)
+    
+    # 2. Query Base
+    query = db.query(models.Client).filter(models.Client.tenant_id == tenant_id)
+    
+    # 3. Filtro Antigravity
+    if scope == "OWN":
+        # Mágica: Filtra apenas clientes onde o representante é o usuário atual
+        query = query.filter(models.Client.representative_id == user_id)
+        
+    return query.all()
 
 @router.get("/clients/{client_id}", response_model=schemas.Client)
 def get_client_details(

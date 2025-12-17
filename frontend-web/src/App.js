@@ -17,7 +17,10 @@ import SysAdminLogin from './pages/SysAdminLogin';
 
 // App Pages (Sales Rep)
 import AppDashboard from './pages/AppDashboard';
-import AppClientList from './pages/AppClientList';
+// import AppClientList from './pages/AppClientList'; // LEGADO
+import ClientList from './pages/crm/ClientList'; // NOVO UNIFICADO
+import ProductList from './pages/crm/ProductList'; // NOVO UNIFICADO
+import OrderList from './pages/crm/OrderList'; // NOVO UNIFICADO
 import AppClientDetails from './pages/AppClientDetails';
 import AppClientForm from './pages/AppClientForm';
 import AppOrderCreate from './pages/AppOrderCreate';
@@ -25,7 +28,7 @@ import AppRouteCreate from './pages/AppRouteCreate';
 
 // Admin Pages (Tenant Admin)
 import AdminDashboard from './pages/AdminDashboard';
-import ProductList from './pages/AdminProductList';
+// import ProductList from './pages/AdminProductList'; // LEGADO - REMOVIDO
 import ProductForm from './pages/AdminProductForm';
 import UserManagement from './pages/AdminUserManagement';
 import RoleManagement from './pages/AdminRoleManagement'; // NOVO
@@ -53,20 +56,23 @@ function App() {
               {/* APP ROUTES (Sales Rep) */}
               <Route path="/app" element={<PrivateRoute><AppLayout /></PrivateRoute>}>
                 <Route path="dashboard" element={<AppDashboard />} />
-                <Route path="clients" element={<AppClientList />} />
+                <Route path="clients" element={<ClientList />} />
                 <Route path="clients/new" element={<AppClientForm />} />
                 <Route path="clients/:id" element={<AppClientDetails />} />
+                <Route path="orders" element={<OrderList />} /> {/* NOVA ROTA */}
                 <Route path="orders/new" element={<AppOrderCreate />} />
                 <Route path="routes/new" element={<AppRouteCreate />} />
                 <Route index element={<Navigate to="dashboard" replace />} />
               </Route>
 
-              {/* ADMIN ROUTES (Tenant Owner) */}
-              <Route path="/admin" element={<PrivateRoute><AdminLayout /></PrivateRoute>}>
+              {/* ADMIN ROUTES (Tenant Owner) - Agora usa AppLayout (Layout Unificado) */}
+              <Route path="/admin" element={<PrivateRoute><AppLayout /></PrivateRoute>}>
                 <Route path="dashboard" element={<AdminDashboard />} />
+                <Route path="clients" element={<ClientList />} /> {/* NOVA ROTA ADMIN */}
                 <Route path="products" element={<ProductList />} />
                 <Route path="products/new" element={<ProductForm />} />
                 <Route path="products/:id" element={<ProductForm />} />
+                <Route path="orders" element={<OrderList />} /> {/* NOVA ROTA ADMIN */}
                 <Route path="users" element={<UserManagement />} />
                 <Route path="roles" element={<RoleManagement />} /> {/* NOVO */}
                 <Route index element={<Navigate to="dashboard" replace />} />

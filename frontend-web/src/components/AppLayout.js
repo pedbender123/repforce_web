@@ -46,29 +46,61 @@ const AppLayout = () => {
     'Layout': <Layout size={20} />
   };
 
-  /**
-   * Áreas Padrão (Fallback caso o usuário não tenha cargo ou o backend falhe)
-   */
-  const defaultAreas = [
-    {
-      id: 'default_sales',
-      name: 'Vendas (Padrão)',
-      icon: 'Briefcase',
-      pages_json: [
-        { label: 'Dashboard', path: '/app/dashboard' },
-        { label: 'Novo Pedido', path: '/app/orders/new' },
-        { label: 'Clientes', path: '/app/clients' },
-        { label: 'Rotas', path: '/app/routes/new' }
-      ]
-    }
-  ];
+  // ÁREAS PADRÃO (HARDCODED)
+  const salesArea = {
+    id: 'default_sales',
+    name: 'Vendas',
+    icon: 'Briefcase',
+    pages_json: [
+      { label: 'Dashboard', path: '/app/dashboard' },
+      { label: 'Novo Pedido', path: '/app/orders/new' },
+      { label: 'Clientes', path: '/app/clients' },
+      { label: 'Rotas', path: '/app/routes/new' }
+    ]
+  };
 
-  // PASSO 5: Lógica de Seleção de Áreas
-  // 1. Tenta pegar do Cargo (role_obj.areas)
-  // 2. Se não tiver cargo, usa Fallback baseado no perfil
-  const userAreas = user?.role_obj?.areas?.length > 0
-    ? user.role_obj.areas
-    : defaultAreas;
+  const adminArea = {
+    id: 'default_admin',
+    name: 'Administração',
+    icon: 'Shield',
+    pages_json: [
+      { label: 'Dashboard', path: '/admin/dashboard' },
+      { label: 'Produtos', path: '/admin/products' },
+      { label: 'Pedidos', path: '/admin/orders' },
+      { label: 'Clientes', path: '/admin/clients' },
+      { label: 'Usuários', path: '/admin/users' },
+      { label: 'Cargos', path: '/admin/roles' }
+    ]
+  };
+
+  // LÓGICA DE COMPOSIÇÃO DE ÁREAS
+  let userAreas = [];
+
+  // 1. Áreas Dinâmicas do Banco (Atribuídas ao Cargo)
+  const dynamicAreas = user?.role_obj?.areas || [];
+
+  // 2. Injeção de Áreas Fixas baseada no Perfil/Permissão
+  // (Pode ser melhorado futuramente com flags booleanas no backend: user.is_admin)
+  const isAdmin = ['admin', 'manager', 'sysadmin'].includes(user?.profile);
+  const isSales = ['sales_rep', 'representante'].includes(user?.profile);
+
+  if (isAdmin) {
+    userAreas.push(adminArea);
+  }
+
+  // Se for vendedor OU se não tiver nenhuma área (fallback), adiciona Vendas
+  // (Admins também podem querer ver a área de vendas? Por enquanto vamos separar para clareza)
+  if (isSales || (!isAdmin && dynamicAreas.length === 0)) {
+    userAreas.push(salesArea);
+  }
+
+  // Adiciona as digitadas no banco
+  userAreas = [...userAreas, ...dynamicAreas];
+
+  // Remove duplicatas por ID (caso o banco tenha uma área com mesmo ID da hardcoded)
+  userAreas = userAreas.filter((area, index, self) =>
+    index === self.findIndex((t) => (t.id === area.id))
+  );
 
   // Estado da Área Ativa (Selecionada na Sidebar)
   const [activeArea, setActiveArea] = useState(userAreas[0]);

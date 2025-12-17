@@ -68,12 +68,14 @@ def create_order(
 @router.get("/orders", response_model=List[schemas.Order])
 def get_orders(request: Request, db: Session = Depends(database.get_db)):
     tenant_id = request.state.tenant_id
-    profile = request.state.profile
     user_id = request.state.user_id
+    
+    # SCOPE CHECK
+    scope = get_user_scope(request)
 
     query = db.query(models.Order).filter(models.Order.tenant_id == tenant_id)
     
-    if profile == 'representante':
+    if scope == 'OWN':
         query = query.filter(models.Order.representative_id == user_id)
         
     return query.order_by(models.Order.created_at.desc()).all()
