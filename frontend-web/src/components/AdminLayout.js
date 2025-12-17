@@ -1,4 +1,4 @@
-import React, { useContext, useState } from 'react';
+import React, { useContext, useState, useEffect } from 'react';
 import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 import { ThemeContext } from '../context/ThemeContext';
@@ -11,7 +11,8 @@ import {
   X,
   Sun,
   Moon,
-  Shield
+  Shield,
+  Briefcase
 } from 'lucide-react';
 
 const AdminLayout = () => {
@@ -22,19 +23,51 @@ const AdminLayout = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
 
+  // Mapeamento de Ícones
+  const iconMap = {
+    'LayoutDashboard': <LayoutDashboard size={20} />,
+    'Package': <Package size={20} />,
+    'Users': <Users size={20} />,
+    'Shield': <Shield size={20} />,
+    'Briefcase': <Briefcase size={20} />
+  };
+
+  // --- ÁREA ADMIN PADRÃO ---
+  const adminArea = {
+    id: 'admin_default',
+    name: 'Administração',
+    icon: 'Shield',
+    pages_json: [
+      { label: 'Dashboard', path: '/admin/dashboard' },
+      { label: 'Produtos', path: '/admin/products' },
+      { label: 'Usuários', path: '/admin/users' },
+      { label: 'Cargos', path: '/admin/roles' }
+    ]
+  };
+
+  // Como o Admin por enquanto só tem uma "Area" de gestão, usamos ela como única.
+  // Futuramente, se o Admin tiver acesso a outras areas (ex: Vendas), elas entrariam aqui.
+  const displayAreas = [adminArea];
+
+  const [activeArea, setActiveArea] = useState(adminArea);
+
+  // Sincroniza área ativa com URL
+  useEffect(() => {
+    const foundArea = displayAreas.find(area => {
+      return area.pages_json.some(page => location.pathname.startsWith(page.path));
+    });
+    if (foundArea) {
+      setActiveArea(foundArea);
+    }
+  }, [location.pathname]);
+
   const handleLogout = () => {
     logout();
     navigate('/login');
   };
 
-  const navItems = [
-    { name: 'Dashboard', path: '/admin/dashboard', icon: <LayoutDashboard size={20} /> },
-    { name: 'Produtos', path: '/admin/products', icon: <Package size={20} /> },
-    { name: 'Usuários', path: '/admin/users', icon: <Users size={20} /> },
-    { name: 'Cargos', path: '/admin/roles', icon: <Shield size={20} /> },
-  ];
-
-  const isActive = (path) => location.pathname.startsWith(path);
+  // Helper para renderizar ícone
+  const renderIcon = (iconName) => iconMap[iconName] || <Briefcase size={20} />;
 
   return (
     <div className="flex h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-200">
@@ -48,25 +81,34 @@ const AdminLayout = () => {
           onClick={() => setIsCollapsed(!isCollapsed)}
           title="Clique para alternar o menu"
         >
-          <img src="/logo_clara.png" alt="RepForce" className="h-8" />
+          {/* LOGO CORRIGIDA E REDIMENSIONÁVEL */}
+          <img src="/logo_clara.png" alt="RepForce" className="h-8 w-auto object-contain" />
         </div>
 
         <nav className="flex-1 overflow-y-auto py-4 overflow-x-hidden">
+          <p className={`px-4 text-xs font-semibold text-gray-400 uppercase mb-2 ${isCollapsed ? 'text-center' : ''}`}>
+            {isCollapsed ? 'Apps' : 'Gestão'}
+          </p>
           <ul className="space-y-1 px-3">
-            {navItems.map((item) => (
-              <li key={item.path}>
-                <Link
-                  to={item.path}
-                  className={`flex items-center py-3 text-sm font-medium rounded-lg transition-colors duration-150 ${isCollapsed ? 'justify-center px-0' : 'px-4'
-                    } ${isActive(item.path)
-                      ? 'bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
+            {displayAreas.map((area) => (
+              <li key={area.id}>
+                <button
+                  onClick={() => {
+                    setActiveArea(area);
+                    if (area.pages_json && area.pages_json.length > 0) {
+                      navigate(area.pages_json[0].path);
+                    }
+                  }}
+                  className={`w-full flex items-center py-3 text-sm font-medium rounded-lg transition-colors duration-150 ${isCollapsed ? 'justify-center px-0' : 'px-4'
+                    } ${activeArea?.id === area.id
+                      ? 'bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 shadow-sm'
                       : 'text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700'
                     }`}
-                  title={isCollapsed ? item.name : ''}
+                  title={isCollapsed ? area.name : ''}
                 >
-                  <span className={`${isCollapsed ? '' : 'mr-3'}`}>{item.icon}</span>
-                  {!isCollapsed && <span className="whitespace-nowrap">{item.name}</span>}
-                </Link>
+                  <span className={`${isCollapsed ? '' : 'mr-3'}`}>{renderIcon(area.icon)}</span>
+                  {!isCollapsed && <span className="whitespace-nowrap">{area.name}</span>}
+                </button>
               </li>
             ))}
           </ul>
@@ -110,8 +152,8 @@ const AdminLayout = () => {
         </div>
       </aside>
 
-      {/* Mobile Header (Mantido) */}
       <div className="flex-1 flex flex-col overflow-hidden">
+        {/* Mobile Header */}
         <header className="md:hidden flex items-center justify-between p-4 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
           <div className="flex items-center">
             <img src="/logo_clara.png" alt="RepForce" className="h-6 mr-2" />
@@ -121,22 +163,43 @@ const AdminLayout = () => {
           </button>
         </header>
 
+        {/* --- MENU SUPERIOR (PÁGINAS) --- */}
+        <div className="hidden md:flex bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 px-6 py-0 items-end h-16 shadow-sm z-10 overflow-x-auto">
+          {activeArea?.pages_json?.map((page) => {
+            const isPageActive = location.pathname.startsWith(page.path);
+            return (
+              <Link
+                key={page.path}
+                to={page.path}
+                className={`mr-6 py-4 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${isPageActive
+                    ? 'border-blue-600 text-blue-600 dark:text-blue-400 dark:border-blue-400'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:border-gray-300'
+                  }`}
+              >
+                {page.label}
+              </Link>
+            );
+          })}
+        </div>
+
+
         {isMobileMenuOpen && (
           <div className="md:hidden absolute top-16 left-0 w-full bg-white dark:bg-gray-800 z-50 border-b border-gray-200 dark:border-gray-700 shadow-lg">
             <nav className="p-4">
+              <p className="text-xs font-semibold text-gray-400 uppercase mb-2">Páginas</p>
               <ul className="space-y-2">
-                {navItems.map((item) => (
-                  <li key={item.path}>
+                {activeArea?.pages_json?.map((page) => (
+                  <li key={page.path}>
                     <Link
-                      to={item.path}
+                      to={page.path}
                       onClick={() => setIsMobileMenuOpen(false)}
-                      className={`flex items-center px-4 py-3 text-sm font-medium rounded-lg ${isActive(item.path)
-                        ? 'bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
-                        : 'text-gray-700 dark:text-gray-300'
+                      className={`flex items-center px-4 py-3 text-sm font-medium rounded-lg ${location.pathname.startsWith(page.path)
+                          ? 'bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
+                          : 'text-gray-700 dark:text-gray-300'
                         }`}
                     >
-                      <span className="mr-3">{item.icon}</span>
-                      {item.name}
+                      {/* Icone individual para página removido na tabs, mas no mobile pode manter simples */}
+                      {page.label}
                     </Link>
                   </li>
                 ))}

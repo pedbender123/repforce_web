@@ -107,7 +107,7 @@ const AppLayout = () => {
           className="h-16 flex items-center justify-center border-b border-gray-200 dark:border-gray-700 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
           onClick={() => setIsCollapsed(!isCollapsed)}
         >
-          <img src="/logo_clara.png" alt="RepForce" className="h-8 object-contain" />
+          <img src="/logo_clara.png" alt="RepForce" className="h-8 w-auto object-contain" />
         </div>
 
         <nav className="flex-1 overflow-y-auto py-4 overflow-x-hidden">
@@ -196,8 +196,8 @@ const AppLayout = () => {
                 key={page.path}
                 to={page.path}
                 className={`mr-6 py-4 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${isPageActive
-                    ? 'border-blue-600 text-blue-600 dark:text-blue-400 dark:border-blue-400'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:border-gray-300'
+                  ? 'border-blue-600 text-blue-600 dark:text-blue-400 dark:border-blue-400'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:border-gray-300'
                   }`}
               >
                 {page.label}
@@ -221,8 +221,8 @@ const AppLayout = () => {
                       to={page.path}
                       onClick={() => setIsMobileMenuOpen(false)}
                       className={`flex items-center px-4 py-3 text-sm font-medium rounded-lg ${location.pathname.startsWith(page.path)
-                          ? 'bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
-                          : 'text-gray-700 dark:text-gray-300'
+                        ? 'bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
+                        : 'text-gray-700 dark:text-gray-300'
                         }`}
                     >
                       {page.label}
@@ -238,8 +238,8 @@ const AppLayout = () => {
                         key={area.id}
                         onClick={() => { setActiveArea(area); setIsMobileMenuOpen(false); if (area.pages_json?.[0]) navigate(area.pages_json[0].path); }}
                         className={`px-3 py-1 text-xs border rounded transition-colors whitespace-nowrap ${activeArea?.id === area.id
-                            ? 'bg-blue-600 text-white border-blue-600'
-                            : 'dark:text-white dark:border-gray-600'
+                          ? 'bg-blue-600 text-white border-blue-600'
+                          : 'dark:text-white dark:border-gray-600'
                           }`}
                       >
                         {area.name}
