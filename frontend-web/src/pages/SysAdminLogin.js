@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation, Navigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
-import { SysAdminAuthContext } from '../context/SysAdminAuthContext';
+import { useSysAdminAuth } from '../context/SysAdminAuthContext';
 import { Eye, EyeOff, ShieldAlert } from 'lucide-react';
 import ThemeToggle from '../components/ThemeToggle';
 
