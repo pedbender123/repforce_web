@@ -1,5 +1,5 @@
 import React from 'react';
-import { useSysAdminAuth } from '../../context/SysAdminAuthContext';
+import { useSysAdminAuth } from '../context/SysAdminAuthContext';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import sysAdminApiClient from '../api/sysAdminApiClient';

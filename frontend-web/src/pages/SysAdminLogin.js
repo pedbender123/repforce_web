@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { SysAdminAuthContext } from '../context/SysAdminAuthContext';
 import { Eye, EyeOff, ShieldAlert } from 'lucide-react';
-import ThemeToggle from '../../components/ThemeToggle';
+import ThemeToggle from '../components/ThemeToggle';
 
 export default function SysAdminLogin() {
   const [username, setUsername] = useState('');
