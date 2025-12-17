@@ -240,10 +240,10 @@ export default function AreaManagement() {
                                 <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">{tenants?.find(t => t.id === a.tenant_id)?.name}</td>
                                 <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">{a.pages_json?.length || 0} páginas</td>
                                 <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium flex justify-end gap-2">
-                                    <button className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300">
+                                    <button onClick={() => startEdit(a)} className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300">
                                         <PencilIcon className="w-5 h-5" />
                                     </button>
-                                    <button className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300">
+                                    <button onClick={() => { if (window.confirm('Excluir Área?')) deleteMutation.mutate(a.id) }} className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300">
                                         <TrashIcon className="w-5 h-5" />
                                     </button>
                                 </td>
