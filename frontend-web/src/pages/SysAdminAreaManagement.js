@@ -46,18 +46,7 @@ export default function AreaManagement() {
 
     // ... (rest of code) ...
 
-    // Table Columns Update
-    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Ações</th>
 
-    // Table Row Update
-    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium flex gap-2">
-        <button className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300">
-            <PencilIcon className="w-5 h-5" />
-        </button>
-        <button className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300">
-             <TrashIcon className="w-5 h-5" />
-        </button>
-    </td>
 
     const tenantIdWatch = watch("tenant_id");
     React.useEffect(() => { setSelectedTenant(tenantIdWatch) }, [tenantIdWatch]);
@@ -205,6 +194,7 @@ export default function AreaManagement() {
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Nome</th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Tenant</th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Páginas</th>
+                            <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Ações</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-200 dark:divide-gray-700 bg-white dark:bg-gray-800">
@@ -215,6 +205,14 @@ export default function AreaManagement() {
                                 </td>
                                 <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">{tenants?.find(t => t.id === a.tenant_id)?.name}</td>
                                 <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">{a.pages_json?.length || 0} páginas</td>
+                                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium flex justify-end gap-2">
+                                    <button className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300">
+                                        <PencilIcon className="w-5 h-5" />
+                                    </button>
+                                    <button className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300">
+                                        <TrashIcon className="w-5 h-5" />
+                                    </button>
+                                </td>
                             </tr>
                         ))}
                     </tbody>
