@@ -132,18 +132,18 @@ const AppLayout = () => {
 
       {/* --- SIDEBAR: ÁREAS DO TENANT --- */}
       <aside
-        className={`hidden md:flex flex-col bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 transition-all duration-300 ease-in-out ${isCollapsed ? 'w-20' : 'w-64'
+        className={`hidden md:flex flex-col bg-gray-900 dark:bg-black border-r border-gray-800 transition-all duration-300 ease-in-out ${isCollapsed ? 'w-20' : 'w-64'
           }`}
       >
         <div
-          className="h-16 flex items-center justify-center border-b border-gray-200 dark:border-gray-700 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+          className="h-16 flex items-center justify-center border-b border-gray-800 cursor-pointer hover:bg-gray-800 transition-colors"
           onClick={() => setIsCollapsed(!isCollapsed)}
         >
           <img src="/logo_clara.png" alt="RepForce" className="h-8 w-auto object-contain" />
         </div>
 
         <nav className="flex-1 overflow-y-auto py-4 overflow-x-hidden">
-          <p className={`px-4 text-xs font-semibold text-gray-400 uppercase mb-2 ${isCollapsed ? 'text-center' : ''}`}>
+          <p className={`px-4 text-xs font-semibold text-gray-500 uppercase mb-2 ${isCollapsed ? 'text-center' : ''}`}>
             {isCollapsed ? 'Apps' : 'Meus Aplicativos'}
           </p>
           <ul className="space-y-1 px-3">
@@ -159,8 +159,8 @@ const AppLayout = () => {
                   }}
                   className={`w-full flex items-center py-3 text-sm font-medium rounded-lg transition-colors duration-150 ${isCollapsed ? 'justify-center px-0' : 'px-4'
                     } ${activeArea?.id === area.id || activeArea?.name === area.name
-                      ? 'bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 shadow-sm'
-                      : 'text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700'
+                      ? 'bg-blue-600 text-white shadow-md'
+                      : 'text-gray-400 hover:bg-gray-800 hover:text-white'
                     }`}
                   title={isCollapsed ? area.name : ''}
                 >
@@ -174,33 +174,33 @@ const AppLayout = () => {
           </ul>
         </nav>
 
-        <div className="p-4 border-t border-gray-200 dark:border-gray-700">
+        <div className="p-4 border-t border-gray-800">
           {!isCollapsed ? (
             <>
               <div className="flex items-center justify-between mb-4 px-2">
                 <div className="flex flex-col overflow-hidden">
-                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300 truncate" title={user?.full_name}>
+                  <span className="text-sm font-medium text-white truncate" title={user?.full_name}>
                     {user?.full_name || user?.name || 'Usuário'}
                   </span>
-                  <span className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                  <span className="text-xs text-gray-500 truncate">
                     {user?.role_obj?.name || user?.profile}
                   </span>
                 </div>
-                <button onClick={toggleTheme} className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700">
+                <button onClick={toggleTheme} className="text-gray-500 hover:text-white p-1 rounded hover:bg-gray-800">
                   {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
                 </button>
               </div>
-              <button onClick={handleLogout} className="flex items-center w-full px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50 rounded-lg dark:text-red-400 dark:hover:bg-red-900/20 transition-colors">
+              <button onClick={handleLogout} className="flex items-center w-full px-4 py-2 text-sm font-medium text-red-400 hover:bg-red-900/30 rounded-lg transition-colors">
                 <LogOut size={18} className="mr-2" />
                 Sair
               </button>
             </>
           ) : (
             <div className="flex flex-col items-center space-y-4">
-              <button onClick={toggleTheme} className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700">
+              <button onClick={toggleTheme} className="text-gray-500 hover:text-white p-2 rounded hover:bg-gray-800">
                 {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
               </button>
-              <button onClick={handleLogout} className="text-red-600 hover:bg-red-50 rounded-lg dark:text-red-400 dark:hover:bg-red-900/20 p-2 transition-colors">
+              <button onClick={handleLogout} className="text-red-400 hover:bg-red-900/30 p-2 rounded-lg transition-colors">
                 <LogOut size={20} />
               </button>
             </div>
