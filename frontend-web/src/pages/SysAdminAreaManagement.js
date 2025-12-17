@@ -36,6 +36,9 @@ const updateArea = async ({ id, data }) => {
 
 const iconOptions = ['LayoutDashboard', 'ShoppingCart', 'Users', 'Map', 'Package', 'Settings', 'Briefcase', 'Phone', 'ShieldAlert', 'Server', 'Database', 'Layout'];
 
+// Classe padrão para inputs para garantir visibilidade no Dark Mode
+const inputClass = "w-full p-2 border border-gray-300 rounded bg-white text-gray-900 dark:bg-gray-700 dark:text-white dark:border-gray-600 focus:ring-blue-500 focus:border-blue-500";
+
 export default function AreaManagement() {
     const [isCreating, setIsCreating] = useState(false);
     const [editingId, setEditingId] = useState(null);
