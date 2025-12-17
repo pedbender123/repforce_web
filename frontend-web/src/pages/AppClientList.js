@@ -9,11 +9,25 @@ const fetchClients = async () => {
     return data;
 };
 
+const deleteClient = async (id) => {
+    await apiClient.delete(`/crm/clients/${id}`);
+};
+
 export default function AppClientList() {
     const navigate = useNavigate();
+    const queryClient = useQueryClient();
+
     // Adicionei tratamento de erro na query
     const { data: clients, isLoading, isError, error } = useQuery(['clients'], fetchClients, {
         retry: 1, // Tenta apenas 1 vez se falhar
+    });
+
+    const deleteMutation = useMutation(deleteClient, {
+        onSuccess: () => {
+            queryClient.invalidateQueries(['clients']);
+            alert('Cliente excluído!');
+        },
+        onError: () => alert('Erro ao excluir cliente')
     });
 
     if (isLoading) return <div className="p-8 text-center dark:text-white">Carregando lista de clientes...</div>;

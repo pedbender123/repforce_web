@@ -67,6 +67,25 @@ export default function AreaManagement() {
         onError: (err) => alert(err.response?.data?.detail || "Erro ao criar área")
     });
 
+    const deleteMutation = useMutation(deleteArea, {
+        onSuccess: () => {
+            queryClient.invalidateQueries(['sysAdminAreas']);
+            alert('Área excluída!');
+        },
+        onError: () => alert('Erro ao excluir área')
+    });
+
+    const updateMutation = useMutation(updateArea, {
+        onSuccess: () => {
+            queryClient.invalidateQueries(['sysAdminAreas']);
+            alert('Área atualizada!');
+            reset();
+            setIsCreating(false);
+            setEditingId(null);
+        },
+        onError: (err) => alert(err.response?.data?.detail || "Erro ao atualizar")
+    });
+
     const onSubmit = (data) => {
         const payload = {
             name: data.name,
@@ -75,7 +94,12 @@ export default function AreaManagement() {
             pages_json: data.pages_json,
             allowed_role_ids: data.role_ids ? data.role_ids.map(id => parseInt(id)) : []
         };
-        mutation.mutate(payload);
+
+        if (editingId) {
+            updateMutation.mutate({ id: editingId, data: payload });
+        } else {
+            mutation.mutate(payload);
+        }
     };
 
     const handlePageSelect = (index, pathValue) => {
@@ -84,6 +108,16 @@ export default function AreaManagement() {
             setValue(`pages_json.${index}.label`, page.label.split(' - ')[1] || page.label);
             setValue(`pages_json.${index}.path`, page.path);
         }
+    };
+
+    const startEdit = (area) => {
+        setIsCreating(true);
+        setEditingId(area.id);
+        setValue('name', area.name);
+        setValue('icon', area.icon);
+        setValue('tenant_id', area.tenant_id);
+        setValue('pages_json', area.pages_json || []);
+        setValue('role_ids', area.allowed_role_ids ? area.allowed_role_ids.map(String) : []);
     };
 
     if (isCreating) {

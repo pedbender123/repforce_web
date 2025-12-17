@@ -18,7 +18,7 @@ const createUser = async (userData) => {
 export default function TenantUserManagement() {
   const [isCreating, setIsCreating] = useState(false);
   const queryClient = useQueryClient();
-  const { register, handleSubmit, reset } = useForm({
+  const { register, handleSubmit, reset, setValue } = useForm({
     defaultValues: {
       profile: 'representante'
     }
@@ -42,9 +42,49 @@ export default function TenantUserManagement() {
     }
   });
 
+  // ... inside component ...
+  const [editingId, setEditingId] = useState(null);
+
+  const deleteMutation = useMutation(async (id) => {
+    await apiClient.delete(`/admin/users/${id}`);
+  }, {
+    onSuccess: () => {
+      queryClient.invalidateQueries(['tenantAdminUsers']);
+      alert('Usuário excluído!');
+    },
+    onError: () => alert('Erro ao excluir usuário.')
+  });
+
+  const updateMutation = useMutation(async ({ id, data }) => {
+    await apiClient.put(`/admin/users/${id}`, data);
+  }, {
+    onSuccess: () => {
+      queryClient.invalidateQueries(['tenantAdminUsers']);
+      alert('Atualizado com sucesso!');
+      reset();
+      setIsCreating(false);
+      setEditingId(null);
+    }
+  });
+
   const onSubmit = (data) => {
-    mutation.mutate(data);
+    if (editingId) {
+      updateMutation.mutate({ id: editingId, data });
+    } else {
+      mutation.mutate(data);
+    }
   };
+
+  const startEdit = (user) => {
+    setIsCreating(true);
+    setEditingId(user.id);
+    setValue('name', user.name);
+    setValue('username', user.username);
+    setValue('email', user.email);
+    setValue('profile', user.profile);
+    // Password field might need handling (optional update)
+  };
+
 
   if (isCreating) {
     return (
@@ -119,10 +159,10 @@ export default function TenantUserManagement() {
                 </td>
                 <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">{u.email || '-'}</td>
                 <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium flex justify-end gap-2">
-                  <button className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300">
+                  <button onClick={() => startEdit(u)} className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300">
                     <PencilIcon className="w-5 h-5" />
                   </button>
-                  <button className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300">
+                  <button onClick={() => { if (window.confirm('Excluir usuário?')) deleteMutation.mutate(u.id) }} className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300">
                     <TrashIcon className="w-5 h-5" />
                   </button>
                 </td>

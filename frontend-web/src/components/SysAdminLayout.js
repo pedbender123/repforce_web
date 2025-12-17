@@ -61,9 +61,8 @@ const SysAdminLayout = () => {
 
   // LÓGICA DE DEDUPLICAÇÃO E PRIORIDADE:
   // 1. Remove qualquer área que tenha o mesmo nome da nossa área padrão
-  // 2. Filtra APENAS áreas globais (sem tenant_id) se o backend retornar misturado
   const filteredFetchedAreas = fetchedAreas
-    ? fetchedAreas.filter(a => a.name !== 'Gestão do Sistema' && a.tenant_id === null)
+    ? fetchedAreas.filter(a => a.name !== 'Gestão do Sistema')
     : [];
 
   const displayAreas = [systemManagementArea, ...filteredFetchedAreas];
@@ -195,8 +194,8 @@ const SysAdminLayout = () => {
                 key={page.path}
                 to={page.path}
                 className={`mr-6 py-4 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${isPageActive
-                    ? 'border-blue-600 text-blue-600 dark:text-blue-400 dark:border-blue-400'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:border-gray-300'
+                  ? 'border-blue-600 text-blue-600 dark:text-blue-400 dark:border-blue-400'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:border-gray-300'
                   }`}
               >
                 {page.label}
@@ -217,8 +216,8 @@ const SysAdminLayout = () => {
                       to={page.path}
                       onClick={() => setIsMobileMenuOpen(false)}
                       className={`flex items-center px-4 py-3 text-sm font-medium rounded-lg ${location.pathname.startsWith(page.path)
-                          ? 'bg-blue-600 text-white'
-                          : 'text-gray-400'
+                        ? 'bg-blue-600 text-white'
+                        : 'text-gray-400'
                         }`}
                     >
                       {page.label}
