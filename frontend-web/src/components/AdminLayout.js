@@ -79,10 +79,16 @@ const AdminLayout = () => {
       // Se a area atual já estiver na lista de matches, mantemos ela (evita pulos)
       const currentIsMatching = matchingAreas.find(a => a.id === activeArea?.id);
       if (currentIsMatching) {
-        return; // Não muda nada, estabilidade mantida
+        return;
       }
-      // Senão, pega a primeira
-      setActiveArea(matchingAreas[0]);
+
+      // PRIORIDADE: Se a "Administração" (admin_default) for uma das matches (ex: /admin/users), priorize-a.
+      const defaultAdminMatch = matchingAreas.find(a => a.id === 'admin_default');
+      if (defaultAdminMatch) {
+        setActiveArea(defaultAdminMatch);
+      } else {
+        setActiveArea(matchingAreas[0]);
+      }
     }
   }, [location.pathname, fetchedAreas]);
 

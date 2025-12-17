@@ -33,42 +33,63 @@ export default function TenantManagement() {
       try {
         const tenantId = newTenant.id;
 
-        // 1. Criar Área de Vendas
+        // 1. Criar Área de Administração (Padrão)
         const areaPayload = {
-          name: 'Vendas',
-          description: 'Área padrão de vendas',
-          icon: 'briefcase', // Icone do lucide-react compatível
+          name: 'Administração',
+          description: 'Área de gestão do sistema',
+          icon: 'ShieldAlert',
           tenant_id: tenantId,
           pages_json: [
-            { label: 'Dashboard', path: '/app/dashboard' },
-            { label: 'Novo Pedido', path: '/app/orders/new' },
-            { label: 'Clientes', path: '/app/clients' },
-            { label: 'Rotas', path: '/app/routes/new' }
+            { label: 'Dashboard', path: '/admin/dashboard' },
+            { label: 'Usuários', path: '/admin/users' },
+            { label: 'Cargos', path: '/admin/roles' },
+            { label: 'Produtos', path: '/admin/products' }
           ]
         };
         const { data: area } = await sysAdminApiClient.post('/sysadmin/areas', areaPayload);
 
-        // 2. Criar Cargo Admin
+        // 2. Criar Cargo Admin (Vinculado à Área de Administração)
         const { data: adminRole } = await sysAdminApiClient.post('/sysadmin/roles', {
           name: 'Admin',
-          description: 'Administrador do Tenant',
-          tenant_id: tenantId,
-          area_ids: [area.id] // Vincula à área criada
-        });
-
-        // 3. Criar Cargo Representante
-        await sysAdminApiClient.post('/sysadmin/roles', {
-          name: 'Representante',
-          description: 'Vendedor Externo',
+          description: 'Acesso total ao sistema',
           tenant_id: tenantId,
           area_ids: [area.id]
         });
 
+        // 3. Criar Cargo Representante (Sem área padrão vinculada inicialmente, ou criar área Vendas separada?)
+        // Para simplificar e atender o "MVP Enterprise", vamos criar apenas o Admin agora e deixar o Admin criar a área de vendas.
+        // Ou criar uma segunda área de Vendas? Vamos criar a segunda área para não quebrar a expectativa de "Testar Vendas".
+
+        const salesAreaPayload = {
+          name: 'Vendas',
+          icon: 'Briefcase',
+          tenant_id: tenantId,
+          pages_json: [
+            { label: 'Dashboard', path: '/app/dashboard' },
+            { label: 'Clientes', path: '/app/clients' },
+            { label: 'Pedidos', path: '/app/orders/new' }
+          ]
+        };
+        const { data: salesArea } = await sysAdminApiClient.post('/sysadmin/areas', salesAreaPayload);
+
+        await sysAdminApiClient.post('/sysadmin/roles', {
+          name: 'Representante',
+          description: 'Força de Vendas',
+          tenant_id: tenantId,
+          area_ids: [salesArea.id]
+        });
+
         // 4. ATRIBUIR CARGO ADMIN AO USUÁRIO PADRÃO
-        // O backend cria um usuário padrão ao criar o tenant. Precisamos buscá-lo e atualizá-lo.
+        // Pequeno delay para garantir que o usuário foi commitado no banco (se houver async no backend)
+        await new Promise(r => setTimeout(r, 1000));
+
         const { data: tenantUsers } = await sysAdminApiClient.get(`/sysadmin/users?tenant_id=${tenantId}`);
         if (tenantUsers && tenantUsers.length > 0) {
-          const adminUser = tenantUsers[0]; // Assume que o primeiro é o admin criado
+          // Assume que o usuário criado junto com o tenant é o primeiro/único
+          const adminUser = tenantUsers.find(u => u.email === newTenant.email) || tenantUsers[0];
+
+          console.log("Atualizando usuário Admin:", adminUser, "para Role:", adminRole);
+
           await sysAdminApiClient.put(`/sysadmin/users/${adminUser.id}`, {
             ...adminUser,
             role_id: adminRole.id

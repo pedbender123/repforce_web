@@ -5,10 +5,16 @@ from app.db.database import Base
 import enum
 
 # Enums
+# Enums
 class UserRole(str, enum.Enum):
     SYSADMIN = "sysadmin"
     ADMIN = "admin"
     SALES_REP = "sales_rep"
+
+class AccessLevel(str, enum.Enum):
+    GLOBAL = "global"
+    TEAM = "team"
+    OWN = "own"
 
 class OrderStatus(str, enum.Enum):
     DRAFT = "draft"
@@ -79,6 +85,9 @@ class Role(Base):
     name = Column(String) # Ex: "Vendedor Externo"
     description = Column(String, nullable=True)
     
+    # Novo: Nível de Acesso (Escopo)
+    access_level = Column(String, default=AccessLevel.OWN) # global, team, own
+    
     tenant_id = Column(Integer, ForeignKey("tenants.id"))
     tenant = relationship("Tenant", back_populates="roles")
     
@@ -107,6 +116,9 @@ class User(Base):
 
     orders = relationship("Order", back_populates="sales_rep")
     routes = relationship("VisitRoute", back_populates="user")
+    
+    # Relacionamento reverso para Clientes (Meus Clientes)
+    clients = relationship("Client", back_populates="sales_rep")
 
 # --- CATALOG ---
 class Supplier(Base):
@@ -151,8 +163,14 @@ class Client(Base):
     city = Column(String, nullable=True)
     state = Column(String, nullable=True)
     zip_code = Column(String, nullable=True)
+    
     tenant_id = Column(Integer, ForeignKey("tenants.id"))
     tenant = relationship("Tenant", back_populates="clients")
+    
+    # Novo: Representante (Dono da conta)
+    representative_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    sales_rep = relationship("User", back_populates="clients")
+    
     orders = relationship("Order", back_populates="client")
     contacts = relationship("Contact", back_populates="client", cascade="all, delete-orphan")
 
