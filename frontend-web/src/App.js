@@ -7,7 +7,6 @@ import PrivateRoute from './components/PrivateRoute';
 
 // Layouts
 import AppLayout from './components/AppLayout';
-import AdminLayout from './components/AdminLayout';
 import SysAdminLayout from './components/SysAdminLayout';
 
 // Public Pages
@@ -17,7 +16,6 @@ import SysAdminLogin from './pages/SysAdminLogin';
 
 // App Pages (Sales Rep)
 import AppDashboard from './pages/AppDashboard';
-// import AppClientList from './pages/AppClientList'; // LEGADO
 import ClientList from './pages/crm/ClientList'; // NOVO UNIFICADO
 import ProductList from './pages/crm/ProductList'; // NOVO UNIFICADO
 import OrderList from './pages/crm/OrderList'; // NOVO UNIFICADO
@@ -28,7 +26,6 @@ import AppRouteCreate from './pages/AppRouteCreate';
 
 // Admin Pages (Tenant Admin)
 import AdminDashboard from './pages/AdminDashboard';
-// import ProductList from './pages/AdminProductList'; // LEGADO - REMOVIDO
 import ProductForm from './pages/AdminProductForm';
 import UserManagement from './pages/AdminUserManagement';
 import RoleManagement from './pages/AdminRoleManagement'; // NOVO
