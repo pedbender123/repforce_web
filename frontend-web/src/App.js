@@ -11,29 +11,30 @@ import AdminLayout from './components/AdminLayout';
 import SysAdminLayout from './components/SysAdminLayout';
 
 // Public Pages
+// Public Pages
 import Login from './pages/Login';
-import SysAdminLogin from './pages/sysadmin/SysAdminLogin';
+import SysAdminLogin from './pages/SysAdminLogin';
 
 // App Pages (Sales Rep)
-import AppDashboard from './pages/app/AppDashboard';
-import AppClientList from './pages/app/AppClientList';
-import AppClientDetails from './pages/app/AppClientDetails';
-import AppClientForm from './pages/app/AppClientForm';
-import AppOrderCreate from './pages/app/AppOrderCreate';
-import AppRouteCreate from './pages/app/AppRouteCreate';
+import AppDashboard from './pages/AppDashboard';
+import AppClientList from './pages/AppClientList';
+import AppClientDetails from './pages/AppClientDetails';
+import AppClientForm from './pages/AppClientForm';
+import AppOrderCreate from './pages/AppOrderCreate';
+import AppRouteCreate from './pages/AppRouteCreate';
 
 // Admin Pages (Tenant Admin)
-import AdminDashboard from './pages/admin/AdminDashboard';
-import ProductList from './pages/admin/ProductList';
-import ProductForm from './pages/admin/ProductForm';
-import UserManagement from './pages/admin/UserManagement';
-import RoleManagement from './pages/admin/RoleManagement'; // NOVO
+import AdminDashboard from './pages/AdminDashboard';
+import ProductList from './pages/AdminProductList';
+import ProductForm from './pages/AdminProductForm';
+import UserManagement from './pages/AdminUserManagement';
+import RoleManagement from './pages/AdminRoleManagement'; // NOVO
 
 // SysAdmin Pages (Global Admin)
-import SysAdminDashboard from './pages/sysadmin/SysAdminDashboard';
-import TenantManagement from './pages/sysadmin/TenantManagement';
-import AllUserManagement from './pages/sysadmin/AllUserManagement';
-import AreaManagement from './pages/sysadmin/AreaManagement';
+import SysAdminDashboard from './pages/SysAdminDashboard';
+import TenantManagement from './pages/SysAdminTenantManagement';
+import AllUserManagement from './pages/SysAdminAllUserManagement';
+import AreaManagement from './pages/SysAdminAreaManagement';
 
 function App() {
   return (
@@ -45,7 +46,7 @@ function App() {
               {/* Public Routes */}
               <Route path="/login" element={<Login />} />
               <Route path="/sysadmin/login" element={<SysAdminLogin />} />
-              
+
               {/* Root Redirect */}
               <Route path="/" element={<Navigate to="/app/dashboard" replace />} />
 

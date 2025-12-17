@@ -1,6 +1,9 @@
+
 import React from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
+import apiClient from '../../api/apiClient';
+import { XMarkIcon, PlusIcon } from '@heroicons/react/24/outline';
 // CORRIGIDO: Deve usar o sysAdminApiClient, pois são rotas de sysadmin
 import sysAdminApiClient from '../../api/sysAdminApiClient';
 
@@ -46,7 +49,7 @@ export default function TenantManagement() {
       reset();
     },
     onError: (error) => {
-      alert(`Erro ao criar tenant: ${error.response?.data?.detail || error.message}`);
+      alert(`Erro ao criar tenant: ${error.response?.data?.detail || error.message} `);
     }
   });
 
@@ -66,7 +69,7 @@ export default function TenantManagement() {
             Novo Tenant (Empresa)
           </h2>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-            
+
             <div>
               <label htmlFor="name" className="block text-sm font-medium text-gray-700">
                 Nome da Empresa
@@ -190,11 +193,10 @@ export default function TenantManagement() {
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{tenant.cnpj || 'N/A'}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{tenant.email || 'N/A'}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                          tenant.status === 'active' ? 'bg-green-100 text-green-800' :
-                          tenant.status === 'inactive' ? 'bg-red-100 text-red-800' :
-                          'bg-yellow-100 text-yellow-800'
-                        }`}>
+                        <span className={`px - 2 inline - flex text - xs leading - 5 font - semibold rounded - full ${tenant.status === 'active' ? 'bg-green-100 text-green-800' :
+                            tenant.status === 'inactive' ? 'bg-red-100 text-red-800' :
+                              'bg-yellow-100 text-yellow-800'
+                          } `}>
                           {statusOptions.find(o => o.value === tenant.status)?.label || tenant.status}
                         </span>
                       </td>

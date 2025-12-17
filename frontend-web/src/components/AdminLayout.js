@@ -41,7 +41,7 @@ const AdminLayout = () => {
     icon: 'Shield',
     pages_json: [
       { label: 'Dashboard', path: '/admin/dashboard' },
-      { label: 'Produtos', path: '/admin/products' },
+      // Produtos removido conforme solicitado
       { label: 'Usuários', path: '/admin/users' },
       { label: 'Cargos', path: '/admin/roles' }
     ]
@@ -60,7 +60,6 @@ const AdminLayout = () => {
   const { data: fetchedAreas } = useQuery(['adminTenantAreas'], fetchTenantAreas);
 
   // Combinar ADMIN FIXO + ÁREAS DO TENANT
-  // Filtramos para não duplicar se por acaso o backend retornar algo com mesmo nome/id (improvável mas seguro)
   const displayAreas = [
     adminArea,
     ...(fetchedAreas || [])
@@ -70,15 +69,22 @@ const AdminLayout = () => {
 
   // Sincroniza área ativa com URL
   useEffect(() => {
-    const foundArea = displayAreas.find(area => {
-      // Areas do backend usam 'pages_json', nossa fixa também.
+    // Tenta encontrar uma área que corresponda à URL
+    const matchingAreas = displayAreas.filter(area => {
       const pages = area.pages_json || area.pages || [];
       return Array.isArray(pages) && pages.some(page => location.pathname.startsWith(page.path));
     });
-    if (foundArea) {
-      setActiveArea(foundArea);
+
+    if (matchingAreas.length > 0) {
+      // Se a area atual já estiver na lista de matches, mantemos ela (evita pulos)
+      const currentIsMatching = matchingAreas.find(a => a.id === activeArea?.id);
+      if (currentIsMatching) {
+        return; // Não muda nada, estabilidade mantida
+      }
+      // Senão, pega a primeira
+      setActiveArea(matchingAreas[0]);
     }
-  }, [location.pathname, fetchedAreas]); // Dependência atualizada
+  }, [location.pathname, fetchedAreas]);
 
   const handleLogout = () => {
     logout();

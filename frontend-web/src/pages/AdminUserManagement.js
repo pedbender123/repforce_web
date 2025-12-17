@@ -1,8 +1,9 @@
+
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
-import apiClient from '../../api/apiClient';
-import { XMarkIcon, PlusIcon, TrashIcon } from '@heroicons/react/24/outline'; // Adicionei TrashIcon se quisermos delete no futuro
+import apiClient from '../api/apiClient';
+import { XMarkIcon, PlusIcon, TrashIcon, PencilIcon } from '@heroicons/react/24/outline'; // Adicionei TrashIcon se quisermos delete no futuro
 
 const fetchUsers = async () => {
   const { data } = await apiClient.get('/admin/users');
@@ -37,7 +38,7 @@ export default function TenantUserManagement() {
     },
     onError: (error) => {
       const errorMessage = error.response?.data?.detail || error.message || 'Erro desconhecido.';
-      alert(`Erro ao criar usuário: ${errorMessage}`);
+      alert(`Erro ao criar usuário: ${errorMessage} `);
     }
   });
 
@@ -111,7 +112,7 @@ export default function TenantUserManagement() {
                 <td className="px-6 py-4 text-sm font-medium dark:text-white">{u.name}</td>
                 <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">{u.username}</td>
                 <td className="px-6 py-4 text-sm">
-                  <span className={`px-2 py-1 text-xs rounded-full ${u.profile === 'admin' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' : 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'}`}>
+                  <span className={`px - 2 py - 1 text - xs rounded - full ${u.profile === 'admin' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' : 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'} `}>
                     {u.profile}
                   </span>
                 </td>

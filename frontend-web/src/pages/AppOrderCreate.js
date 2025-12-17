@@ -1,22 +1,24 @@
+
 import React from 'react';
-import { useForm } from 'react-hook-form';
-import { useMutation } from '@tanstack/react-query';
-import apiClient from '../../api/apiClient';
+import { useQuery, useMutation } from '@tanstack/react-query';
+import { useForm, useFieldArray } from 'react-hook-form';
+import apiClient from '../api/apiClient';
+import { PlusIcon, TrashIcon } from '@heroicons/react/24/outline';
 
 const createOrder = async (orderData) => {
-  const { data } = await apiClient.post('/orders', orderData); 
+  const { data } = await apiClient.post('/orders', orderData);
   return data;
 };
 
 export default function AppOrderCreate() {
   const { register, handleSubmit, formState: { errors } } = useForm();
-  
+
   const mutation = useMutation(createOrder, {
     onSuccess: (data) => {
       alert(`Pedido #${data.id} criado com sucesso!`);
     },
     onError: (error) => {
-      alert(`Erro ao criar pedido: ${error.message}`);
+      alert(`Erro ao criar pedido: ${error.message} `);
     }
   });
 
@@ -25,7 +27,7 @@ export default function AppOrderCreate() {
       client_id: parseInt(data.clientId, 10),
       items: [
         {
-          product_id: 1, 
+          product_id: 1,
           quantity: 10,
           unit_price: 99.9
         }
@@ -52,7 +54,7 @@ export default function AppOrderCreate() {
           />
           {errors.clientId && <span className="text-red-500 text-sm">Este campo é obrigatório.</span>}
         </div>
-        
+
         <div className="p-4 bg-gray-100 dark:bg-gray-700 rounded-md">
           <p className="text-sm text-gray-600 dark:text-gray-300">
             (Itens do pedido seriam adicionados dinamicamente aqui - Demo)

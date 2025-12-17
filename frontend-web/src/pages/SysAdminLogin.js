@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
-import { useSysAdminAuth } from '../../context/SysAdminAuthContext';
-import { useNavigate, Navigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { useForm } from 'react-hook-form';
+import { SysAdminAuthContext } from '../context/SysAdminAuthContext';
+import { Eye, EyeOff, ShieldAlert } from 'lucide-react';
 import ThemeToggle from '../../components/ThemeToggle';
 
 export default function SysAdminLogin() {
@@ -19,7 +21,7 @@ export default function SysAdminLogin() {
     setError(null);
     try {
       const profile = await login(username, password);
-      
+
       if (profile === 'sysadmin') {
         navigate('/sysadmin/dashboard', { replace: true });
       } else {
@@ -40,11 +42,11 @@ export default function SysAdminLogin() {
         <div className="mb-8 text-center">
           {/* Container escuro para a logo aparecer bem em ambos os modos */}
           <div className="bg-gray-900 p-4 rounded-lg inline-block mb-4">
-             <img 
-               src="/logo_clara.png" 
-               alt="Repforce SysAdmin" 
-               className="h-10 w-auto object-contain"
-             />
+            <img
+              src="/logo_clara.png"
+              alt="Repforce SysAdmin"
+              className="h-10 w-auto object-contain"
+            />
           </div>
           <h2 className="text-2xl font-bold text-gray-800 dark:text-white">
             Área Restrita - SysAdmin
@@ -56,8 +58,8 @@ export default function SysAdminLogin() {
 
         <form onSubmit={handleSubmit} className="space-y-6">
           <div>
-            <label 
-              htmlFor="username" 
+            <label
+              htmlFor="username"
               className="block text-sm font-medium text-gray-700 dark:text-gray-300"
             >
               Usuário (Username)
@@ -77,8 +79,8 @@ export default function SysAdminLogin() {
           </div>
 
           <div>
-            <label 
-              htmlFor="password" 
+            <label
+              htmlFor="password"
               className="block text-sm font-medium text-gray-700 dark:text-gray-300"
             >
               Senha

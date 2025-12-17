@@ -1,16 +1,16 @@
 import React from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
-import apiClient from '../../api/apiClient';
+import sysAdminApiClient from '../api/sysAdminApiClient';
 
 const fetchUsers = async () => {
-  const { data } = await apiClient.get('/admin/users');
+  const { data } = await sysAdminApiClient.get('/admin/users');
   return data;
 };
 
 // PASSO 4: Busca Cargos Dinamicamente
 const fetchRoles = async () => {
-  const { data } = await apiClient.get('/admin/roles');
+  const { data } = await sysAdminApiClient.get('/admin/roles');
   return data;
 };
 
@@ -34,7 +34,7 @@ export default function TenantUserManagement() {
     onSuccess: () => {
       queryClient.invalidateQueries(['tenantAdminUsers']);
       alert('Usuário criado com sucesso!');
-      reset(); 
+      reset();
     },
     onError: (error) => {
       const errorMessage = error.response?.data?.detail || error.message || 'Erro desconhecido.';
@@ -45,8 +45,8 @@ export default function TenantUserManagement() {
   const onSubmit = (data) => {
     // PASSO 4: Enviar role_id (se selecionado)
     const payload = {
-        ...data,
-        role_id: data.role_id ? parseInt(data.role_id) : null
+      ...data,
+      role_id: data.role_id ? parseInt(data.role_id) : null
     };
     mutation.mutate(payload);
   };
@@ -62,24 +62,24 @@ export default function TenantUserManagement() {
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Nome</label>
-              <input {...register("name", { required: "Nome é obrigatório" })} className="mt-1 w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm dark:bg-gray-700 dark:text-white"/>
+              <input {...register("name", { required: "Nome é obrigatório" })} className="mt-1 w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm dark:bg-gray-700 dark:text-white" />
               {errors.name && <span className="text-red-500 text-sm">{errors.name.message}</span>}
             </div>
-            
+
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Username</label>
-              <input {...register("username", { required: "Username é obrigatório" })} className="mt-1 w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm dark:bg-gray-700 dark:text-white"/>
+              <input {...register("username", { required: "Username é obrigatório" })} className="mt-1 w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm dark:bg-gray-700 dark:text-white" />
               {errors.username && <span className="text-red-500 text-sm">{errors.username.message}</span>}
             </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Email</label>
-              <input type="email" {...register("email")} className="mt-1 w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm dark:bg-gray-700 dark:text-white"/>
+              <input type="email" {...register("email")} className="mt-1 w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm dark:bg-gray-700 dark:text-white" />
             </div>
-            
+
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Senha</label>
-              <input type="password" {...register("password", { required: "Senha é obrigatória", minLength: 6 })} className="mt-1 w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm dark:bg-gray-700 dark:text-white"/>
+              <input type="password" {...register("password", { required: "Senha é obrigatória", minLength: 6 })} className="mt-1 w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm dark:bg-gray-700 dark:text-white" />
               {errors.password && <span className="text-red-500 text-sm">{errors.password.message || "Senha deve ter min. 6 caracteres"}</span>}
             </div>
 
@@ -97,7 +97,7 @@ export default function TenantUserManagement() {
               <select {...register("role_id")} className="mt-1 w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm dark:bg-gray-700 dark:text-white">
                 <option value="">Selecione um cargo...</option>
                 {roles?.map(role => (
-                    <option key={role.id} value={role.id}>{role.name}</option>
+                  <option key={role.id} value={role.id}>{role.name}</option>
                 ))}
               </select>
               <p className="text-xs text-gray-500 mt-1">O cargo define quais abas e áreas o usuário acessa no app.</p>
@@ -137,12 +137,11 @@ export default function TenantUserManagement() {
                   users?.map((user) => (
                     <tr key={user.id}>
                       <td className="px-6 py-4 text-sm font-medium text-gray-900 dark:text-white">{user.name || 'N/A'}</td>
-                      <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">{user.username}</td> 
+                      <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">{user.username}</td>
                       <td className="px-6 py-4 text-sm">
-                        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                          user.profile === 'admin' ? 'bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200' : 
-                          'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200'
-                        }`}>
+                        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${user.profile === 'admin' ? 'bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200' :
+                            'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200'
+                          }`}>
                           {user.profile}
                         </span>
                       </td>
