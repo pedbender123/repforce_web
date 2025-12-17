@@ -49,7 +49,7 @@ export default function TenantManagement() {
         const { data: area } = await sysAdminApiClient.post('/sysadmin/areas', areaPayload);
 
         // 2. Criar Cargo Admin
-        await sysAdminApiClient.post('/sysadmin/roles', {
+        const { data: adminRole } = await sysAdminApiClient.post('/sysadmin/roles', {
           name: 'Admin',
           description: 'Administrador do Tenant',
           tenant_id: tenantId,
@@ -64,7 +64,18 @@ export default function TenantManagement() {
           area_ids: [area.id]
         });
 
-        alert(`Tenant "${newTenant.name}" criado com sucesso! Configuração inicial (Área Vendas + Cargos) aplicada.`);
+        // 4. ATRIBUIR CARGO ADMIN AO USUÁRIO PADRÃO
+        // O backend cria um usuário padrão ao criar o tenant. Precisamos buscá-lo e atualizá-lo.
+        const { data: tenantUsers } = await sysAdminApiClient.get(`/sysadmin/users?tenant_id=${tenantId}`);
+        if (tenantUsers && tenantUsers.length > 0) {
+          const adminUser = tenantUsers[0]; // Assume que o primeiro é o admin criado
+          await sysAdminApiClient.put(`/sysadmin/users/${adminUser.id}`, {
+            ...adminUser,
+            role_id: adminRole.id
+          });
+        }
+
+        alert(`Tenant "${newTenant.name}" criado com sucesso! Configuração inicial (Área Vendas + Cargos + Usuário Admin) aplicada.`);
       } catch (setupError) {
         console.error("Erro no setup inicial:", setupError);
         alert(`Tenant criado, mas houve erro na configuração inicial: ${setupError.message}`);

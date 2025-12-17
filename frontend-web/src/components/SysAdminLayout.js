@@ -61,8 +61,9 @@ const SysAdminLayout = () => {
 
   // LÓGICA DE DEDUPLICAÇÃO E PRIORIDADE:
   // 1. Remove qualquer área que tenha o mesmo nome da nossa área padrão
+  // 2. Filtra APENAS áreas globais (sem tenant_id) para não poluir o SysAdmin
   const filteredFetchedAreas = fetchedAreas
-    ? fetchedAreas.filter(a => a.name !== 'Gestão do Sistema')
+    ? fetchedAreas.filter(a => a.name !== 'Gestão do Sistema' && a.tenant_id === null)
     : [];
 
   const displayAreas = [systemManagementArea, ...filteredFetchedAreas];
