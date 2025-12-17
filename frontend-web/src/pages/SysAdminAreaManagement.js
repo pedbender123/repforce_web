@@ -4,7 +4,7 @@ import { useForm, useFieldArray } from 'react-hook-form';
 import sysAdminApiClient from '../api/sysAdminApiClient';
 import { XMarkIcon, PlusIcon, PencilIcon, TrashIcon } from '@heroicons/react/24/outline';
 // CORREÇÃO: Importando do mesmo diretório (já que o arquivo está em pages/sysadmin)
-import { SYSTEM_PAGES } from './pageCatalog';
+import { SYSTEM_PAGES } from './SysAdminPageCatalog';
 
 // API Calls
 const fetchAreas = async () => {
