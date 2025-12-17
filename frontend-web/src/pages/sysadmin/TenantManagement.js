@@ -9,7 +9,7 @@ const fetchTenants = async () => {
   return data;
 };
 
-const createTenant = async (formData) => { 
+const createTenant = async (formData) => {
   const { data } = await sysAdminApiClient.post('/sysadmin/tenants', formData);
   return data;
 };
@@ -28,9 +28,49 @@ export default function TenantManagement() {
   const { data: tenants, isLoading } = useQuery(['sysAdminTenants'], fetchTenants);
 
   const createMutation = useMutation(createTenant, {
-    onSuccess: () => {
+    onSuccess: async (newTenant) => {
+      // Setup Inicial Automático: Criar Área e Cargos Padrão
+      try {
+        const tenantId = newTenant.id;
+
+        // 1. Criar Área de Vendas
+        const areaPayload = {
+          name: 'Vendas',
+          description: 'Área padrão de vendas',
+          icon: 'briefcase', // Icone do lucide-react compatível
+          tenant_id: tenantId,
+          pages_json: [
+            { label: 'Dashboard', path: '/app/dashboard' },
+            { label: 'Novo Pedido', path: '/app/orders/new' },
+            { label: 'Clientes', path: '/app/clients' },
+            { label: 'Rotas', path: '/app/routes/new' }
+          ]
+        };
+        const { data: area } = await sysAdminApiClient.post('/sysadmin/areas', areaPayload);
+
+        // 2. Criar Cargo Admin
+        await sysAdminApiClient.post('/sysadmin/roles', {
+          name: 'Admin',
+          description: 'Administrador do Tenant',
+          tenant_id: tenantId,
+          area_ids: [area.id] // Vincula à área criada
+        });
+
+        // 3. Criar Cargo Representante
+        await sysAdminApiClient.post('/sysadmin/roles', {
+          name: 'Representante',
+          description: 'Vendedor Externo',
+          tenant_id: tenantId,
+          area_ids: [area.id]
+        });
+
+        alert(`Tenant "${newTenant.name}" criado com sucesso! Configuração inicial (Área Vendas + Cargos) aplicada.`);
+      } catch (setupError) {
+        console.error("Erro no setup inicial:", setupError);
+        alert(`Tenant criado, mas houve erro na configuração inicial: ${setupError.message}`);
+      }
+
       queryClient.invalidateQueries(['sysAdminTenants']);
-      alert('Tenant criado com sucesso!');
       reset();
       setIsCreating(false);
     },
@@ -52,33 +92,33 @@ export default function TenantManagement() {
     return (
       <div className="max-w-2xl mx-auto bg-white dark:bg-gray-800 p-8 rounded-lg shadow">
         <div className="flex justify-between items-center mb-6">
-            <h2 className="text-2xl font-bold dark:text-white">Novo Tenant</h2>
-            <button onClick={() => setIsCreating(false)} className="text-gray-500 hover:text-gray-700">
-                <XMarkIcon className="w-6 h-6"/>
-            </button>
+          <h2 className="text-2xl font-bold dark:text-white">Novo Tenant</h2>
+          <button onClick={() => setIsCreating(false)} className="text-gray-500 hover:text-gray-700">
+            <XMarkIcon className="w-6 h-6" />
+          </button>
         </div>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium dark:text-gray-300">Nome</label>
+            <input {...register("name", { required: true })} className="w-full p-2 border rounded dark:bg-gray-700 dark:text-white" />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
             <div>
-                <label className="block text-sm font-medium dark:text-gray-300">Nome</label>
-                <input {...register("name", { required: true })} className="w-full p-2 border rounded dark:bg-gray-700 dark:text-white"/>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-                <div>
-                    <label className="block text-sm font-medium dark:text-gray-300">CNPJ</label>
-                    <input {...register("cnpj")} className="w-full p-2 border rounded dark:bg-gray-700 dark:text-white"/>
-                </div>
-                <div>
-                    <label className="block text-sm font-medium dark:text-gray-300">Tipo</label>
-                    <select {...register("tenant_type")} className="w-full p-2 border rounded dark:bg-gray-700 dark:text-white">
-                        {typeOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-                    </select>
-                </div>
+              <label className="block text-sm font-medium dark:text-gray-300">CNPJ</label>
+              <input {...register("cnpj")} className="w-full p-2 border rounded dark:bg-gray-700 dark:text-white" />
             </div>
             <div>
-                <label className="block text-sm font-medium dark:text-gray-300">Logo</label>
-                <input type="file" {...register("logo")} className="w-full text-sm dark:text-gray-300"/>
+              <label className="block text-sm font-medium dark:text-gray-300">Tipo</label>
+              <select {...register("tenant_type")} className="w-full p-2 border rounded dark:bg-gray-700 dark:text-white">
+                {typeOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+              </select>
             </div>
-            <button type="submit" className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700">Salvar</button>
+          </div>
+          <div>
+            <label className="block text-sm font-medium dark:text-gray-300">Logo</label>
+            <input type="file" {...register("logo")} className="w-full text-sm dark:text-gray-300" />
+          </div>
+          <button type="submit" className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700">Salvar</button>
         </form>
       </div>
     );
@@ -89,33 +129,33 @@ export default function TenantManagement() {
       <div className="px-6 py-4 border-b dark:border-gray-700 flex justify-between items-center">
         <h2 className="text-xl font-bold dark:text-white">Tenants (Empresas)</h2>
         <button onClick={() => setIsCreating(true)} className="bg-blue-600 text-white px-4 py-2 rounded flex items-center gap-2 hover:bg-blue-700">
-            <PlusIcon className="w-5 h-5"/> Novo Tenant
+          <PlusIcon className="w-5 h-5" /> Novo Tenant
         </button>
       </div>
       <div className="overflow-auto flex-1">
         <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-            <thead className="bg-gray-50 dark:bg-gray-700">
-                <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">ID</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Empresa</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">CNPJ</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                {tenants?.map(t => (
-                    <tr key={t.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
-                        <td className="px-6 py-4 text-sm text-gray-500">{t.id}</td>
-                        <td className="px-6 py-4 text-sm font-medium dark:text-white">{t.name}</td>
-                        <td className="px-6 py-4 text-sm text-gray-500">{t.cnpj}</td>
-                        <td className="px-6 py-4">
-                            <span className={`px-2 py-1 text-xs rounded-full ${t.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                                {t.status}
-                            </span>
-                        </td>
-                    </tr>
-                ))}
-            </tbody>
+          <thead className="bg-gray-50 dark:bg-gray-700">
+            <tr>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">ID</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Empresa</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">CNPJ</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+            {tenants?.map(t => (
+              <tr key={t.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                <td className="px-6 py-4 text-sm text-gray-500">{t.id}</td>
+                <td className="px-6 py-4 text-sm font-medium dark:text-white">{t.name}</td>
+                <td className="px-6 py-4 text-sm text-gray-500">{t.cnpj}</td>
+                <td className="px-6 py-4">
+                  <span className={`px-2 py-1 text-xs rounded-full ${t.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                    {t.status}
+                  </span>
+                </td>
+              </tr>
+            ))}
+          </tbody>
         </table>
       </div>
     </div>

@@ -1,5 +1,7 @@
 import React, { useContext, useState, useEffect } from 'react';
 import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
+import apiClient from '../api/apiClient';
 import { AuthContext } from '../context/AuthContext';
 import { ThemeContext } from '../context/ThemeContext';
 import {
@@ -45,21 +47,38 @@ const AdminLayout = () => {
     ]
   };
 
-  // Como o Admin por enquanto só tem uma "Area" de gestão, usamos ela como única.
-  // Futuramente, se o Admin tiver acesso a outras areas (ex: Vendas), elas entrariam aqui.
-  const displayAreas = [adminArea];
+  const fetchTenantAreas = async () => {
+    try {
+      const { data } = await apiClient.get('/admin/areas');
+      return data;
+    } catch (e) {
+      console.error("Erro ao buscar áreas do tenant:", e);
+      return [];
+    }
+  };
+
+  const { data: fetchedAreas } = useQuery(['adminTenantAreas'], fetchTenantAreas);
+
+  // Combinar ADMIN FIXO + ÁREAS DO TENANT
+  // Filtramos para não duplicar se por acaso o backend retornar algo com mesmo nome/id (improvável mas seguro)
+  const displayAreas = [
+    adminArea,
+    ...(fetchedAreas || [])
+  ];
 
   const [activeArea, setActiveArea] = useState(adminArea);
 
   // Sincroniza área ativa com URL
   useEffect(() => {
     const foundArea = displayAreas.find(area => {
-      return area.pages_json.some(page => location.pathname.startsWith(page.path));
+      // Areas do backend usam 'pages_json', nossa fixa também.
+      const pages = area.pages_json || area.pages || [];
+      return Array.isArray(pages) && pages.some(page => location.pathname.startsWith(page.path));
     });
     if (foundArea) {
       setActiveArea(foundArea);
     }
-  }, [location.pathname]);
+  }, [location.pathname, fetchedAreas]); // Dependência atualizada
 
   const handleLogout = () => {
     logout();
@@ -165,15 +184,15 @@ const AdminLayout = () => {
 
         {/* --- MENU SUPERIOR (PÁGINAS) --- */}
         <div className="hidden md:flex bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 px-6 py-0 items-end h-16 shadow-sm z-10 overflow-x-auto">
-          {activeArea?.pages_json?.map((page) => {
+          {(activeArea?.pages_json || activeArea?.pages)?.map((page) => {
             const isPageActive = location.pathname.startsWith(page.path);
             return (
               <Link
                 key={page.path}
                 to={page.path}
                 className={`mr-6 py-4 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${isPageActive
-                    ? 'border-blue-600 text-blue-600 dark:text-blue-400 dark:border-blue-400'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:border-gray-300'
+                  ? 'border-blue-600 text-blue-600 dark:text-blue-400 dark:border-blue-400'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:border-gray-300'
                   }`}
               >
                 {page.label}
@@ -188,14 +207,14 @@ const AdminLayout = () => {
             <nav className="p-4">
               <p className="text-xs font-semibold text-gray-400 uppercase mb-2">Páginas</p>
               <ul className="space-y-2">
-                {activeArea?.pages_json?.map((page) => (
+                {(activeArea?.pages_json || activeArea?.pages)?.map((page) => (
                   <li key={page.path}>
                     <Link
                       to={page.path}
                       onClick={() => setIsMobileMenuOpen(false)}
                       className={`flex items-center px-4 py-3 text-sm font-medium rounded-lg ${location.pathname.startsWith(page.path)
-                          ? 'bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
-                          : 'text-gray-700 dark:text-gray-300'
+                        ? 'bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
+                        : 'text-gray-700 dark:text-gray-300'
                         }`}
                     >
                       {/* Icone individual para página removido na tabs, mas no mobile pode manter simples */}
