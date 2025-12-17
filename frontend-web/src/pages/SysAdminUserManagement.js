@@ -128,11 +128,12 @@ export default function TenantUserManagement() {
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Username</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Perfil</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Cargo</th>
+                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Ações</th>
                 </tr>
               </thead>
               <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                 {isLoadingUsers ? (
-                  <tr><td colSpan="4" className="p-4 text-center dark:text-white">Carregando...</td></tr>
+                  <tr><td colSpan="5" className="p-4 text-center dark:text-white">Carregando...</td></tr>
                 ) : (
                   users?.map((user) => (
                     <tr key={user.id}>
@@ -140,7 +141,7 @@ export default function TenantUserManagement() {
                       <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">{user.username}</td>
                       <td className="px-6 py-4 text-sm">
                         <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${user.profile === 'admin' ? 'bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200' :
-                            'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200'
+                          'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200'
                           }`}>
                           {user.profile}
                         </span>

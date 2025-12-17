@@ -140,6 +140,7 @@ export default function TenantManagement() {
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Empresa</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">CNPJ</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+              <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Ações</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
@@ -152,6 +153,14 @@ export default function TenantManagement() {
                   <span className={`px-2 py-1 text-xs rounded-full ${t.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
                     {t.status}
                   </span>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium flex justify-end gap-2">
+                  <button className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300">
+                    <PencilIcon className="w-5 h-5" />
+                  </button>
+                  <button className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300">
+                    <TrashIcon className="w-5 h-5" />
+                  </button>
                 </td>
               </tr>
             ))}
