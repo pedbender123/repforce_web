@@ -1,33 +1,34 @@
-
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import apiClient from '../api/apiClient';
-import { XMarkIcon, PlusIcon, TrashIcon, PencilIcon } from '@heroicons/react/24/outline'; // Adicionei TrashIcon se quisermos delete no futuro
+import { XMarkIcon, PlusIcon, TrashIcon, PencilIcon } from '@heroicons/react/24/outline';
 
 const fetchUsers = async () => {
   const { data } = await apiClient.get('/admin/users');
   return data;
 };
 
+const fetchRoles = async () => {
+  const { data } = await apiClient.get('/admin/roles');
+  return data;
+};
+
 const createUser = async (userData) => {
-  const { data } = await apiClient.post('/admin/users', userData);
+  // Ensure we send role_id as integer
+  const { data } = await apiClient.post('/admin/users', { ...userData, role_id: parseInt(userData.role_id) });
   return data;
 };
 
 export default function TenantUserManagement() {
   const [isCreating, setIsCreating] = useState(false);
   const queryClient = useQueryClient();
-  const { register, handleSubmit, reset, setValue } = useForm({
-    defaultValues: {
-      profile: 'representante'
-    }
-  });
+  const { register, handleSubmit, reset, setValue } = useForm();
 
-  const { data: users, isLoading: isLoadingUsers } = useQuery(
-    ['tenantAdminUsers'],
-    fetchUsers
-  );
+  const { data: users, isLoading: isLoadingUsers } = useQuery(['tenantAdminUsers'], fetchUsers);
+  const { data: roles } = useQuery(['tenantRoles'], fetchRoles); // Fetch available roles
+
+  const [editingId, setEditingId] = useState(null);
 
   const mutation = useMutation(createUser, {
     onSuccess: () => {
@@ -42,9 +43,6 @@ export default function TenantUserManagement() {
     }
   });
 
-  // ... inside component ...
-  const [editingId, setEditingId] = useState(null);
-
   const deleteMutation = useMutation(async (id) => {
     await apiClient.delete(`/admin/users/${id}`);
   }, {
@@ -56,7 +54,7 @@ export default function TenantUserManagement() {
   });
 
   const updateMutation = useMutation(async ({ id, data }) => {
-    await apiClient.put(`/admin/users/${id}`, data);
+    await apiClient.put(`/admin/users/${id}`, { ...data, role_id: parseInt(data.role_id) });
   }, {
     onSuccess: () => {
       queryClient.invalidateQueries(['tenantAdminUsers']);
@@ -81,17 +79,16 @@ export default function TenantUserManagement() {
     setValue('name', user.name);
     setValue('username', user.username);
     setValue('email', user.email);
-    setValue('profile', user.profile);
-    // Password field might need handling (optional update)
+    // Set role_id instead of profile
+    setValue('role_id', user.role_id);
   };
-
 
   if (isCreating) {
     return (
       <div className="max-w-2xl mx-auto bg-white dark:bg-gray-800 p-8 rounded-lg shadow transition-colors">
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-2xl font-bold dark:text-white">
-            Novo Usuário
+            {editingId ? 'Editar Usuário' : 'Novo Usuário'}
           </h2>
           <button onClick={() => setIsCreating(false)}><XMarkIcon className="w-6 h-6 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300" /></button>
         </div>
@@ -109,19 +106,21 @@ export default function TenantUserManagement() {
             <input type="email" {...register("email")} className="w-full p-2 border rounded dark:bg-gray-700 dark:text-white dark:border-gray-600 focus:ring-blue-500 focus:border-blue-500" />
           </div>
           <div>
-            <label className="block text-sm font-medium dark:text-gray-300">Senha</label>
-            <input type="password" {...register("password", { required: true, minLength: 6 })} className="w-full p-2 border rounded dark:bg-gray-700 dark:text-white dark:border-gray-600 focus:ring-blue-500 focus:border-blue-500" />
+            <label className="block text-sm font-medium dark:text-gray-300">Senha {editingId && '(Preencha apenas para alterar)'}</label>
+            <input type="password" {...register("password", { required: !editingId, minLength: 6 })} className="w-full p-2 border rounded dark:bg-gray-700 dark:text-white dark:border-gray-600 focus:ring-blue-500 focus:border-blue-500" />
           </div>
           <div>
-            <label className="block text-sm font-medium dark:text-gray-300">Perfil</label>
-            <select {...register("profile", { required: true })} className="w-full p-2 border rounded dark:bg-gray-700 dark:text-white dark:border-gray-600 focus:ring-blue-500 focus:border-blue-500">
-              <option value="representante">Representante</option>
-              <option value="admin">Admin</option>
+            <label className="block text-sm font-medium dark:text-gray-300">Cargo (Role)</label>
+            <select {...register("role_id", { required: true })} className="w-full p-2 border rounded dark:bg-gray-700 dark:text-white dark:border-gray-600 focus:ring-blue-500 focus:border-blue-500">
+              <option value="">Selecione um cargo...</option>
+              {roles?.map(role => (
+                <option key={role.id} value={role.id}>{role.name}</option>
+              ))}
             </select>
           </div>
 
-          <button type="submit" disabled={mutation.isLoading} className="w-full text-white py-2 rounded bg-blue-600 hover:bg-blue-700 disabled:opacity-50 transition-colors">
-            {mutation.isLoading ? 'Criando...' : 'Criar Usuário'}
+          <button type="submit" disabled={mutation.isLoading || updateMutation.isLoading} className="w-full text-white py-2 rounded bg-blue-600 hover:bg-blue-700 disabled:opacity-50 transition-colors">
+            {mutation.isLoading || updateMutation.isLoading ? 'Salvando...' : 'Salvar Usuário'}
           </button>
         </form>
       </div>
@@ -132,7 +131,7 @@ export default function TenantUserManagement() {
     <div className="bg-white dark:bg-gray-800 shadow rounded-lg h-full flex flex-col transition-colors">
       <div className="px-6 py-4 border-b dark:border-gray-700 flex justify-between items-center">
         <h2 className="text-xl font-bold dark:text-white">Gerenciar Usuários</h2>
-        <button onClick={() => setIsCreating(true)} className="bg-blue-600 text-white px-4 py-2 rounded flex items-center gap-2 hover:bg-blue-700 transition-colors">
+        <button onClick={() => { setIsCreating(true); setEditingId(null); reset(); }} className="bg-blue-600 text-white px-4 py-2 rounded flex items-center gap-2 hover:bg-blue-700 transition-colors">
           <PlusIcon className="w-5 h-5" /> Novo Usuário
         </button>
       </div>
@@ -142,7 +141,7 @@ export default function TenantUserManagement() {
             <tr>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Nome</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Username</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Perfil</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Cargo</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Email</th>
               <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Ações</th>
             </tr>
@@ -153,8 +152,9 @@ export default function TenantUserManagement() {
                 <td className="px-6 py-4 text-sm font-medium dark:text-white">{u.name}</td>
                 <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">{u.username}</td>
                 <td className="px-6 py-4 text-sm">
-                  <span className={`px-2 py-1 text-xs rounded-full ${u.profile === 'admin' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' : 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'} `}>
-                    {u.profile}
+                  {/* Exibe o nome do cargo buscando no array de roles ou o ID se não carregar */}
+                  <span className="bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 px-2 py-1 rounded-full text-xs">
+                    {roles?.find(r => r.id === u.role_id)?.name || (u.role_id ? `ID: ${u.role_id}` : 'Sem Cargo')}
                   </span>
                 </td>
                 <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">{u.email || '-'}</td>
@@ -170,7 +170,7 @@ export default function TenantUserManagement() {
             ))}
             {(!users || users.length === 0) && !isLoadingUsers && (
               <tr>
-                <td colSpan="4" className="px-6 py-4 text-center text-sm text-gray-500 dark:text-gray-400">Nenhum usuário encontrado.</td>
+                <td colSpan="5" className="px-6 py-4 text-center text-sm text-gray-500 dark:text-gray-400">Nenhum usuário encontrado.</td>
               </tr>
             )}
           </tbody>
