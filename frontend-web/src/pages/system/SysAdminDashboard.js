@@ -24,13 +24,13 @@ export default function SysAdminDashboard() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="p-6 border border-gray-200 dark:border-gray-700 rounded-lg hover:shadow-md transition-shadow bg-white dark:bg-gray-750">
+        <div className="p-6 border border-gray-200 dark:border-gray-700 rounded-lg hover:shadow-md transition-shadow bg-white dark:bg-gray-700">
           <h3 className="text-xl font-semibold text-gray-800 dark:text-white mb-2">Tenants</h3>
           <p className="text-gray-600 dark:text-gray-300">
             Gerencie as empresas cadastradas no sistema.
           </p>
         </div>
-        <div className="p-6 border border-gray-200 dark:border-gray-700 rounded-lg hover:shadow-md transition-shadow bg-white dark:bg-gray-750">
+        <div className="p-6 border border-gray-200 dark:border-gray-700 rounded-lg hover:shadow-md transition-shadow bg-white dark:bg-gray-700">
           <h3 className="text-xl font-semibold text-gray-800 dark:text-white mb-2">Usuários do Sistema</h3>
           <p className="text-gray-600 dark:text-gray-300">
             Gerencie outros administradores de sistema.
