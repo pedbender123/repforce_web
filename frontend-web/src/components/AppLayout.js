@@ -18,7 +18,8 @@ import {
   Phone,
   ShieldAlert,
   Database,
-  Layout
+  Layout,
+  Server
 } from 'lucide-react';
 import ProvisioningScreen from './ProvisioningScreen';
 
