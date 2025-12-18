@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, Request, HTTPException, File, UploadFile, Form
 from sqlalchemy.orm import Session, joinedload
-from ..db import database, models, schemas
+from ..db import database, models, models_crm, schemas
 from typing import List, Optional
 import os
 import shutil
@@ -19,10 +19,10 @@ def get_products(
     search: str = ""
 ):
     tenant_id = request.state.tenant_id
-    query = db.query(models.Product).options(joinedload(models.Product.supplier)).filter(models.Product.tenant_id == tenant_id)
+    query = db.query(models_crm.Product).options(joinedload(models_crm.Product.supplier)).filter(models_crm.Product.tenant_id == tenant_id)
     
     if search:
-        query = query.filter(models.Product.name.ilike(f"%{search}%"))
+        query = query.filter(models_crm.Product.name.ilike(f"%{search}%"))
         
     return query.all()
 
@@ -51,7 +51,7 @@ def create_product(
             shutil.copyfileobj(image.file, buffer)
         image_url = f"{STATIC_URL_PRODUCTS}/{image.filename}"
 
-    db_product = models.Product(
+    db_product = models_crm.Product(
         name=name,
         price=price,
         sku=sku,
@@ -74,7 +74,7 @@ def get_suppliers(
     db: Session = Depends(database.get_db)
 ):
     tenant_id = request.state.tenant_id
-    suppliers = db.query(models.Supplier).filter(models.Supplier.tenant_id == tenant_id).all()
+    suppliers = db.query(models_crm.Supplier).filter(models_crm.Supplier.tenant_id == tenant_id).all()
     return suppliers
 
 @router.post("/suppliers", response_model=schemas.Supplier, status_code=201)
@@ -88,7 +88,7 @@ def create_supplier(
 
     tenant_id = request.state.tenant_id
     
-    db_supplier = models.Supplier(**supplier.dict(), tenant_id=tenant_id)
+    db_supplier = models_crm.Supplier(**supplier.dict(), tenant_id=tenant_id)
     db.add(db_supplier)
     db.commit()
     db.refresh(db_supplier)

@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, Request, HTTPException
 from sqlalchemy.orm import Session, joinedload
-from ..db import database, models, schemas
+from ..db import database, models, models_crm, schemas
 from ..core.permissions import get_user_scope
 from typing import List
 
@@ -20,12 +20,12 @@ def get_clients(
     scope = get_user_scope(request)
     
     # 2. Query Base
-    query = db.query(models.Client).filter(models.Client.tenant_id == tenant_id)
+    query = db.query(models_crm.Client).filter(models_crm.Client.tenant_id == tenant_id)
     
     # 3. Filtro Antigravity
     if scope == "OWN":
         # Mágica: Filtra apenas clientes onde o representante é o usuário atual
-        query = query.filter(models.Client.representative_id == user_id)
+        query = query.filter(models_crm.Client.representative_id == user_id)
         
     return query.all()
 
@@ -36,9 +36,9 @@ def get_client_details(
     db: Session = Depends(database.get_db)
 ):
     tenant_id = request.state.tenant_id
-    client = db.query(models.Client).options(joinedload(models.Client.contacts)).filter(
-        models.Client.id == client_id,
-        models.Client.tenant_id == tenant_id
+    client = db.query(models_crm.Client).options(joinedload(models_crm.Client.contacts)).filter(
+        models_crm.Client.id == client_id,
+        models_crm.Client.tenant_id == tenant_id
     ).first()
     
     if not client:
@@ -123,7 +123,7 @@ def create_client(
     # Processa address_data se existir
     addr_data = client_in.address_data or {}
     
-    db_client = models.Client(
+    db_client = models_crm.Client(
         name=client_in.name,
         trade_name=client_in.trade_name,
         cnpj=client_in.cnpj,
@@ -151,11 +151,11 @@ def create_contact(
 ):
     tenant_id = request.state.tenant_id
     # Verifica se cliente existe e pertence ao tenant
-    client = db.query(models.Client).filter(models.Client.id == client_id, models.Client.tenant_id == tenant_id).first()
+    client = db.query(models_crm.Client).filter(models_crm.Client.id == client_id, models_crm.Client.tenant_id == tenant_id).first()
     if not client:
         raise HTTPException(status_code=404, detail="Cliente não encontrado")
 
-    db_contact = models.Contact(
+    db_contact = models_crm.Contact(
         **contact_in.dict(),
         client_id=client_id
     )
@@ -170,7 +170,7 @@ def delete_contact(
     request: Request,
     db: Session = Depends(database.get_db)
 ):
-    contact = db.query(models.Contact).filter(models.Contact.id == contact_id).first()
+    contact = db.query(models_crm.Contact).filter(models_crm.Contact.id == contact_id).first()
     if not contact:
         raise HTTPException(status_code=404, detail="Contato não encontrado")
     
