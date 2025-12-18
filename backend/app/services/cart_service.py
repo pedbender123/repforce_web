@@ -1,4 +1,4 @@
-```python
+
 from typing import List, Dict, Optional
 from sqlalchemy.orm import Session
 from app.db import models_crm, schemas
