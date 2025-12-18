@@ -15,7 +15,7 @@ STATIC_URL_PATH = "/uploads/tenants"
 router = APIRouter()
 
 def check_sysadmin_profile(request: Request):
-    if request.state.profile != 'sysadmin':
+    if request.state.role_name != 'sysadmin':
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Acesso restrito a SysAdmins."

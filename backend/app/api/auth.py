@@ -67,8 +67,7 @@ def sysadmin_login_for_access_token(
         "role_name": role_name, 
         "tenant_id": user.tenant_id, 
         "tenant_id": user.tenant_id, 
-        "username": user.username,
-        "profile": "sysadmin"  # Explicitly set for sysadmin login
+        "username": user.username
     }
     access_token = security.create_access_token(data=token_data)
     
