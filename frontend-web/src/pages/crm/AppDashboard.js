@@ -10,7 +10,7 @@ import {
   CurrencyDollarIcon,
   ShoppingBagIcon,
   UserGroupIcon,
-  TrendingUpIcon
+  ArrowTrendingUpIcon as TrendingUpIcon
 } from '@heroicons/react/24/outline';
 
 const formatMoney = (val) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
