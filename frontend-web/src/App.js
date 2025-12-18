@@ -11,30 +11,32 @@ import SysAdminLayout from './components/SysAdminLayout';
 
 // Public Pages
 // Public Pages
-import Login from './pages/Login';
-import SysAdminLogin from './pages/SysAdminLogin';
+import Login from './pages/system/Login';
+import SysAdminLogin from './pages/system/SysAdminLogin';
 
 // App Pages (Sales Rep)
-import AppDashboard from './pages/AppDashboard';
-import ClientList from './pages/crm/ClientList'; // NOVO UNIFICADO
-import ProductList from './pages/crm/ProductList'; // NOVO UNIFICADO
-import OrderList from './pages/crm/OrderList'; // NOVO UNIFICADO
-import AppClientDetails from './pages/AppClientDetails';
-import AppClientForm from './pages/AppClientForm';
-import AppOrderCreate from './pages/AppOrderCreate';
-import AppRouteCreate from './pages/AppRouteCreate';
+import AppDashboard from './pages/crm/AppDashboard';
+import ClientList from './pages/crm/ClientList';
+import ProductList from './pages/crm/ProductList';
+import OrderList from './pages/crm/OrderList';
+import AppClientDetails from './pages/crm/AppClientDetails';
+import AppClientForm from './pages/crm/AppClientForm';
+import AppOrderCreate from './pages/crm/AppOrderCreate';
+import AppRouteCreate from './pages/crm/AppRouteCreate';
 
 // Admin Pages (Tenant Admin)
-import AdminDashboard from './pages/AdminDashboard';
-import ProductForm from './pages/AdminProductForm';
-import UserManagement from './pages/AdminUserManagement';
-import RoleManagement from './pages/AdminRoleManagement'; // NOVO
+import AdminDashboard from './pages/system/AdminDashboard';
+import ProductForm from './pages/crm/AdminProductForm'; // Moved to CRM
+import UserManagement from './pages/system/AdminUserManagement';
+import RoleManagement from './pages/system/AdminRoleManagement';
+import AdminCustomFields from './pages/system/AdminCustomFields';
+import AdminPricingRules from './pages/system/AdminPricingRules';
 
 // SysAdmin Pages (Global Admin)
-import SysAdminDashboard from './pages/SysAdminDashboard';
-import TenantManagement from './pages/SysAdminTenantManagement';
-import AllUserManagement from './pages/SysAdminAllUserManagement';
-import AreaManagement from './pages/SysAdminAreaManagement';
+import SysAdminDashboard from './pages/system/SysAdminDashboard';
+import TenantManagement from './pages/system/SysAdminTenantManagement';
+import AllUserManagement from './pages/system/SysAdminAllUserManagement';
+import AreaManagement from './pages/system/SysAdminAreaManagement';
 
 function App() {
   return (
@@ -71,7 +73,9 @@ function App() {
                 <Route path="products/:id" element={<ProductForm />} />
                 <Route path="orders" element={<OrderList />} /> {/* NOVA ROTA ADMIN */}
                 <Route path="users" element={<UserManagement />} />
-                <Route path="roles" element={<RoleManagement />} /> {/* NOVO */}
+                <Route path="roles" element={<RoleManagement />} />
+                <Route path="fields" element={<AdminCustomFields />} />
+                <Route path="rules" element={<AdminPricingRules />} /> {/* NOVO */}
                 <Route index element={<Navigate to="dashboard" replace />} />
               </Route>
 

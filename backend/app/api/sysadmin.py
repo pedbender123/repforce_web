@@ -1,11 +1,13 @@
-from fastapi import APIRouter, Depends, Request, HTTPException, status, File, UploadFile, Form, Body
+from fastapi import APIRouter, Depends, Request, HTTPException, status, File, UploadFile, Form, Body, BackgroundTasks
 from sqlalchemy.orm import Session, joinedload
+from sqlalchemy import text
 from pydantic import EmailStr
 from ..db import database, models, schemas
 from ..core import security
 from typing import List, Optional
 import shutil
 import os
+import subprocess
 
 UPLOAD_DIRECTORY = "/app/uploads/tenants"
 STATIC_URL_PATH = "/uploads/tenants"
@@ -20,6 +22,43 @@ def check_sysadmin_profile(request: Request):
         )
     return True
 
+def provision_tenant_schema(tenant_id: int):
+    """
+    Creates the tenant schema in the CRM database and runs Alembic migrations.
+    """
+    schema_name = f"tenant_{tenant_id}"
+    try:
+        # 1. Create Schema
+        # Use engine_crm from database module
+        with database.engine_crm.connect() as conn:
+            conn.execute(text(f"CREATE SCHEMA IF NOT EXISTS {schema_name}"))
+            conn.commit()
+        
+        # 2. Run Migrations
+        # Running alembic as a subprocess to ensure isolation and proper env loading
+        # Assumption: Backend is the working directory
+        cwd = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        
+        cmd = [
+            "alembic", "-c", "alembic_crm.ini",
+            "-x", f"tenant_schema={schema_name}",
+            "upgrade", "head"
+        ]
+        
+        # In a real deployed environment, env vars are required for settings.
+        # We assume they are present in the process environment.
+        process = subprocess.run(cmd, cwd=cwd, capture_output=True, text=True)
+        
+        if process.returncode != 0:
+            print(f"Error provisioning tenant {tenant_id}: {process.stderr}")
+            # Optional: Update tenant status to 'error' via a new DB session
+            return
+
+        print(f"Successfully provisioned schema {schema_name}")
+        
+    except Exception as e:
+        print(f"Exception provisioning tenant {tenant_id}: {str(e)}")
+
 # --- TENANTS ---
 
 @router.post("/tenants", 
@@ -27,6 +66,7 @@ def check_sysadmin_profile(request: Request):
              status_code=201,
              dependencies=[Depends(check_sysadmin_profile)])
 def create_tenant(
+    background_tasks: BackgroundTasks,
     db: Session = Depends(database.get_db),
     name: str = Form(...),
     cnpj: Optional[str] = Form(None),
@@ -57,11 +97,16 @@ def create_tenant(
         finally:
             logo.file.close()
 
-    # 1. Cria o Tenant
+    # 1. Cria o Tenant (Status inicial provisioning ou active? O user pediu "Provisionando...")
+    # Vamos setar como 'provisioning' se fosse async real, mas user pediu 'Processo lento/Async'
+    # Manteremos 'active' por compatibilidade ou mudaremos? 
+    # O user pediu "Frontend tela de provisionando.. polling". Então status deve refletir.
+    initial_status = "provisioning"
+
     new_tenant = models.Tenant(
         name=name,
         cnpj=cnpj,
-        status=status,
+        status=initial_status,
         tenant_type=tenant_type,
         commercial_info=commercial_info,
         logo_url=logo_url_to_save
@@ -70,10 +115,13 @@ def create_tenant(
     db.commit()
     db.refresh(new_tenant)
 
-    # 2. Criação Automática do Cargo "Admin"
+    # 2. Criação Automática do Cargo "Admin" (Imediato)
     admin_role = models.Role(name="Admin", description="Administrador do Tenant", tenant_id=new_tenant.id)
     db.add(admin_role)
     db.commit()
+
+    # 3. Provisionamento do Schema (Background)
+    background_tasks.add_task(provision_tenant_schema, new_tenant.id)
 
     return new_tenant
 
@@ -153,6 +201,18 @@ def create_sysadmin_user_entry(
         admin_role.areas = tenant_areas
         db.commit()
     
+        db.commit()
+    
+    # 3. Validação de Cargo (Role) Obrigatória
+    # O sistema exige que todo usuário (exceto talvez em bootstrap) tenha um cargo vinculado.
+    final_role_id = role_id or user.role_id
+    
+    if not final_role_id:
+        raise HTTPException(
+            status_code=400, 
+            detail="É obrigatório vincular um Cargo (Role) ao criar o usuário."
+        )
+
     hashed_password = security.get_password_hash(user.password)
 
     db_new_user = models.User(
@@ -162,7 +222,7 @@ def create_sysadmin_user_entry(
         hashed_password=hashed_password,
         profile=user.profile,
         tenant_id=tenant_id,
-        role_id=role_id
+        role_id=final_role_id
     )
     
     db.add(db_new_user)

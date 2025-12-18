@@ -17,10 +17,10 @@ import {
   Briefcase,
   Phone,
   ShieldAlert,
-  Server,
   Database,
   Layout
 } from 'lucide-react';
+import ProvisioningScreen from './ProvisioningScreen';
 
 const AppLayout = () => {
   const { user, logout } = useContext(AuthContext);
@@ -126,6 +126,11 @@ const AppLayout = () => {
 
   // Helper para renderizar ícone com fallback
   const renderIcon = (iconName) => iconMap[iconName] || <Briefcase size={20} />;
+
+  // VERIFICAÇÃO DE PROVISIONAMENTO
+  if (user?.tenant?.status === 'provisioning' && user?.profile !== 'sysadmin') {
+    return <ProvisioningScreen />;
+  }
 
   return (
     <div className="flex h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-200">

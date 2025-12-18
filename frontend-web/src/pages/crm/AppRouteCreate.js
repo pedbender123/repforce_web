@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { GoogleMap, LoadScript, Marker, DirectionsService, DirectionsRenderer } from '@react-google-maps/api';
-import apiClient from '../api/apiClient';
+import apiClient from '../../api/apiClient';
 import { MapPinIcon } from '@heroicons/react/24/solid';
 
 export default function AppRouteCreate() {

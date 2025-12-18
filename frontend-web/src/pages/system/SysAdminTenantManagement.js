@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
-import sysAdminApiClient from '../api/sysAdminApiClient';
+import sysAdminApiClient from '../../api/sysAdminApiClient';
 import { XMarkIcon, PlusIcon, PencilIcon, TrashIcon } from '@heroicons/react/24/outline';
 
 const fetchTenants = async () => {
@@ -182,8 +182,11 @@ export default function TenantManagement() {
                 <td className="px-6 py-4 text-sm font-medium dark:text-white">{t.name}</td>
                 <td className="px-6 py-4 text-sm text-gray-500">{t.cnpj}</td>
                 <td className="px-6 py-4">
-                  <span className={`px-2 py-1 text-xs rounded-full ${t.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                    {t.status}
+                  <span className={`px-2 py-1 text-xs rounded-full ${t.status === 'active' ? 'bg-green-100 text-green-800' :
+                      t.status === 'provisioning' ? 'bg-yellow-100 text-yellow-800' :
+                        'bg-red-100 text-red-800'
+                    }`}>
+                    {t.status === 'provisioning' ? 'Aguardando Provisionamento' : t.status}
                   </span>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium flex justify-end gap-2">

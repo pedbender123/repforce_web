@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { useNavigate, useLocation, Navigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
-import { useSysAdminAuth } from '../context/SysAdminAuthContext';
+import { useSysAdminAuth } from '../../context/SysAdminAuthContext';
 import { Eye, EyeOff, ShieldAlert } from 'lucide-react';
-import ThemeToggle from '../components/ThemeToggle';
+import ThemeToggle from '../../components/ThemeToggle';
 
 export default function SysAdminLogin() {
   const [username, setUsername] = useState('');

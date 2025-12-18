@@ -1,9 +1,9 @@
 import React, { useContext } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import apiClient from '../../api/apiClient';
+import apiClient from '../../../api/apiClient';
 import { Link, useNavigate } from 'react-router-dom';
 import { PencilIcon, TrashIcon, PlusIcon } from '@heroicons/react/24/outline';
-import { AuthContext } from '../../context/AuthContext';
+import { AuthContext } from '../../../context/AuthContext';
 
 const deleteProduct = async (id) => {
     await apiClient.delete(`/catalog/products/${id}`);

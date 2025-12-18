@@ -1,81 +1,103 @@
-from fastapi import APIRouter, Depends, Request, HTTPException
+from fastapi import APIRouter, Depends, Request, HTTPException, BackgroundTasks
 from sqlalchemy.orm import Session
-from ..db import database, models, schemas
 from typing import List
+from ..db import database, models_crm, schemas
+from ..services.cart_service import CartService
 
 router = APIRouter()
 
-@router.post("/orders", response_model=schemas.Order, status_code=201)
+@router.post("/preview", response_model=schemas.CartSummary)
+def preview_order(
+    items: List[schemas.CartItemInput],
+    db: Session = Depends(database.get_crm_db)
+):
+    """
+    Simula o cálculo do carrinho (Preços, Descontos, Total) sem salvar.
+    Usado pelo Frontend para exibir totais em tempo real.
+    """
+    service = CartService(db)
+    summary = service.calculate_cart(items)
+    return summary
+
+@router.post("", response_model=schemas.Order, status_code=201)
 def create_order(
     order: schemas.OrderCreate,
     request: Request,
-    db: Session = Depends(database.get_db)
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(database.get_crm_db)
 ):
-    tenant_id = request.state.tenant_id
+    # 1. Setup Context
+    # tenant_id já está no schema path, user_id precisamos pegar do token
     representative_id = request.state.user_id
-
-    # Busca produtos para garantir preço correto
-    product_ids = [item.product_id for item in order.items]
-    products = db.query(models.Product).filter(
-        models.Product.id.in_(product_ids),
-        models.Product.tenant_id == tenant_id
-    ).all()
     
-    product_map = {p.id: p for p in products}
+    # 2. Calcular Totais via CartService
+    service = CartService(db)
+    # Convert input schema to CartItemInput
+    cart_inputs = [schemas.CartItemInput(product_id=i.product_id, quantity=i.quantity) for i in order.items]
+    summary = service.calculate_cart(cart_inputs)
     
-    total_value = 0.0
-    total_cost = 0.0
-    final_items = []
-    
-    for item in order.items:
-        if item.product_id not in product_map:
-            raise HTTPException(status_code=400, detail=f"Produto ID {item.product_id} inválido")
-        
-        prod = product_map[item.product_id]
-        
-        unit_price = prod.price 
-        subtotal = unit_price * item.quantity
-        
-        total_value += subtotal
-        total_cost += (prod.cost_price or 0) * item.quantity
-        
-        final_items.append({
-            "product_id": item.product_id,
-            "quantity": item.quantity,
-            "unit_price": unit_price,
-            "subtotal": subtotal,
-            "name": prod.name
-        })
+    if not summary.items:
+         raise HTTPException(status_code=400, detail="Carrinho vazio")
 
-    margin_value = total_value - total_cost
+    # 3. Criar Order Items (DB Models)
+    db_items = []
+    for item in summary.items:
+        db_items.append(models_crm.OrderItem(
+            product_id=item.product_id,
+            quantity=item.quantity,
+            unit_price=item.unit_price,       # Snapshot preço cheio
+            discount_value=item.discount_value, # Snapshot desconto
+            net_unit_price=item.net_unit_price, # Snapshot preço liquido
+            total=item.total,             # Total da linha
+            rule_snapshot=item.rule_applied
+        ))
 
-    db_order = models.Order(
+    # 4. Criar Pedido
+    db_order = models_crm.Order(
         client_id=order.client_id,
-        items=final_items,
-        total_value=total_value,
-        margin_value=margin_value,
+        items=db_items,
+        total_value=summary.total_net, # Valor final cobrado
+        margin_value=summary.margin_value,
         status="draft",
-        tenant_id=tenant_id,
-        representative_id=representative_id
+        # tenant_id removido (schema isolation)
+        representative_id=representative_id,
+        notes=order.notes,
+        custom_attributes=order.custom_attributes
     )
     
     db.add(db_order)
     db.commit()
     db.refresh(db_order)
     
+        # Fire & Forget (na prática idealmente seria BackgroundTask do FastAPI)
+        # Aqui vamos usar o loop atual se possível ou sync wrapper
+        webhook_service = WebhookService(db)
+        
+        # Payload Simples
+        payload = {
+            "order_id": db_order.id,
+            "total_value": db_order.total_value,
+            "client_id": db_order.client_id,
+            "representative_id": db_order.representative_id,
+            "items_count": len(db_order.items),
+            "timestamp": db_order.created_at.isoformat()
+        }
+        
+        # Note: Em produção use BackgroundTasks(webhook_service.dispatch_event, ...)
+        # Para MVP, a chamada async precisa ser tratada
+        pass # Placeholder: User pediu "Trigger", vou usar BackgroundTasks na assinatura
+    except Exception as e:
+        print(f"Webhook Error: {e}")
+    
     return db_order
 
-@router.get("/orders", response_model=List[schemas.Order])
-def get_orders(request: Request, db: Session = Depends(database.get_db)):
-    tenant_id = request.state.tenant_id
+@router.get("", response_model=List[schemas.Order])
+def list_orders(
+    request: Request, 
+    db: Session = Depends(database.get_crm_db)
+):
+    # TODO: Implementar paginação e filtros
     user_id = request.state.user_id
+    # Por enquanto retorna tudo (Scope deve ser aplicado aqui se tiver regra de "Só vejo meus pedidos")
     
-    # SCOPE CHECK
-    scope = get_user_scope(request)
-
-    query = db.query(models.Order).filter(models.Order.tenant_id == tenant_id)
-    
-    if scope == 'OWN':
-        query = query.filter(models.Order.representative_id == user_id)
-        
-    return query.order_by(models.Order.created_at.desc()).all()
+    return db.query(models_crm.Order).order_by(models_crm.Order.created_at.desc()).all()

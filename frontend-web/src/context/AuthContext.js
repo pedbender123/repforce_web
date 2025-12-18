@@ -11,8 +11,42 @@ export const AuthProvider = ({ children }) => {
     const [token, setToken] = useState(null);
     const [loading, setLoading] = useState(true);
 
+    // Função auxiliar para hidratar dados completos do usuário
+    const hydrateUserData = async (tokenStr) => {
+        try {
+            // 1. Decodifica básico para não bloquear UX imediata (opcional)
+            // const decoded = jwtDecode(tokenStr);
+            // setUser(decoded); // Se quiser mostrar algo rápido
+
+            // 2. Busca dados completos da API (/me)
+            // Precisamos importar o sysAdminApiClient (ou criar um client genérico, mas sysAdminClient pode não ter o header correto setado ainda se não for singleton com interceptor dinâmico)
+            // Melhor usar fetch direto ou garantir que o client use o token passado
+            const response = await fetch('http://localhost:8000/auth/users/me', {
+                headers: { 'Authorization': `Bearer ${tokenStr}` }
+            });
+
+            if (response.ok) {
+                const fullUser = await response.json();
+                // Garante que profile venha correto (priority: Role Name > Profile > 'sales_rep')
+                // Mas o backend já manda role_obj.
+                setUser(fullUser);
+            } else {
+                // Fallback para o token decode se API falhar? Ou logout?
+                // Se falhar /me, provavelmente token inválido ou erro server. Melhor logout ou retry.
+                console.error("Erro ao hidratar usuário via /me", response.status);
+                const decoded = jwtDecode(tokenStr);
+                setUser(decoded); // Fallback parcial
+            }
+        } catch (err) {
+            console.error("Erro fetch /me", err);
+            // Fallback
+            const decoded = jwtDecode(tokenStr);
+            setUser(decoded);
+        }
+    }
+
     useEffect(() => {
-        const recoverUser = () => {
+        const recoverUser = async () => {
             const storedToken = localStorage.getItem('token');
             if (storedToken) {
                 try {
@@ -22,7 +56,8 @@ export const AuthProvider = ({ children }) => {
                         logout();
                     } else {
                         setToken(storedToken);
-                        setUser(decoded);
+                        // AQUI: Chama hidratação em vez de apenas setUser(decoded)
+                        await hydrateUserData(storedToken);
                     }
                 } catch (error) {
                     console.error("Token inválido", error);
@@ -35,15 +70,11 @@ export const AuthProvider = ({ children }) => {
         recoverUser();
     }, []);
 
-    const login = (newToken) => {
+    const login = async (newToken) => {
         localStorage.setItem('token', newToken);
         setToken(newToken);
-        try {
-            const decoded = jwtDecode(newToken);
-            setUser(decoded);
-        } catch (error) {
-            console.error("Erro ao decodificar token no login", error);
-        }
+        // AQUI: Chama hidratação também
+        await hydrateUserData(newToken);
     };
 
     const logout = () => {
@@ -53,14 +84,15 @@ export const AuthProvider = ({ children }) => {
     };
 
     return (
-        <AuthContext.Provider value={{ 
-            authenticated: !!user, 
-            user, 
+        <AuthContext.Provider value={{
+            authenticated: !!user,
+            user,
             token,
             userProfile: user?.profile,
-            login, 
-            logout, 
-            isLoadingAuth: loading 
+            login,
+            logout,
+            isLoadingAuth: loading,
+            refreshUser: () => hydrateUserData(token)
         }}>
             {children}
         </AuthContext.Provider>

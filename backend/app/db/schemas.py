@@ -122,7 +122,7 @@ class SupplierCreate(SupplierBase):
 
 class Supplier(SupplierBase):
     id: int
-    tenant_id: int
+    # tenant_id removed
     class Config:
         from_attributes = True
 
@@ -137,37 +137,129 @@ class ProductBase(BaseModel):
     image_url: Optional[str] = None
     category: Optional[str] = None
     supplier_id: Optional[int] = None
+    custom_attributes: Optional[Dict[str, Any]] = {}
 
 class ProductCreate(ProductBase):
     pass
 
 class Product(ProductBase):
     id: int
-    tenant_id: int
+    # tenant_id removed
     supplier: Optional[Supplier] = None
     class Config:
         from_attributes = True
 
 # --- CLIENT ---
 class ClientBase(BaseModel):
-    name: str
+    fantasy_name: str
+    name: str # Razão Social
     trade_name: Optional[str] = None
-    cnpj: Optional[str] = None
+    cnpj: str
     email: Optional[str] = None
     phone: Optional[str] = None
-    status: Optional[str] = 'active'
+    status: Optional[str] = "active"
+    address: Optional[str] = None
+    city: Optional[str] = None
+    state: Optional[str] = None
+    zip_code: Optional[str] = None
+    representative_id: Optional[int] = None
+    custom_attributes: Optional[Dict[str, Any]] = {}
 
 class ClientCreate(ClientBase):
-    address_data: Optional[dict] = None 
+    pass
 
 class Client(ClientBase):
     id: int
-    tenant_id: int
-    city: Optional[str] = None
-    state: Optional[str] = None
+    # tenant_id removed
     contacts: List[Contact] = []
     class Config:
         from_attributes = True
+
+# --- CUSTOM FIELDS CONFIG SCHEMA ---
+class CustomFieldConfigBase(BaseModel):
+    entity: str
+    key: str
+    label: str
+    type: str
+    options: Optional[List[str]] = None
+    required: bool = False
+    order_index: int = 0
+
+class CustomFieldConfigCreate(CustomFieldConfigBase):
+    pass
+
+class CustomFieldConfig(CustomFieldConfigBase):
+    id: int
+    class Config:
+        from_attributes = True
+
+# --- CATALOG METADATA ---
+class CatalogItemBase(BaseModel):
+    name: str
+
+class Brand(CatalogItemBase):
+    id: int
+    class Config:
+        from_attributes = True
+
+class ProductFamily(CatalogItemBase):
+    id: int
+    class Config:
+        from_attributes = True
+
+class ProductType(CatalogItemBase):
+    id: int
+    class Config:
+        from_attributes = True
+
+class BrandCreate(CatalogItemBase): pass
+class FamilyCreate(CatalogItemBase): pass
+class TypeCreate(CatalogItemBase): pass
+
+# --- PRICING RULES ---
+class DiscountRuleBase(BaseModel):
+    name: str
+    type: str # quantity, value, seasonal, mix
+    target_type: str # product, family, brand, global
+    target_id: Optional[int] = None
+    min_quantity: Optional[int] = None
+    min_value: Optional[float] = None
+    discount_percent: Optional[float] = None
+    discount_value: Optional[float] = None
+    start_date: Optional[datetime] = None
+    end_date: Optional[datetime] = None
+    priority: int = 0
+    active: bool = True
+
+class DiscountRuleCreate(DiscountRuleBase):
+    pass
+
+class DiscountRule(DiscountRuleBase):
+    id: int
+    class Config:
+        from_attributes = True
+
+# --- CART & PRICING DTOs ---
+class CartItemInput(BaseModel):
+    product_id: int
+    quantity: int
+
+class CartItemSummary(BaseModel):
+    product_id: int
+    name: str
+    quantity: int
+    unit_price: float
+    discount_value: float
+    net_unit_price: float
+    total: float
+    rule_applied: Optional[str] = None
+
+class CartSummary(BaseModel):
+    items: List[CartItemSummary]
+    total_gross: float
+    total_discount: float
+    total_net: float
+    margin_value: float = 0.0
 
 # --- ROUTES ---
 class RouteStop(BaseModel):

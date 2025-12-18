@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import apiClient from '../api/apiClient';
-import EditableField from '../components/EditableField';
-import ContactCard from '../components/ContactCard';
+import apiClient from '../../api/apiClient';
+import EditableField from '../../components/EditableField';
+import ContactCard from '../../components/ContactCard';
 import { Tab } from '@headlessui/react';
 import { ArrowLeftIcon } from '@heroicons/react/24/outline';
 

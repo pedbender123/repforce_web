@@ -1,14 +1,22 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import apiClient from '../api/apiClient';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import apiClient from '../../api/apiClient';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeftIcon } from '@heroicons/react/24/outline';
+import DynamicFieldRenderer from '../../components/DynamicFieldRenderer';
 
 export default function AppClientForm() {
     const { register, handleSubmit, formState: { errors } } = useForm();
     const navigate = useNavigate();
     const queryClient = useQueryClient();
+    const [customValues, setCustomValues] = useState({});
+
+    // 1. Busca configuração de campos customizados
+    const { data: customFields } = useQuery(['customFields', 'client'], async () => {
+        const res = await apiClient.get('/crm/config/fields/client');
+        return res.data;
+    });
 
     const mutation = useMutation((data) => apiClient.post('/crm/clients', data), {
         onSuccess: () => {
@@ -24,20 +32,25 @@ export default function AppClientForm() {
     const onSubmit = (data) => {
         // Estrutura o payload conforme o backend espera (AddressData nested)
         const payload = {
+            fantasy_name: data.fantasy_name || data.name, // Ajuste para bater com schema
             name: data.name,
             trade_name: data.trade_name,
             cnpj: data.cnpj,
             status: 'active',
-            address_data: {
-                rua: data.rua,
-                numero: data.numero,
-                bairro: data.bairro,
-                cidade: data.cidade,
-                uf: data.uf,
-                cep: data.cep
-            }
+            address: data.rua, // Simplificação ou mapping correto se backend espera address string vs address_data struct
+            city: data.cidade,
+            state: data.uf,
+            zip_code: data.cep,
+            phone: data.phone,
+            email: data.email,
+            // IMPORTANTE: Envia atributos customizados
+            custom_attributes: customValues
         };
         mutation.mutate(payload);
+    };
+
+    const handleCustomChange = (key, value) => {
+        setCustomValues(prev => ({ ...prev, [key]: value }));
     };
 
     return (
@@ -69,8 +82,33 @@ export default function AppClientForm() {
                                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">CNPJ</label>
                                 <input {...register("cnpj")} className="mt-1 w-full rounded-md border-gray-300 dark:bg-gray-700 dark:text-white dark:border-gray-600 shadow-sm p-2 border" />
                             </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Email</label>
+                                <input {...register("email")} className="mt-1 w-full rounded-md border-gray-300 dark:bg-gray-700 dark:text-white dark:border-gray-600 shadow-sm p-2 border" />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Telefone</label>
+                                <input {...register("phone")} className="mt-1 w-full rounded-md border-gray-300 dark:bg-gray-700 dark:text-white dark:border-gray-600 shadow-sm p-2 border" />
+                            </div>
                         </div>
                     </div>
+
+                    {/* Campos Personalizados */}
+                    {customFields && customFields.length > 0 && (
+                        <div>
+                            <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4 mt-6">Informações Adicionais</h3>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                {customFields.map(field => (
+                                    <DynamicFieldRenderer
+                                        key={field.key}
+                                        fieldConfig={field}
+                                        value={customValues[field.key]}
+                                        onChange={handleCustomChange}
+                                    />
+                                ))}
+                            </div>
+                        </div>
+                    )}
 
                     {/* Endereço */}
                     <div>

@@ -1,8 +1,8 @@
 import React, { useState, useContext } from 'react';
-import { AuthContext } from '../context/AuthContext';
+import { AuthContext } from '../../context/AuthContext';
 import { Navigate } from 'react-router-dom';
-import ThemeToggle from '../components/ThemeToggle';
-import apiClient from '../api/apiClient';
+import ThemeToggle from '../../components/ThemeToggle';
+import apiClient from '../../api/apiClient';
 import { jwtDecode } from 'jwt-decode';
 
 export default function Login() {
