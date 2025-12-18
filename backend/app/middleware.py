@@ -60,6 +60,7 @@ class TenantMiddleware(BaseHTTPMiddleware):
         request.state.tenant_id = payload.get("tenant_id")
         request.state.role_name = payload.get("role_name")
         request.state.username = payload.get("username")
+        request.state.profile = payload.get("profile")
 
         if not request.state.user_id or not request.state.tenant_id:
             # role_name pode ser null/opcional em alguns casos, ou não?
