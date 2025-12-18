@@ -1,7 +1,8 @@
 from pydantic import BaseModel, EmailStr
 from typing import List, Optional, Any, Dict
 from datetime import datetime
-from app.db.models import UserRole, OrderStatus
+from app.db.models import UserRole
+from app.db.models_crm import OrderStatus
 
 # --- SCHEMAS AUXILIARES PARA ÁREAS E CARGOS ---
 class PageItem(BaseModel):
