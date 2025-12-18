@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 from .api import auth, catalog, orders, admin, sysadmin, webhooks, crm, routes, analytics, custom_fields
 
 # Cria tabelas
-models.Base.metadata.create_all(bind=database.engine)
+models.Base.metadata.create_all(bind=database.engine_sys)
 
 app = FastAPI(title="Repforce API", version="0.3.1")
 
@@ -22,7 +22,7 @@ app.mount("/uploads", StaticFiles(directory=upload_dir), name="uploads")
 
 @app.on_event("startup")
 def create_initial_seed():
-    db: Session = database.SessionLocal()
+    db: Session = database.SessionSys()
     try:
         # 1. Tenant Systems
         tenant = db.query(models.Tenant).filter(models.Tenant.name == "Systems").first()
