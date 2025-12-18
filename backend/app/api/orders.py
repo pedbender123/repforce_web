@@ -69,25 +69,19 @@ def create_order(
     db.commit()
     db.refresh(db_order)
     
-        # Fire & Forget (na prática idealmente seria BackgroundTask do FastAPI)
-        # Aqui vamos usar o loop atual se possível ou sync wrapper
-        webhook_service = WebhookService(db)
-        
-        # Payload Simples
-        payload = {
-            "order_id": db_order.id,
-            "total_value": db_order.total_value,
-            "client_id": db_order.client_id,
-            "representative_id": db_order.representative_id,
-            "items_count": len(db_order.items),
-            "timestamp": db_order.created_at.isoformat()
-        }
-        
-        # Note: Em produção use BackgroundTasks(webhook_service.dispatch_event, ...)
-        # Para MVP, a chamada async precisa ser tratada
-        pass # Placeholder: User pediu "Trigger", vou usar BackgroundTasks na assinatura
-    except Exception as e:
-        print(f"Webhook Error: {e}")
+    # 5. Dispatch Webhook
+    from ..services.webhook_service import WebhookService
+    webhook_service = WebhookService(db)
+    
+    payload = {
+        "id": db_order.id,
+        "total": db_order.total_value,
+        "client_id": db_order.client_id,
+        "created_at": str(db_order.created_at)
+    }
+    
+    # Executa em Background para não travar a req
+    background_tasks.add_task(webhook_service.dispatch_event, "order.created", payload)
     
     return db_order
 
