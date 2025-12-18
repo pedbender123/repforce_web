@@ -59,7 +59,7 @@ def create_product(
         stock=stock,
         image_url=image_url,
         supplier_id=supplier_id, # NOVO
-        supplier_id=supplier_id, # NOVO
+
         # tenant_id removal handled by schema
     )
     db.add(db_product)
