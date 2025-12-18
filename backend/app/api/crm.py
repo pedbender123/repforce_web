@@ -126,7 +126,6 @@ def create_client(
         name=client_in.name,
         trade_name=client_in.trade_name,
         cnpj=client_in.cnpj,
-        cnpj=client_in.cnpj,
         # tenant_id desnecessário (schema isolado)
         # Mapeando address_data para campos planos
         city=addr_data.get('cidade'),
