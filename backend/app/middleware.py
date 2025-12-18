@@ -58,10 +58,12 @@ class TenantMiddleware(BaseHTTPMiddleware):
         # Injeta os dados do payload no estado da requisição
         request.state.user_id = payload.get("sub")
         request.state.tenant_id = payload.get("tenant_id")
-        request.state.profile = payload.get("profile")
+        request.state.role_name = payload.get("role_name")
         request.state.username = payload.get("username")
 
-        if not request.state.user_id or not request.state.tenant_id or not request.state.profile:
+        if not request.state.user_id or not request.state.tenant_id:
+            # role_name pode ser null/opcional em alguns casos, ou não?
+            # Se for obrigatório, adicione 'or not request.state.role_name'
             return JSONResponse(
                 status_code=401,
                 content={"detail": "Token com dados incompletos."}

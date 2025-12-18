@@ -49,7 +49,7 @@ class Token(BaseModel):
 
 class TokenData(BaseModel):
     username: Optional[str] = None
-    profile: Optional[str] = None
+    role_name: Optional[str] = None
     tenant_id: Optional[int] = None
     role_id: Optional[int] = None
 
@@ -78,7 +78,6 @@ class UserBase(BaseModel):
     username: str
     email: Optional[EmailStr] = None
     name: str
-    profile: str = "sales_rep"
     is_active: bool = True
 
 class UserCreate(UserBase):

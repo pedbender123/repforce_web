@@ -12,36 +12,24 @@ def get_user_scope(request: Request) -> PermissionScope:
     Analisa o perfil e o cargo para ditar a regra de visibilidade.
     """
     
-    # 1. Verifica se usuário está na request (injetado pelo middleware de Auth)
-    if not hasattr(request.state, "user"):
-        return "OWN" # Padrão restritivo se não houver user
-        
-    user = request.state.user
+    # 1. Verifica se temos o role_name no state (vindo do token)
+    role_name = getattr(request.state, "role_name", None)
     
-    # Adquirir Role do objeto user (se o ORM já tiver carregado)
-    # Assumindo que request.state.user é o modelo SQLAlchemy com relacionamento role_obj carregado
-    # Se não, precisaríamos verificar como o middleware popula o user.
-    
-    # Acessar perfil para SysAdmin/Superuser
-    profile = getattr(user, "profile", None)
-    
-    # 1. SysAdmin e Admin veem TUDO sempre
-    if profile in ['sysadmin', 'admin', 'manager']:
+    # 2. SysAdmin e Admin veem TUDO sempre
+    # Aqui assumimos que no banco, os Roles se chamam "sysadmin", "admin", "manager"
+    # Ou que o Auth Service injetou esses nomes no token.
+    if role_name in ['sysadmin', 'admin', 'manager']:
         return "GLOBAL"
 
-    # 2. Verifica Cargo (Role) Específico definido no banco
-    # Se o usuário tiver um cargo customizado com nível de acesso definido
-    if user.role_obj:
-        access_level = getattr(user.role_obj, "access_level", "own")
-        if access_level == "global":
-            return "GLOBAL"
-        if access_level == "team":
-            return "TEAM"
-        return "OWN"
-    
-    # 3. Fallback baseado no perfil legado (enquanto migramos)
-    if profile in ['representante', 'sales_rep']:
-        return "OWN"
-        
-    # Default seguro (Zero Trust)
+    # 3. Verifica Objeto User completo (se injetado)
+    if hasattr(request.state, "user"):
+        user = request.state.user
+        if user.role_obj:
+            access_level = getattr(user.role_obj, "access_level", "own")
+            if access_level == "global":
+                return "GLOBAL"
+            if access_level == "team":
+                return "TEAM"
+
+    # Default seguro
     return "OWN"

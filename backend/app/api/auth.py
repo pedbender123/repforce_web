@@ -19,7 +19,8 @@ def login_for_access_token(
     """
     Login para 'admin' e 'representante' com suporte a 'Manter conectado'.
     """
-    user = get_user_by_username(db, username=username)
+    # Carrega usuário com Cargo para verificar permissões
+    user = db.query(models.User).options(joinedload(models.User.role_obj)).filter(models.User.username == username).first()
     
     if not user or not security.verify_password(password, user.hashed_password):
         raise HTTPException(
@@ -28,12 +29,14 @@ def login_for_access_token(
             headers={"WWW-Authenticate": "Bearer"},
         )
         
-    if user.profile == 'sysadmin':
+    role_name = user.role_obj.name if user.role_obj else "unknown"
+
+    if role_name == 'sysadmin':
         raise HTTPException(status_code=403, detail="Login de SysAdmin deve ser feito na área restrita.")
     
     token_data = {
         "sub": str(user.id), 
-        "profile": user.profile,
+        "role_name": role_name,
         "tenant_id": user.tenant_id,
         "username": user.username
     }
@@ -49,17 +52,19 @@ def sysadmin_login_for_access_token(
     db: Session = Depends(database.get_db)
 ):
     """Login exclusivo para SysAdmin (sem remember_me por segurança)."""
-    user = get_user_by_username(db, username=form_data.username)
+    user = db.query(models.User).options(joinedload(models.User.role_obj)).filter(models.User.username == form_data.username).first()
     
     if not user or not security.verify_password(form_data.password, user.hashed_password):
         raise HTTPException(status_code=401, detail="Dados incorretos")
         
-    if user.profile != 'sysadmin':
+    role_name = user.role_obj.name if user.role_obj else "unknown"
+
+    if role_name != 'sysadmin':
         raise HTTPException(status_code=403, detail="Acesso negado. Área exclusiva SysAdmin.")
     
     token_data = {
         "sub": str(user.id), 
-        "profile": user.profile, 
+        "role_name": role_name, 
         "tenant_id": user.tenant_id, 
         "username": user.username
     }

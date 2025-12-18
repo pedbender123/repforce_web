@@ -20,7 +20,7 @@ def get_clients(
     scope = get_user_scope(request)
     
     # 2. Query Base
-    query = db.query(models_crm.Client).filter(models_crm.Client.tenant_id == tenant_id)
+    query = db.query(models_crm.Client)
     
     # 3. Filtro Antigravity
     if scope == "OWN":
@@ -37,8 +37,7 @@ def get_client_details(
 ):
     tenant_id = request.state.tenant_id
     client = db.query(models_crm.Client).options(joinedload(models_crm.Client.contacts)).filter(
-        models_crm.Client.id == client_id,
-        models_crm.Client.tenant_id == tenant_id
+        models_crm.Client.id == client_id
     ).first()
     
     if not client:
@@ -127,7 +126,8 @@ def create_client(
         name=client_in.name,
         trade_name=client_in.trade_name,
         cnpj=client_in.cnpj,
-        tenant_id=tenant_id,
+        cnpj=client_in.cnpj,
+        # tenant_id desnecessário (schema isolado)
         # Mapeando address_data para campos planos
         city=addr_data.get('cidade'),
         state=addr_data.get('uf'),

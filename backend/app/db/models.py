@@ -92,7 +92,7 @@ class User(Base):
     full_name = Column(String, nullable=True)
     
     # Mantemos 'profile' para distinguir SysAdmin vs Usuário de Tenant
-    profile = Column(String, default="sales_rep") 
+    # profile = Column(String, default="sales_rep") # REMOVED 
     is_active = Column(Boolean, default=True)
     
     tenant_id = Column(Integer, ForeignKey("tenants.id"), nullable=True)

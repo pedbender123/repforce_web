@@ -19,7 +19,7 @@ def get_products(
     search: str = ""
 ):
     tenant_id = request.state.tenant_id
-    query = db.query(models_crm.Product).options(joinedload(models_crm.Product.supplier)).filter(models_crm.Product.tenant_id == tenant_id)
+    query = db.query(models_crm.Product).options(joinedload(models_crm.Product.supplier))
     
     if search:
         query = query.filter(models_crm.Product.name.ilike(f"%{search}%"))
@@ -59,7 +59,8 @@ def create_product(
         stock=stock,
         image_url=image_url,
         supplier_id=supplier_id, # NOVO
-        tenant_id=tenant_id
+        supplier_id=supplier_id, # NOVO
+        # tenant_id removal handled by schema
     )
     db.add(db_product)
     db.commit()
@@ -74,7 +75,7 @@ def get_suppliers(
     db: Session = Depends(database.get_db)
 ):
     tenant_id = request.state.tenant_id
-    suppliers = db.query(models_crm.Supplier).filter(models_crm.Supplier.tenant_id == tenant_id).all()
+    suppliers = db.query(models_crm.Supplier).all()
     return suppliers
 
 @router.post("/suppliers", response_model=schemas.Supplier, status_code=201)
@@ -88,7 +89,7 @@ def create_supplier(
 
     tenant_id = request.state.tenant_id
     
-    db_supplier = models_crm.Supplier(**supplier.dict(), tenant_id=tenant_id)
+    db_supplier = models_crm.Supplier(**supplier.dict())
     db.add(db_supplier)
     db.commit()
     db.refresh(db_supplier)

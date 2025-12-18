@@ -57,11 +57,12 @@ def create_initial_seed():
             area.pages_json = sysadmin_pages
             db.commit()
 
-        # 3. Cargo Super Admin
-        role_name = "Super Admin"
+        # 3. Cargo SysAdmin
+        role_name = "sysadmin"
         role = db.query(models.Role).filter(models.Role.name == role_name, models.Role.tenant_id == tenant.id).first()
         if not role:
-            role = models.Role(name=role_name, tenant_id=tenant.id)
+            # Define access_level="global" explicitamente
+            role = models.Role(name=role_name, description="Global System Administrator", tenant_id=tenant.id, access_level="global")
             role.areas.append(area)
             db.add(role)
             db.commit()
@@ -75,12 +76,18 @@ def create_initial_seed():
                 username="sysadmin", 
                 name="SysAdmin", 
                 hashed_password=hashed_pw, 
-                profile="sysadmin", 
+                # profile="sysadmin", # Removed
                 tenant_id=tenant.id,
                 role_id=role.id
             )
             db.add(new_admin)
             db.commit()
+        else:
+            # Self-healing: Garante que o sysadmin existente tenha o cargo correto
+            if admin_user.role_id != role.id:
+                print(f"Atualizando role do usuário sysadmin para {role_name}")
+                admin_user.role_id = role.id
+                db.commit()
             
     except Exception as e:
         print(f"Erro seeding: {e}")

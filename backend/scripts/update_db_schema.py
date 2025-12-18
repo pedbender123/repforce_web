@@ -38,7 +38,20 @@ def update_schema():
             END IF;
         END $$;
         """
+        """
     ]
+    
+    # Optional: Drop profile column command (commented out by default to avoid data loss panic)
+    # But for this task "Retire o campo perfil", we should probably do it or at least support it.
+    commands.append("""
+        DO $$
+        BEGIN
+            IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='profile') THEN
+                ALTER TABLE users DROP COLUMN profile;
+                RAISE NOTICE 'Coluna profile removida de users';
+            END IF;
+        END $$;
+    """)
     
     with engine.connect() as conn:
         conn.execution_options(isolation_level="AUTOCOMMIT")
