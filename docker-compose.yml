@@ -79,7 +79,8 @@ services:
       - N8N_PORT=5678
       - N8N_PROTOCOL=https
       - NODE_ENV=production
-      - WEBHOOK_URL=https://n8n.repforce.com.br
+      - WEBHOOK_URL=https://n8n.repforce.com.br/
+      - WEBHOOK_TUNNEL_URL=https://n8n.repforce.com.br/
       - GENERIC_TIMEZONE=America/Sao_Paulo
     volumes:
       - n8n_data:/home/node/.n8n
