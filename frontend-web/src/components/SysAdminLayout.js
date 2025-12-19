@@ -17,6 +17,7 @@ import {
   Layout,
   Briefcase
 } from 'lucide-react';
+import TopHeaderActions from './TopHeaderActions';
 
 const fetchMyAreas = async () => {
   try {
@@ -52,7 +53,6 @@ const SysAdminLayout = () => {
     pages_json: [
       { label: 'Dashboard', path: '/sysadmin/dashboard' },
       { label: 'Tenants (Empresas)', path: '/sysadmin/tenants' },
-      { label: 'Usuários Globais', path: '/sysadmin/users' },
       { label: 'Gestão de Áreas', path: '/sysadmin/areas' } // Página adicionada
     ]
   };
@@ -146,33 +146,9 @@ const SysAdminLayout = () => {
           </ul>
         </nav>
 
-        <div className="p-4 border-t border-gray-800">
-          {!isCollapsed ? (
-            <>
-              <div className="flex items-center justify-between mb-4 px-2">
-                <div className="flex flex-col">
-                  <span className="text-sm font-medium text-white">SysAdmin</span>
-                  <span className="text-xs text-gray-500">Root Access</span>
-                </div>
-                <button onClick={toggleTheme} className="text-gray-500 hover:text-white p-1 rounded hover:bg-gray-800">
-                  {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
-                </button>
-              </div>
-              <button onClick={handleLogout} className="flex items-center w-full px-4 py-2 text-sm font-medium text-red-400 hover:bg-red-900/30 rounded-lg transition-colors">
-                <LogOut size={18} className="mr-2" />
-                Sair
-              </button>
-            </>
-          ) : (
-            <div className="flex flex-col items-center space-y-4">
-              <button onClick={toggleTheme} className="text-gray-500 hover:text-white p-2 rounded hover:bg-gray-800">
-                {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
-              </button>
-              <button onClick={handleLogout} className="text-red-400 hover:bg-red-900/30 p-2 rounded-lg transition-colors">
-                <LogOut size={20} />
-              </button>
-            </div>
-          )}
+        <div className="p-4 border-t border-gray-800 flex justify-center">
+          {/* Sidebar Footer Logic could be minimal now */}
+          <span className="text-xs text-gray-600">v1.0</span>
         </div>
       </aside>
 
@@ -186,23 +162,30 @@ const SysAdminLayout = () => {
           </button>
         </header>
 
-        {/* --- MENU SUPERIOR (TABS) --- */}
-        <div className="hidden md:flex bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-0 items-end h-16 shadow-sm z-10 overflow-x-auto">
-          {activePages.map((page) => {
-            const isPageActive = location.pathname.startsWith(page.path);
-            return (
-              <Link
-                key={page.path}
-                to={page.path}
-                className={`mr-6 py-4 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${isPageActive
-                  ? 'border-blue-600 text-blue-600 dark:text-blue-400 dark:border-blue-400'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:border-gray-300'
-                  }`}
-              >
-                {page.label}
-              </Link>
-            );
-          })}
+        {/* --- MENU SUPERIOR (TABS & ACTIONS) --- */}
+        <div className="hidden md:flex bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 items-center h-16 shadow-sm z-10">
+
+          {/* Tabs Section */}
+          <div className="flex items-end h-full overflow-x-auto">
+            {activePages.map((page) => {
+              const isPageActive = location.pathname.startsWith(page.path);
+              return (
+                <Link
+                  key={page.path}
+                  to={page.path}
+                  className={`mr-6 py-5 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${isPageActive
+                    ? 'border-blue-600 text-blue-600 dark:text-blue-400 dark:border-blue-400'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:border-gray-300'
+                    }`}
+                >
+                  {page.label}
+                </Link>
+              );
+            })}
+          </div>
+
+          {/* Right Actions Section */}
+          <TopHeaderActions />
         </div>
 
         {/* Mobile Menu */}

@@ -37,6 +37,8 @@ import SysAdminDashboard from './pages/system/SysAdminDashboard';
 import TenantManagement from './pages/system/SysAdminTenantManagement';
 import AllUserManagement from './pages/system/SysAdminAllUserManagement';
 import AreaManagement from './pages/system/SysAdminAreaManagement';
+import ConfigPage from './pages/config/ConfigPage';
+import ProfilePage from './pages/system/ProfilePage';
 
 function App() {
   return (
@@ -85,6 +87,8 @@ function App() {
                 <Route path="tenants" element={<TenantManagement />} />
                 <Route path="users" element={<AllUserManagement />} />
                 <Route path="areas" element={<AreaManagement />} />
+                <Route path="config" element={<ConfigPage />} /> {/* Nova Rota de Config */}
+                <Route path="profile" element={<ProfilePage />} />
                 <Route index element={<Navigate to="dashboard" replace />} />
               </Route>
 

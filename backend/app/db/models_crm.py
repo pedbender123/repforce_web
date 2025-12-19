@@ -207,3 +207,34 @@ class VisitRoute(BaseCrm):
     # tenant_id removed
     
     user_id = Column(Integer, index=True) # Sales Rep
+
+# --- SYSTEM TASKS (Notifications) ---
+class TaskType(str, enum.Enum):
+    ERROR = "error"
+    ORDER = "order"
+    ROUTE = "route"
+    SYSTEM = "system"
+
+class TaskStatus(str, enum.Enum):
+    OPEN = "open"
+    COMPLETED = "completed"
+    ARCHIVED = "archived"
+
+class Task(BaseCrm):
+    __tablename__ = "tasks"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    title = Column(String, index=True)
+    description = Column(String, nullable=True)
+    type = Column(String) # TaskType
+    status = Column(String, default=TaskStatus.OPEN, index=True)
+    
+    related_id = Column(Integer, nullable=True) # ID of related Order, Route, etc.
+    link_url = Column(String, nullable=True) # Direct link to related resource
+    
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    
+    # Assignee (optional)
+    assigned_user_id = Column(Integer, index=True, nullable=True)
+

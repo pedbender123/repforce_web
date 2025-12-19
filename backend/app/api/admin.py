@@ -9,12 +9,14 @@ router = APIRouter()
 # Dependência para verificar se o usuário é Admin (de Tenant)
 def check_tenant_admin_profile(request: Request):
     """
-    Verifica se o usuário logado tem o perfil 'admin' (e NÃO 'sysadmin').
+    Verifica se o usuário logado tem o perfil 'Admin' ou 'sysadmin'.
+    Utiliza role_name pois profile foi depreciado.
     """
-    if request.state.profile != 'admin':
+    allowed_roles = ['Admin', 'sysadmin']
+    if request.state.role_name not in allowed_roles:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Acesso restrito a administradores de tenant."
+            detail="Acesso restrito a administradores."
         )
     return True
 

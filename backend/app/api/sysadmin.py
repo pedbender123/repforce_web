@@ -194,12 +194,11 @@ def create_sysadmin_user_entry(
         
         role_id = admin_role.id
 
-        # 2. (IMPORTANTE) Atualiza o cargo Admin para ter acesso a TODAS as áreas do tenant
-        # Isso garante que o admin criado possa ver algo ao logar
-        tenant_areas = db.query(models.Area).filter(models.Area.tenant_id == tenant_id).all()
-        # Limpa e reassocia para garantir
-        admin_role.areas = tenant_areas
-        db.commit()
+        # 2. (REMOVIDO) Não atualiza mais o cargo Admin automaticamente com todas as áreas.
+        # O Admin deve começar sem áreas, conforme solicitado.
+        # tenant_areas = db.query(models.Area).filter(models.Area.tenant_id == tenant_id).all()
+        # admin_role.areas = tenant_areas
+        pass
     
         db.commit()
     
@@ -263,9 +262,10 @@ def create_area(
 
     roles_to_add = set(area_in.allowed_role_ids)
     
-    admin_role = db.query(models.Role).filter(models.Role.name == "Admin", models.Role.tenant_id == area_in.tenant_id).first()
-    if admin_role:
-        roles_to_add.add(admin_role.id)
+    # (REMOVIDO) Não adiciona mais a nova área ao cargo Admin automaticamente.
+    # admin_role = db.query(models.Role).filter(models.Role.name == "Admin", models.Role.tenant_id == area_in.tenant_id).first()
+    # if admin_role:
+    #     roles_to_add.add(admin_role.id)
     
     if roles_to_add:
         roles = db.query(models.Role).filter(models.Role.id.in_(roles_to_add)).all()

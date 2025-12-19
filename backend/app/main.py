@@ -8,7 +8,7 @@ from .core import security
 from sqlalchemy.orm import Session
 
 # Importa as rotas
-from .api import auth, catalog, orders, admin, sysadmin, webhooks, crm, routes, analytics, custom_fields
+from .api import auth, catalog, orders, admin, sysadmin, webhooks, crm, routes, analytics, custom_fields, tasks
 
 # Cria tabelas
 models.Base.metadata.create_all(bind=database.engine_sys)
@@ -111,6 +111,7 @@ def read_root():
 # Definição das Rotas
 app.include_router(auth.router, prefix="/auth", tags=["Autenticação"])
 app.include_router(crm.router, prefix="/crm", tags=["CRM (Clientes)"])
+app.include_router(tasks.router, prefix="/crm", tags=["Tarefas & Notificações"])
 app.include_router(custom_fields.router, prefix="/crm", tags=["CRM Config"])
 app.include_router(catalog.router, prefix="/catalog", tags=["Catálogo"])
 app.include_router(orders.router, prefix="/orders", tags=["Pedidos"])
