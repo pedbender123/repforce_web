@@ -23,8 +23,9 @@ ssh -t $VPS_USER@$VPS_IP << EOF
     echo "📂 [VPS] Entrando na pasta do projeto..."
     cd $REMOTE_PATH
 
-    echo "⬇️ [VPS] Atualizando código..."
-    git pull origin main
+    echo "⬇️ [VPS] Atualizando código (hard reset)..."
+    git fetch origin
+    git reset --hard origin/main
 
     echo "🐳 [VPS] Reiniciando Docker..."
     cd repforce_web
