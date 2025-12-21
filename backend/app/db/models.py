@@ -103,3 +103,24 @@ class User(Base):
     role_obj = relationship("Role", back_populates="users")
 
     # CRM relationships removed (orders, routes, clients)
+
+    grid_preferences = relationship("UserGridPreference", back_populates="user")
+
+class ApiKey(Base):
+    __tablename__ = "api_keys"
+    id = Column(Integer, primary_key=True, index=True)
+    key = Column(String, unique=True, index=True)
+    name = Column(String) # Ex: "n8n Integration"
+    tenant_id = Column(Integer, ForeignKey("tenants.id"))
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    is_active = Column(Boolean, default=True)
+    scopes = Column(JSON, default=["crm_full"]) # Ex: ["crm_full", "system_read"]
+
+class UserGridPreference(Base):
+    __tablename__ = "user_grid_preferences"
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"))
+    grid_id = Column(String, index=True) # Ex: "product_list", "client_list"
+    columns_json = Column(JSON, default=[]) # Ex: [{"field": "sku", "visible": true}, ...]
+    
+    user = relationship("User", back_populates="grid_preferences")

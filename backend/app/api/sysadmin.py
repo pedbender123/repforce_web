@@ -100,54 +100,62 @@ def create_tenant(
     commercial_info: Optional[str] = Form(None),
     logo: Optional[UploadFile] = File(None)
 ):
-    # Validações de duplicidade
-    if db.query(models.Tenant).filter(models.Tenant.name == name).first():
-        raise HTTPException(status_code=400, detail="Nome do Tenant já existe")
-    if cnpj and db.query(models.Tenant).filter(models.Tenant.cnpj == cnpj).first():
-        raise HTTPException(status_code=400, detail="CNPJ já cadastrado")
-
-    # Upload Logo
-    logo_url_to_save = None
-    if logo:
-        os.makedirs(UPLOAD_DIRECTORY, exist_ok=True)
-        file_path = os.path.join(UPLOAD_DIRECTORY, logo.filename)
-        try:
-            with open(file_path, "wb") as buffer:
-                shutil.copyfileobj(logo.file, buffer)
-            logo_url_to_save = f"{STATIC_URL_PATH}/{logo.filename}"
-        except Exception as e:
-            raise HTTPException(status_code=500, detail=f"Erro ao salvar arquivo: {str(e)}")
-        finally:
-            logo.file.close()
-
-    # 1. Cria o Tenant (Status inicial provisioning ou active? O user pediu "Provisionando...")
-    # Vamos setar como 'provisioning' se fosse async real, mas user pediu 'Processo lento/Async'
-    # Manteremos 'active' por compatibilidade ou mudaremos? 
-    # O user pediu "Frontend tela de provisionando.. polling". Então status deve refletir.
+    # 1. Cria o Tenant (Status inicial provisioning)
     initial_status = "provisioning"
-
     new_tenant = models.Tenant(
         name=name,
         cnpj=cnpj,
         status=initial_status,
         tenant_type=tenant_type,
         commercial_info=commercial_info,
-        logo_url=logo_url_to_save
+        logo_url=None # Will update after ID generation
     )
-    db.add(new_tenant)
-    db.commit()
-    db.refresh(new_tenant)
+    
+    try:
+        db.add(new_tenant)
+        db.commit()
+        db.refresh(new_tenant)
+        
+        # 2. Upload Logo (Agora com ID)
+        if logo:
+            # Isolamento por Tenant: /app/uploads/tenants/{id}/
+            tenant_upload_dir = os.path.join(UPLOAD_DIRECTORY, str(new_tenant.id))
+            os.makedirs(tenant_upload_dir, exist_ok=True)
+            
+            file_path = os.path.join(tenant_upload_dir, logo.filename)
+            try:
+                with open(file_path, "wb") as buffer:
+                    shutil.copyfileobj(logo.file, buffer)
+                
+                # Update DB with URL
+                # URL pública: /uploads/tenants/{id}/{filename}
+                # Mapeado no main.py (Necessário ajustar mount point lá se quiser acesso público ou rota protegida)
+                new_tenant.logo_url = f"{STATIC_URL_PATH}/{new_tenant.id}/{logo.filename}"
+                db.commit()
+            except Exception as e:
+                print(f"Erro ao salvar logo: {e}")
+                # Não falha o provisionamento por causa do logo, apenas loga.
 
-    # 2. Criação Automática do Cargo "Admin" (Imediato)
-    admin_role = models.Role(name="Admin", description="Administrador do Tenant", tenant_id=new_tenant.id)
-    db.add(admin_role)
-    db.commit()
+        # 3. Criação Automática do Cargo "Admin" (Imediato)
+        admin_role = models.Role(name="Admin", description="Administrador do Tenant", tenant_id=new_tenant.id)
+        db.add(admin_role)
+        db.commit()
 
-    # 3. Provisionamento do Schema (Background)
-    # Passamos os dados necessários para o seed (name, cnpj, type)
-    background_tasks.add_task(provision_tenant_schema, new_tenant.id, new_tenant.name, new_tenant.cnpj, new_tenant.tenant_type)
+        # 4. Provisionamento do Schema (Background)
+        background_tasks.add_task(provision_tenant_schema, new_tenant.id, new_tenant.name, new_tenant.cnpj, new_tenant.tenant_type)
 
-    return new_tenant
+        return new_tenant
+
+    except Exception as e:
+        # Rollback: Remove o tenant se falhar na criação síncrona
+        db.rollback()
+        if new_tenant.id:
+            try:
+                db.delete(new_tenant)
+                db.commit()
+            except:
+                pass
+        raise HTTPException(status_code=500, detail=f"Erro ao criar Tenant: {str(e)}")
 
 @router.get("/tenants", 
             response_model=List[schemas.Tenant],

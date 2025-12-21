@@ -40,6 +40,10 @@ import AreaManagement from './pages/system/SysAdminAreaManagement';
 import ConfigPage from './pages/config/ConfigPage';
 import ProfilePage from './pages/system/ProfilePage';
 
+import CrmLayout from './components/CrmLayout';
+
+// ... (imports)
+
 function App() {
   return (
     <Router>
@@ -55,30 +59,34 @@ function App() {
               <Route path="/" element={<Navigate to="/app/dashboard" replace />} />
 
               {/* APP ROUTES (Sales Rep) */}
-              <Route path="/app" element={<PrivateRoute><AppLayout /></PrivateRoute>}>
-                <Route path="dashboard" element={<AppDashboard />} />
-                <Route path="clients" element={<ClientList />} />
-                <Route path="clients/new" element={<AppClientForm />} />
-                <Route path="clients/:id" element={<AppClientDetails />} />
-                <Route path="orders" element={<OrderList />} /> {/* NOVA ROTA */}
-                <Route path="orders/new" element={<AppOrderCreate />} />
-                <Route path="routes/new" element={<AppRouteCreate />} />
-                <Route index element={<Navigate to="dashboard" replace />} />
+              <Route path="/app" element={<PrivateRoute><CrmLayout /></PrivateRoute>}>
+                <Route element={<AppLayout />}>
+                  <Route path="dashboard" element={<AppDashboard />} />
+                  <Route path="clients" element={<ClientList />} />
+                  <Route path="clients/new" element={<AppClientForm />} />
+                  <Route path="clients/:id" element={<AppClientDetails />} />
+                  <Route path="orders" element={<OrderList />} />
+                  <Route path="orders/new" element={<AppOrderCreate />} />
+                  <Route path="routes/new" element={<AppRouteCreate />} />
+                  <Route index element={<Navigate to="dashboard" replace />} />
+                </Route>
               </Route>
 
-              {/* ADMIN ROUTES (Tenant Owner) - Agora usa AppLayout (Layout Unificado) */}
-              <Route path="/admin" element={<PrivateRoute><AppLayout /></PrivateRoute>}>
-                <Route path="dashboard" element={<AdminDashboard />} />
-                <Route path="clients" element={<ClientList />} /> {/* NOVA ROTA ADMIN */}
-                <Route path="products" element={<ProductList />} />
-                <Route path="products/new" element={<ProductForm />} />
-                <Route path="products/:id" element={<ProductForm />} />
-                <Route path="orders" element={<OrderList />} /> {/* NOVA ROTA ADMIN */}
-                <Route path="users" element={<UserManagement />} />
-                <Route path="roles" element={<RoleManagement />} />
-                <Route path="fields" element={<AdminCustomFields />} />
-                <Route path="rules" element={<AdminPricingRules />} /> {/* NOVO */}
-                <Route index element={<Navigate to="dashboard" replace />} />
+              {/* ADMIN ROUTES (Tenant Owner) */}
+              <Route path="/admin" element={<PrivateRoute><CrmLayout /></PrivateRoute>}>
+                <Route element={<AppLayout />}>
+                  <Route path="dashboard" element={<AdminDashboard />} />
+                  <Route path="clients" element={<ClientList />} />
+                  <Route path="products" element={<ProductList />} />
+                  <Route path="products/new" element={<ProductForm />} />
+                  <Route path="products/:id" element={<ProductForm />} />
+                  <Route path="orders" element={<OrderList />} />
+                  <Route path="users" element={<UserManagement />} />
+                  <Route path="roles" element={<RoleManagement />} />
+                  <Route path="fields" element={<AdminCustomFields />} />
+                  <Route path="rules" element={<AdminPricingRules />} />
+                  <Route index element={<Navigate to="dashboard" replace />} />
+                </Route>
               </Route>
 
               {/* SYSADMIN ROUTES (Platform Owner) */}
@@ -87,7 +95,7 @@ function App() {
                 <Route path="tenants" element={<TenantManagement />} />
                 <Route path="users" element={<AllUserManagement />} />
                 <Route path="areas" element={<AreaManagement />} />
-                <Route path="config" element={<ConfigPage />} /> {/* Nova Rota de Config */}
+                <Route path="config" element={<ConfigPage />} />
                 <Route path="profile" element={<ProfilePage />} />
                 <Route index element={<Navigate to="dashboard" replace />} />
               </Route>

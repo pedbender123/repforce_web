@@ -35,7 +35,8 @@ def create_product(
     sku: Optional[str] = Form(None),
     cost_price: Optional[float] = Form(None),
     stock: Optional[int] = Form(0),
-    supplier_id: Optional[int] = Form(None), # NOVO
+    supplier_id: Optional[int] = Form(None),
+    custom_attributes: Optional[str] = Form("{}"), # JSON String
     image: Optional[UploadFile] = File(None)
 ):
     if request.state.profile not in ['admin', 'sysadmin']:
@@ -43,13 +44,49 @@ def create_product(
 
     tenant_id = request.state.tenant_id
     
+    # 1. Parse e Validação de Custom Fields
+    import json
+    from datetime import datetime
+    
+    try:
+        attributes_data = json.loads(custom_attributes)
+    except json.JSONDecodeError:
+        attributes_data = {}
+
+    # Busca configurações para validação
+    configs = db.query(models_crm.CustomFieldConfig).filter(
+        models_crm.CustomFieldConfig.entity == "product"
+    ).all()
+
+    for config in configs:
+        if config.required and config.key not in attributes_data:
+             raise HTTPException(status_code=400, detail=f"Campo obrigatório faltando: {config.label}")
+        
+        if config.key in attributes_data:
+            val = attributes_data[config.key]
+            # Validação simples de tipos
+            if config.type == "number" and val is not None:
+                try:
+                    float(val)
+                except ValueError:
+                    raise HTTPException(status_code=400, detail=f"Campo {config.label} deve ser numérico")
+    
+    # 2. Upload Isolado (/uploads/{tenant_id}/products/)
     image_url = None
     if image:
-        os.makedirs(UPLOAD_DIR_PRODUCTS, exist_ok=True)
-        file_path = os.path.join(UPLOAD_DIR_PRODUCTS, image.filename)
+        tenant_prod_dir = os.path.join(UPLOAD_DIR_PRODUCTS, str(tenant_id))
+        os.makedirs(tenant_prod_dir, exist_ok=True)
+        
+        file_path = os.path.join(tenant_prod_dir, image.filename)
         with open(file_path, "wb") as buffer:
             shutil.copyfileobj(image.file, buffer)
-        image_url = f"{STATIC_URL_PRODUCTS}/{image.filename}"
+        
+        # URL Pública precisa incluir o tenant_id
+        # Main.py deve montar /uploads no path base, então URLs ficam:
+        # /uploads/products/1/sapato.jpg (Necessário ajustar main.py ou STATIC_URL)
+        # Vamos assumir que STATIC_URL_PRODUCTS aponta para o base, e aqui adicionamos o resto
+        # Se STATIC_URL_PRODUCTS = "/uploads/products", então:
+        image_url = f"{STATIC_URL_PRODUCTS}/{tenant_id}/{image.filename}"
 
     db_product = models_crm.Product(
         name=name,
@@ -58,9 +95,8 @@ def create_product(
         cost_price=cost_price,
         stock=stock,
         image_url=image_url,
-        supplier_id=supplier_id, # NOVO
-
-        # tenant_id removal handled by schema
+        supplier_id=supplier_id,
+        custom_attributes=attributes_data
     )
     db.add(db_product)
     db.commit()

@@ -96,3 +96,48 @@ def read_users_me(request: Request, db: Session = Depends(database.get_db)):
     if user is None:
         raise HTTPException(status_code=404, detail="Usuário não encontrado")
     return user
+
+from fastapi import Body
+from typing import List, Dict, Any
+
+@router.get("/users/me/preferences/grid/{grid_id}")
+def get_user_grid_preference(
+    grid_id: str,
+    request: Request,
+    db: Session = Depends(database.get_db)
+):
+    user_id = request.state.user_id
+    pref = db.query(models.UserGridPreference).filter(
+        models.UserGridPreference.user_id == user_id,
+        models.UserGridPreference.grid_id == grid_id
+    ).first()
+    
+    if not pref:
+        return []
+    return pref.columns_json
+
+@router.put("/users/me/preferences/grid/{grid_id}")
+def update_user_grid_preference(
+    grid_id: str,
+    columns: List[Dict[str, Any]] = Body(...),
+    request: Request = None,
+    db: Session = Depends(database.get_db)
+):
+    user_id = request.state.user_id
+    pref = db.query(models.UserGridPreference).filter(
+        models.UserGridPreference.user_id == user_id,
+        models.UserGridPreference.grid_id == grid_id
+    ).first()
+    
+    if not pref:
+        pref = models.UserGridPreference(
+            user_id=user_id,
+            grid_id=grid_id,
+            columns_json=columns
+        )
+        db.add(pref)
+    else:
+        pref.columns_json = columns
+    
+    db.commit()
+    return {"status": "success"}

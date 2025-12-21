@@ -3,6 +3,9 @@ from starlette.requests import Request
 from starlette.responses import Response, JSONResponse
 from .core.security import decode_access_token
 from .core.config import settings
+from .db.database import SessionLocal
+from .db import models
+from sqlalchemy import text
 import jwt
 
 # Rotas públicas (sem o prefixo /api/)
@@ -27,7 +30,41 @@ class TenantMiddleware(BaseHTTPMiddleware):
             return response
         # --- FIM DA MUDANÇA ---
 
-        # Verifica o header de autorização
+        # 1. Check API Key (Service Account / n8n)
+        api_key = request.headers.get("X-API-Key")
+        if api_key:
+            try:
+                # Open a sync session to check key (Middleware is async, but DB access here is quick)
+                db = SessionLocal()
+                try:
+                    # Query system DB
+                    key_record = db.query(models.ApiKey).filter(
+                        models.ApiKey.key == api_key,
+                        models.ApiKey.is_active == True
+                    ).first()
+
+                    if key_record:
+                        # Valid Key
+                        request.state.tenant_id = key_record.tenant_id
+                        request.state.user_id = 0 # Service Account ID
+                        request.state.role_name = "ServiceAccount"
+                        request.state.username = key_record.name 
+                        request.state.profile = "sysadmin" # Give full access to CRM routes? Or needs specific?
+                        # Note: 'profile' controls frontend nav, but backend relies on tenant_id + role access.
+                        # For n8n (CRM manipulation), we treat it as an Admin of that tenant.
+                        
+                        # Continue without checking JWT
+                        response = await call_next(request)
+                        return response
+                    else:
+                         return JSONResponse(status_code=401, content={"detail": "API Key inválida."})
+                finally:
+                    db.close()
+            except Exception as e:
+                print(f"Error checking API Key: {e}")
+                return JSONResponse(status_code=500, content={"detail": "Erro interno de autenticação."})
+
+        # 2. Standard JWT Authentication (Human Users)
         auth_header = request.headers.get("Authorization")
         
         if not auth_header:
