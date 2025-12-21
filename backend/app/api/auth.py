@@ -38,7 +38,8 @@ def login_for_access_token(
         "sub": str(user.id), 
         "role_name": role_name,
         "tenant_id": user.tenant_id,
-        "username": user.username
+        "username": user.username,
+        "profile": user.profile
     }
     
     # Usa a flag remember_me
@@ -66,8 +67,8 @@ def sysadmin_login_for_access_token(
         "sub": str(user.id), 
         "role_name": role_name, 
         "tenant_id": user.tenant_id, 
-        "tenant_id": user.tenant_id, 
-        "username": user.username
+        "username": user.username,
+        "profile": user.profile
     }
     access_token = security.create_access_token(data=token_data)
     
