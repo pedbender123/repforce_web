@@ -83,10 +83,19 @@ def create_initial_seed():
             db.add(new_admin)
             db.commit()
         else:
-            # Self-healing: Garante que o sysadmin existente tenha o cargo correto
+            # Self-healing: Garante que o sysadmin existente tenha o cargo e tenant corretos
+            updated = False
             if admin_user.role_id != role.id:
                 print(f"Atualizando role do usuário sysadmin para {role_name}")
                 admin_user.role_id = role.id
+                updated = True
+            
+            if admin_user.tenant_id != tenant.id:
+                print(f"Corrigindo tenant_id do usuário sysadmin")
+                admin_user.tenant_id = tenant.id
+                updated = True
+            
+            if updated:
                 db.commit()
             
     except Exception as e:
