@@ -66,6 +66,8 @@ services:
       - "127.0.0.1:3000:80"
     networks:
       - repforce_net
+    depends_on:
+      - backend
     # O Dockerfile DENTRO de ./frontend-web já copia o nginx.conf
     # que agora está em ./frontend-web/nginx.conf
 
