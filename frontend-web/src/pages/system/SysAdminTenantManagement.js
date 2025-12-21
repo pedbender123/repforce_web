@@ -109,7 +109,47 @@ export default function TenantManagement() {
     onError: (error) => alert(`Erro: ${error.response?.data?.detail || error.message}`)
   });
 
+  const [editingTenant, setEditingTenant] = useState(null);
+
+  const updateTenant = async ({ id, data }) => {
+    const { data: result } = await sysAdminApiClient.put(`/sysadmin/tenants/${id}`, data);
+    return result;
+  };
+
+  const deleteTenant = async (id) => {
+    await sysAdminApiClient.delete(`/sysadmin/tenants/${id}`);
+  };
+
+  const updateMutation = useMutation(updateTenant, {
+    onSuccess: () => {
+      queryClient.invalidateQueries(['sysAdminTenants']);
+      reset();
+      setEditingTenant(null);
+      setIsCreating(false);
+    },
+    onError: (error) => alert(`Erro ao atualizar: ${error.message}`)
+  });
+
+  const deleteMutation = useMutation(deleteTenant, {
+    onSuccess: () => {
+      queryClient.invalidateQueries(['sysAdminTenants']);
+    },
+    onError: (error) => alert(`Erro ao remover: ${error.message}`)
+  });
+
   const onSubmit = (data) => {
+    if (editingTenant) {
+      updateMutation.mutate({
+        id: editingTenant.id,
+        data: {
+          name: data.name,
+          cnpj: data.cnpj,
+          tenant_type: data.tenant_type
+        }
+      });
+      return;
+    }
+
     const formData = new FormData();
     formData.append('name', data.name);
     formData.append('cnpj', data.cnpj || '');
@@ -120,12 +160,28 @@ export default function TenantManagement() {
     createMutation.mutate(formData);
   };
 
+  const handleEdit = (tenant) => {
+    setEditingTenant(tenant);
+    reset({
+      name: tenant.name,
+      cnpj: tenant.cnpj,
+      tenant_type: tenant.tenant_type || 'industry'
+    });
+    setIsCreating(true);
+  };
+
+  const handleDelete = (id) => {
+    if (window.confirm("Tem certeza que deseja remover este tenant? Esta ação não pode ser desfeita.")) {
+      deleteMutation.mutate(id);
+    }
+  };
+
   if (isCreating) {
     return (
       <div className="max-w-2xl mx-auto bg-white dark:bg-gray-800 p-8 rounded-lg shadow">
         <div className="flex justify-between items-center mb-6">
-          <h2 className="text-2xl font-bold dark:text-white">Novo Tenant</h2>
-          <button onClick={() => setIsCreating(false)} className="text-gray-500 hover:text-gray-700">
+          <h2 className="text-2xl font-bold dark:text-white">{editingTenant ? 'Editar Tenant' : 'Novo Tenant'}</h2>
+          <button onClick={() => { setIsCreating(false); setEditingTenant(null); reset({}); }} className="text-gray-500 hover:text-gray-700">
             <XMarkIcon className="w-6 h-6" />
           </button>
         </div>
@@ -183,17 +239,21 @@ export default function TenantManagement() {
                 <td className="px-6 py-4 text-sm text-gray-500">{t.cnpj}</td>
                 <td className="px-6 py-4">
                   <span className={`px-2 py-1 text-xs rounded-full ${t.status === 'active' ? 'bg-green-100 text-green-800' :
-                      t.status === 'provisioning' ? 'bg-yellow-100 text-yellow-800' :
-                        'bg-red-100 text-red-800'
+                    t.status === 'provisioning' ? 'bg-yellow-100 text-yellow-800' :
+                      'bg-red-100 text-red-800'
                     }`}>
                     {t.status === 'provisioning' ? 'Aguardando Provisionamento' : t.status}
                   </span>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium flex justify-end gap-2">
-                  <button className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300">
+                  <button
+                    onClick={() => handleEdit(t)}
+                    className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300">
                     <PencilIcon className="w-5 h-5" />
                   </button>
-                  <button className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300">
+                  <button
+                    onClick={() => handleDelete(t.id)}
+                    className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300">
                     <TrashIcon className="w-5 h-5" />
                   </button>
                 </td>

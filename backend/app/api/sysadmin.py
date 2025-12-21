@@ -131,25 +131,43 @@ def create_tenant(
 def get_tenants(db: Session = Depends(database.get_db)):
     return db.query(models.Tenant).order_by(models.Tenant.id).all()
 
-class TenantUpdateStatus(schemas.TenantBase):
-    status: str
-
 @router.put("/tenants/{tenant_id}", 
             response_model=schemas.Tenant,
             dependencies=[Depends(check_sysadmin_profile)])
-def update_tenant_status(
+def update_tenant(
     tenant_id: int,
-    tenant_update: TenantUpdateStatus,
+    tenant_update: schemas.TenantUpdate,
     db: Session = Depends(database.get_db)
 ):
     db_tenant = db.query(models.Tenant).filter(models.Tenant.id == tenant_id).first()
     if not db_tenant:
         raise HTTPException(status_code=404, detail="Tenant não encontrado")
     
-    db_tenant.status = tenant_update.status
+    update_data = tenant_update.dict(exclude_unset=True)
+    for key, value in update_data.items():
+        setattr(db_tenant, key, value)
+    
     db.commit()
     db.refresh(db_tenant)
     return db_tenant
+
+@router.delete("/tenants/{tenant_id}", 
+               status_code=204,
+               dependencies=[Depends(check_sysadmin_profile)])
+def delete_tenant(
+    tenant_id: int,
+    db: Session = Depends(database.get_db)
+):
+    db_tenant = db.query(models.Tenant).filter(models.Tenant.id == tenant_id).first()
+    if not db_tenant:
+        raise HTTPException(status_code=404, detail="Tenant não encontrado")
+    
+    if db_tenant.name == "Systems":
+        raise HTTPException(status_code=400, detail="Não é permitido remover o tenant do sistema.")
+
+    db.delete(db_tenant)
+    db.commit()
+    return None
 
 # --- USERS (Gestão Global) ---
 

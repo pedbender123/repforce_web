@@ -57,7 +57,17 @@ class TokenData(BaseModel):
 class TenantBase(BaseModel):
     name: str
     cnpj: Optional[str] = None
+    cnpj: Optional[str] = None
     tenant_type: Optional[str] = 'industry'
+
+class TenantUpdate(TenantBase):
+    name: Optional[str] = None
+    tenant_type: Optional[str] = None
+    status: Optional[str] = None
+    commercial_info: Optional[str] = None
+    email: Optional[EmailStr] = None
+    phone: Optional[str] = None
+    cnpj: Optional[str] = None
 
 class TenantCreate(TenantBase):
     email: Optional[EmailStr] = None
