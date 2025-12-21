@@ -28,7 +28,7 @@ ssh -t $VPS_USER@$VPS_IP << EOF
     git reset --hard origin/main
 
     echo "🐳 [VPS] Reiniciando Docker..."
-    cd repforce_web
+    # cd repforce_web (Removido: já estamos na pasta correta)
     
     # Seus comandos exatos:
     docker compose down -v
