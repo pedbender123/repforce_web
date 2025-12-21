@@ -1,5 +1,5 @@
 import React, { useContext } from 'react';
-import { SysAdminAuthContext } from '../context/SysAdminAuthContext';
+import { SysAdminAuthContext } from '../../context/SysAdminAuthContext';
 import { User, Shield, Key } from 'lucide-react';
 
 const ProfilePage = () => {
