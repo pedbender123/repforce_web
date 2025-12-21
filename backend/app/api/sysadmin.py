@@ -22,9 +22,9 @@ def check_sysadmin_profile(request: Request):
         )
     return True
 
-def provision_tenant_schema(tenant_id: int):
+def provision_tenant_schema(tenant_id: int, tenant_name: str, tenant_cnpj: str, tenant_type: str):
     """
-    Creates the tenant schema in the CRM database and runs Alembic migrations.
+    Creates the tenant schema in the CRM database, runs migrations, and seeds initial data.
     """
     schema_name = f"tenant_{tenant_id}"
     try:
@@ -55,6 +55,29 @@ def provision_tenant_schema(tenant_id: int):
             return
 
         print(f"Successfully provisioned schema {schema_name}")
+
+        # 3. Seed Initial Data (Supplier for Industry)
+        if tenant_type == 'industry':
+            try:
+                with database.engine_crm.connect() as conn:
+                    # Set search path to tenant schema
+                    conn.execute(text(f"SET search_path TO {schema_name}"))
+                    
+                    # Insert Supplier
+                    insert_query = text("""
+                        INSERT INTO suppliers (name, cnpj, email, phone) 
+                        VALUES (:name, :cnpj, :email, :phone)
+                    """)
+                    conn.execute(insert_query, {
+                        "name": tenant_name,
+                        "cnpj": tenant_cnpj,
+                        "email": None, # Could pass this if available
+                        "phone": None
+                    })
+                    conn.commit()
+                    print(f"Seeded initial supplier for tenant {tenant_id}")
+            except Exception as seed_error:
+                 print(f"Error seeding supplier for tenant {tenant_id}: {seed_error}")
         
     except Exception as e:
         print(f"Exception provisioning tenant {tenant_id}: {str(e)}")
@@ -121,7 +144,8 @@ def create_tenant(
     db.commit()
 
     # 3. Provisionamento do Schema (Background)
-    background_tasks.add_task(provision_tenant_schema, new_tenant.id)
+    # Passamos os dados necessários para o seed (name, cnpj, type)
+    background_tasks.add_task(provision_tenant_schema, new_tenant.id, new_tenant.name, new_tenant.cnpj, new_tenant.tenant_type)
 
     return new_tenant
 
