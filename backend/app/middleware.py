@@ -31,6 +31,7 @@ class TenantMiddleware(BaseHTTPMiddleware):
         auth_header = request.headers.get("Authorization")
         
         if not auth_header:
+            print("DEBUG: Auth header missing")
             return JSONResponse(
                 status_code=401,
                 content={"detail": "Token de autenticação não fornecido."}
@@ -42,6 +43,7 @@ class TenantMiddleware(BaseHTTPMiddleware):
             if scheme.lower() != "bearer":
                 raise ValueError
         except ValueError:
+            print(f"DEBUG: Auth header invalid format: {auth_header}")
             return JSONResponse(
                 status_code=401,
                 content={"detail": "Formato de autorização inválido. Use 'Bearer <token>'."}
@@ -50,10 +52,13 @@ class TenantMiddleware(BaseHTTPMiddleware):
         # Decodifica o token e extrai o payload
         payload = decode_access_token(token)
         if payload is None:
+            print("DEBUG: Token decode failed (None returned)")
             return JSONResponse(
                 status_code=401,
                 content={"detail": "Token inválido ou expirado."}
             )
+
+        print(f"DEBUG: Token payload: {payload}")
 
         # Injeta os dados do payload no estado da requisição
         request.state.user_id = payload.get("sub")
@@ -63,8 +68,7 @@ class TenantMiddleware(BaseHTTPMiddleware):
         request.state.profile = payload.get("profile")
 
         if not request.state.user_id or not request.state.tenant_id:
-            # role_name pode ser null/opcional em alguns casos, ou não?
-            # Se for obrigatório, adicione 'or not request.state.role_name'
+            print(f"DEBUG: Missing data. UserID: {request.state.user_id}, TenantID: {request.state.tenant_id}")
             return JSONResponse(
                 status_code=401,
                 content={"detail": "Token com dados incompletos."}
