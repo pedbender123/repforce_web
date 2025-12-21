@@ -34,12 +34,17 @@ def login_for_access_token(
     if role_name == 'sysadmin':
         raise HTTPException(status_code=403, detail="Login de SysAdmin deve ser feito na área restrita.")
     
+    # Define o profile baseado no role_name (já que a coluna profile foi removida)
+    profile = "sales_rep"
+    if role_name == "Admin":
+        profile = "admin"
+    
     token_data = {
         "sub": str(user.id), 
         "role_name": role_name,
         "tenant_id": user.tenant_id,
         "username": user.username,
-        "profile": user.profile
+        "profile": profile
     }
     
     # Usa a flag remember_me
@@ -63,12 +68,15 @@ def sysadmin_login_for_access_token(
     if role_name != 'sysadmin':
         raise HTTPException(status_code=403, detail="Acesso negado. Área exclusiva SysAdmin.")
     
+    # Profile é sempre sysadmin neste endpoint
+    profile = "sysadmin"
+
     token_data = {
         "sub": str(user.id), 
         "role_name": role_name, 
         "tenant_id": user.tenant_id, 
         "username": user.username,
-        "profile": user.profile
+        "profile": profile
     }
     access_token = security.create_access_token(data=token_data)
     
