@@ -8,27 +8,23 @@ const fetchUsers = async () => {
   return data;
 };
 
-// PASSO 4: Busca Cargos Dinamicamente
 const fetchRoles = async () => {
   const { data } = await sysAdminApiClient.get('/admin/roles');
   return data;
 };
 
 const createUser = async (userData) => {
-  const { data } = await apiClient.post('/admin/users', userData);
+  // Nota: O backend espera apenas campos que existam no UserCreate schema
+  const { data } = await sysAdminApiClient.post('/admin/users', userData);
   return data;
 };
 
 export default function TenantUserManagement() {
   const queryClient = useQueryClient();
-  const { register, handleSubmit, reset, formState: { errors } } = useForm({
-    defaultValues: {
-      profile: 'representante'
-    }
-  });
+  const { register, handleSubmit, reset, formState: { errors } } = useForm();
 
   const { data: users, isLoading: isLoadingUsers } = useQuery(['tenantAdminUsers'], fetchUsers);
-  const { data: roles } = useQuery(['tenantRoles'], fetchRoles); // Carrega roles
+  const { data: roles } = useQuery(['tenantRoles'], fetchRoles);
 
   const mutation = useMutation(createUser, {
     onSuccess: () => {
@@ -43,10 +39,14 @@ export default function TenantUserManagement() {
   });
 
   const onSubmit = (data) => {
-    // PASSO 4: Enviar role_id (se selecionado)
+    // REMOVIDO: profile
+    // O backend agora deve receber apenas username, email, password, name, e role_id
     const payload = {
-      ...data,
-      role_id: data.role_id ? parseInt(data.role_id) : null
+      name: data.name,
+      username: data.username,
+      email: data.email,
+      password: data.password,
+      role_id: parseInt(data.role_id) // Cargo é obrigatório agora
     };
     mutation.mutate(payload);
   };
@@ -83,30 +83,26 @@ export default function TenantUserManagement() {
               {errors.password && <span className="text-red-500 text-sm">{errors.password.message || "Senha deve ter min. 6 caracteres"}</span>}
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Perfil de Acesso</label>
-              <select {...register("profile", { required: true })} className="mt-1 w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm dark:bg-gray-700 dark:text-white">
-                <option value="representante">Representante / Operacional</option>
-                <option value="admin">Administrador (Total)</option>
-              </select>
-            </div>
-
-            {/* PASSO 4: Seletor de Cargo (Role) */}
+            {/* SELETOR DE CARGO (Agora Obrigatório) */}
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Cargo (Role)</label>
-              <select {...register("role_id")} className="mt-1 w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm dark:bg-gray-700 dark:text-white">
+              <select
+                {...register("role_id", { required: "É obrigatório selecionar um cargo." })}
+                className="mt-1 w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm dark:bg-gray-700 dark:text-white"
+              >
                 <option value="">Selecione um cargo...</option>
                 {roles?.map(role => (
                   <option key={role.id} value={role.id}>{role.name}</option>
                 ))}
               </select>
-              <p className="text-xs text-gray-500 mt-1">O cargo define quais abas e áreas o usuário acessa no app.</p>
+              {errors.role_id && <span className="text-red-500 text-sm">{errors.role_id.message}</span>}
+              <p className="text-xs text-gray-500 mt-1">O cargo define todas as permissões do usuário.</p>
             </div>
 
             <button
               type="submit"
               disabled={mutation.isLoading}
-              className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-repforce-primary hover:bg-opacity-90 disabled:bg-gray-400 transition-colors"
+              className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 transition-colors"
             >
               {mutation.isLoading ? 'Criando...' : 'Criar Usuário'}
             </button>
@@ -126,27 +122,18 @@ export default function TenantUserManagement() {
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Nome</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Username</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Perfil</th>
+                  {/* Coluna Perfil removida */}
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Cargo</th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Ações</th>
                 </tr>
               </thead>
               <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                 {isLoadingUsers ? (
-                  <tr><td colSpan="5" className="p-4 text-center dark:text-white">Carregando...</td></tr>
+                  <tr><td colSpan="3" className="p-4 text-center dark:text-white">Carregando...</td></tr>
                 ) : (
                   users?.map((user) => (
                     <tr key={user.id}>
                       <td className="px-6 py-4 text-sm font-medium text-gray-900 dark:text-white">{user.name || 'N/A'}</td>
                       <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">{user.username}</td>
-                      <td className="px-6 py-4 text-sm">
-                        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${user.profile === 'admin' ? 'bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200' :
-                          'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200'
-                          }`}>
-                          {user.profile}
-                        </span>
-                      </td>
-                      {/* Mostra o Cargo ou Traço */}
                       <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
                         {/* Se o backend não retornar role_obj no endpoint de listagem, pode precisar de ajuste. 
                             Mas models.User tem role_obj, então se não vier, é porque o backend não fez joinedload.
