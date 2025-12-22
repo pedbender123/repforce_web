@@ -49,21 +49,24 @@ def get_tasks(
     
     # --- DEBUG START ---
     try:
+        from sqlalchemy import text
         # 1. Verifica Search Path
         sp = db.execute(text("SHOW search_path")).scalar()
-        print(f"DEBUG[get_tasks]: Active Search Path: {sp}")
+        print(f"DEBUG[get_tasks]: Active Search Path: {sp}", flush=True)
         
-        # 2. Tenta select raw explicito no schema (se conseguirmos pegar o ID)
-        # O tenant_id esta no request.state, mas aqui nao temos o 'request' injetado direto.
-        # Vamos tentar select na tabela 'tasks' direto
+        # 2. Verifica se a tabela existe no pg_catalog (Visibilidade Real)
+        table_check = db.execute(text(f"SELECT count(*) FROM pg_tables WHERE schemaname = '{sp}' AND tablename = 'tasks'")).scalar()
+        print(f"DEBUG[get_tasks]: Table 'tasks' in schema '{sp}' exists? {table_check}", flush=True)
+
+        # 3. Tenta select raw explicito
         try:
             raw_count = db.execute(text("SELECT count(*) FROM tasks")).scalar()
-            print(f"DEBUG[get_tasks]: Raw SELECT count(*) FROM tasks success: {raw_count}")
+            print(f"DEBUG[get_tasks]: Raw SELECT count(*) FROM tasks success: {raw_count}", flush=True)
         except Exception as e_raw:
-             print(f"DEBUG[get_tasks]: Raw SELECT FROM tasks FAILED: {e_raw}")
+             print(f"DEBUG[get_tasks]: Raw SELECT FROM tasks FAILED: {e_raw}", flush=True)
 
     except Exception as e_debug:
-        print(f"DEBUG[get_tasks]: Debug block failed: {e_debug}")
+        print(f"DEBUG[get_tasks]: Debug block failed: {e_debug}", flush=True)
     # --- DEBUG END ---
 
     # Ordena por created_at desc
