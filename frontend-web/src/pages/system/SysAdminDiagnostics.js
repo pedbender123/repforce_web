@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import apiClient from '../../api/apiClient';
+import sysAdminApiClient from '../../api/sysAdminApiClient';
 import { PlayIcon, CheckCircleIcon, XCircleIcon, CommandLineIcon } from '@heroicons/react/24/outline';
 
 export default function SysAdminDiagnostics() {
@@ -17,7 +17,7 @@ export default function SysAdminDiagnostics() {
 
         try {
             addLog("Contacting backend Probe...");
-            const { data } = await apiClient.post('/sysadmin/health/run');
+            const { data } = await sysAdminApiClient.post('/sysadmin/health/run');
 
             addLog("Response received.");
             if (data.status === 'pass') {
@@ -108,10 +108,10 @@ export default function SysAdminDiagnostics() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         {report.checks.map((check, idx) => (
                             <div key={idx} className={`p-4 rounded-lg border flex items-start ${check.status === 'pass'
-                                    ? 'bg-green-50 border-green-200 text-green-800 dark:bg-green-900/20 dark:border-green-800 dark:text-green-300'
-                                    : (check.status === 'processing'
-                                        ? 'bg-blue-50 border-blue-200 text-blue-800 dark:bg-blue-900/20 dark:border-blue-800 dark:text-blue-300'
-                                        : 'bg-red-50 border-red-200 text-red-800 dark:bg-red-900/20 dark:border-red-800 dark:text-red-300')
+                                ? 'bg-green-50 border-green-200 text-green-800 dark:bg-green-900/20 dark:border-green-800 dark:text-green-300'
+                                : (check.status === 'processing'
+                                    ? 'bg-blue-50 border-blue-200 text-blue-800 dark:bg-blue-900/20 dark:border-blue-800 dark:text-blue-300'
+                                    : 'bg-red-50 border-red-200 text-red-800 dark:bg-red-900/20 dark:border-red-800 dark:text-red-300')
                                 }`}>
                                 {check.status === 'pass' && <CheckCircleIcon className="w-6 h-6 mr-3 flex-shrink-0" />}
                                 {check.status === 'fail' && <XCircleIcon className="w-6 h-6 mr-3 flex-shrink-0" />}
