@@ -25,25 +25,25 @@ def fix_missing_tasks_table():
             print(f"Verificando tenant {tenant_id} ({tenant_name}) schema '{schema}'...")
 
             try:
-                # Set search path
+                # 1. Ensure Schema Exists
+                crm_conn.execute(text(f"CREATE SCHEMA IF NOT EXISTS {schema}"))
+                crm_conn.commit() # Ensure schema creation is committed
+
+                # 2. Set API Search Path
                 crm_conn.execute(text(f"SET search_path TO {schema}"))
                 
                 # Check execution by inspecting
-                # Note: Inspection methods usually need a connection or engine. 
-                # Inspector uses the engine/connection it was bound to.
-                # If we bind with shared engine, it might default to public?
-                # We need to ensure the inspector sees the schema.
-                
                 inspector = inspect(crm_conn)
                 tables = inspector.get_table_names(schema=schema)
                 
                 if "tasks" in tables:
-                    print(f"  [OK] Tabela 'tasks' já existe.")
+                    print(f"  [OK] Tabela 'tasks' já existe no schema '{schema}'.")
                 else:
-                    print(f"  [MISSING] Tabela 'tasks' não encontrada. Criando...")
+                    print(f"  [MISSING] Tabela 'tasks' não encontrada em '{schema}'. Criando...")
                     # Cria apenas a tabela Task
                     models_crm.Task.__table__.create(bind=crm_conn)
-                    print(f"  [SUCCESS] Tabela 'tasks' criada com sucesso.")
+                    crm_conn.commit()
+                    print(f"  [SUCCESS] Tabela 'tasks' criada com sucesso em '{schema}'.")
                     
             except Exception as e:
                 print(f"  [ERROR] Falha ao processar tenant {tenant_id}: {e}")
