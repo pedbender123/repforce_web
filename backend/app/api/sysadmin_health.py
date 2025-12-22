@@ -276,7 +276,7 @@ async def run_scenario_task(db_sys: Session):
             order = models_crm.Order(
                 client_id=client_id,
                 representative_id=user_test.id,
-                total=100.00,
+                total_value=100.00,
                 status="draft"
             )
             crm_db.add(order)
