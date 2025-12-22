@@ -40,13 +40,20 @@ def get_crm_db(request: Request):
     """
     db = SessionCrm()
     try:
+    db = SessionCrm()
+    try:
         tenant_id = getattr(request.state, "tenant_id", None)
         if tenant_id:
             schema = f"tenant_{tenant_id}"
-            # print(f"DEBUG: get_crm_db setting schema to {schema}") # Uncomment for verbose debug
+            # print(f"DEBUG: Setting search_path to {schema}")
             db.execute(text(f"SET search_path TO {schema}"))
+            
+            # VERIFICATION
+            # result = db.execute(text("SHOW search_path"))
+            # current_path = result.scalar()
+            # print(f"DEBUG: Current search_path is: {current_path}")
         else:
-            print("WARNING: get_crm_db called without tenant_id in request.state! Search path defaults to public.")
+            print(f"WARNING: get_crm_db called without tenant_id! URL: {request.url}")
         yield db
     finally:
         db.close()

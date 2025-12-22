@@ -269,7 +269,7 @@ def create_sysadmin_user_entry(
         email=user.email,
         name=user.name,
         hashed_password=hashed_password,
-        profile=user.profile,
+        # profile=user.profile, # Removed from model
         tenant_id=tenant_id,
         role_id=final_role_id
     )
