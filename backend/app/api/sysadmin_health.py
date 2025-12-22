@@ -1,12 +1,18 @@
 import uuid
 import time
+import os
+from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 from ..db import database, models, models_crm, schemas
 from ..core import permissions
 
 router = APIRouter()
+
+# Define log file path in /app (writable in container)
+LOG_FILE_PATH = "/app/health_check_latest.txt"
 
 def check_sysadmin_profile(request: Request):
     """
@@ -31,10 +37,27 @@ def run_system_health_check(request: Request, db_sys: Session = Depends(database
         "checks": []
     }
 
+    # Reset Log File
+    with open(LOG_FILE_PATH, "w") as f:
+        f.write(f"--- SYSTEM DIAGNOSTICS LOG ---\n")
+        f.write(f"Started at: {datetime.now().isoformat()}\n")
+        f.write(f"------------------------------\n\n")
+
     def log(name, status, message):
+        timestamp = datetime.now().strftime("%H:%M:%S")
+        
+        # Internal Object Log
         report["checks"].append({"name": name, "status": status, "message": message})
         if status == "fail":
             report["status"] = "fail"
+            
+        # File Log
+        log_line = f"[{timestamp}] [{status.upper()}] {name}: {message}\n"
+        try:
+            with open(LOG_FILE_PATH, "a") as f:
+                f.write(log_line)
+        except Exception as e:
+            print(f"Error writing to log file: {e}")
 
     # --- 1. System Connectivity ---
     try:
@@ -171,4 +194,25 @@ def run_system_health_check(request: Request, db_sys: Session = Depends(database
             except Exception as e:
                 log("Scenario: Cleanup", "fail", f"Cleanup warning: {str(e)}")
 
+    # Finalize Log File
+    try:
+        with open(LOG_FILE_PATH, "a") as f:
+            f.write(f"\nFinished at: {datetime.now().isoformat()}\n")
+            f.write(f"Final Status: {report['status'].upper()}\n")
+    except:
+        pass
+
     return report
+
+@router.get("/download-log", dependencies=[Depends(check_sysadmin_profile)])
+def download_health_check_log(request: Request):
+    """
+    Downloads the latest system health check log file.
+    """
+    if not os.path.exists(LOG_FILE_PATH):
+        raise HTTPException(status_code=404, detail="No log file available. Run diagnostics first.")
+    
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    filename = f"health_check_log_{timestamp}.txt"
+    
+    return FileResponse(LOG_FILE_PATH, media_type='text/plain', filename=filename)
