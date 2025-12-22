@@ -203,6 +203,7 @@ def create_initial_seed():
                    # Ref: https://docs.sqlalchemy.org/en/14/core/metadata.html#sqlalchemy.schema.MetaData.create_all
                    # create_all uses the bind. If bind is connection, it uses it.
                    models_crm.BaseCrm.metadata.create_all(bind=conn)
+                   conn.commit()
                    print(f"Startup: Tables ensured for {schema}")
                    
             except Exception as e_tenant:

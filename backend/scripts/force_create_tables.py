@@ -39,6 +39,7 @@ def force_create_tables(tenant_ids):
                 
                 # Best way: Pass the connection with the search path set
                 BaseCrm.metadata.create_all(bind=conn)
+                conn.commit()
                 print(f"Successfully ran create_all for {schema}")
                 
         except Exception as e:
