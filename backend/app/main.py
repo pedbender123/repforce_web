@@ -177,6 +177,40 @@ def create_initial_seed():
             
     except Exception as e:
         print(f"Erro seeding: {e}")
+    
+    # 5. Fix/Ensure Tables for Critical Tenants (Self-Healing)
+    # This runs on every startup to ensure schemas/tables exist even after deployment
+    try:
+        from sqlalchemy import text
+        from .db import models_crm
+        
+        # Hardcoded for now or fetch active tenants
+        # Fetching active tenants is safer
+        tenants = db.query(models.Tenant).all()
+        for t in tenants:
+            schema = f"tenant_{t.id}"
+            try:
+               # 1. Create Schema
+               db.execute(text(f"CREATE SCHEMA IF NOT EXISTS {schema}"))
+               db.commit()
+               
+               # 2. Bind and Create Tables
+               # We need a dedicated connection for create_all with search_path
+               # Since we are inside a session, let's use the engine directly
+               with database.engine_crm.connect() as conn:
+                   conn.execute(text(f"SET search_path TO {schema}"))
+                   conn.commit()
+                   # Ref: https://docs.sqlalchemy.org/en/14/core/metadata.html#sqlalchemy.schema.MetaData.create_all
+                   # create_all uses the bind. If bind is connection, it uses it.
+                   models_crm.BaseCrm.metadata.create_all(bind=conn)
+                   print(f"Startup: Tables ensured for {schema}")
+                   
+            except Exception as e_tenant:
+                print(f"Startup Error checking {schema}: {e_tenant}")
+                
+    except Exception as e_healing:
+         print(f"Startup Healing Error: {e_healing}")
+
     finally:
         db.close()
 
