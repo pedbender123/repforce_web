@@ -54,11 +54,14 @@ def get_tasks(
         sp = db.execute(text("SHOW search_path")).scalar()
         print(f"DEBUG[get_tasks]: Active Search Path: {sp}", flush=True)
         
-        # 2. Verifica se a tabela existe no pg_catalog (Visibilidade Real)
-        table_check = db.execute(text(f"SELECT count(*) FROM pg_tables WHERE schemaname = '{sp}' AND tablename = 'tasks'")).scalar()
-        print(f"DEBUG[get_tasks]: Table 'tasks' in schema '{sp}' exists? {table_check}", flush=True)
+        # 2. Verifica Conexão e Tabelas Visíveis
+        bind_url = db.get_bind().url
+        print(f"DEBUG[get_tasks]: DB URL: {bind_url}", flush=True)
 
-        # 3. Tenta select raw explicito
+        visible_tables = db.execute(text(f"SELECT tablename FROM pg_tables WHERE schemaname = '{sp}'")).fetchall()
+        print(f"DEBUG[get_tasks]: Tables in '{sp}': {[r[0] for r in visible_tables]}", flush=True)
+
+        # 3. Tenta select raw
         try:
             raw_count = db.execute(text("SELECT count(*) FROM tasks")).scalar()
             print(f"DEBUG[get_tasks]: Raw SELECT count(*) FROM tasks success: {raw_count}", flush=True)
