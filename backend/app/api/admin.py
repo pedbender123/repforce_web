@@ -41,9 +41,9 @@ def create_tenant_user( # Renomeado para clareza
     if user.profile == 'sysadmin':
         raise HTTPException(status_code=403, detail="Não é permitido criar usuários SysAdmin")
 
-    # Garante que o perfil seja 'admin' ou 'representante'
-    profile = user.profile if user.profile in ['admin', 'representante'] else 'representante'
-
+    # Garante que o perfil seja 'admin' ou 'representante' based on logic or input
+    # Note: 'profile' field removed from User model, handling roles instead.
+    
     # Verificação de unicidade
     db_user = db.query(models.User).filter(models.User.username == user.username).first()
     if db_user:
@@ -63,7 +63,7 @@ def create_tenant_user( # Renomeado para clareza
         email=user.email,
         name=user.name,
         hashed_password=hashed_password,
-        profile=profile,
+        # profile removed
         tenant_id=tenant_id,
         role_id=role_id # Associa o cargo
     )
