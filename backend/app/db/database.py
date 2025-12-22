@@ -43,7 +43,10 @@ def get_crm_db(request: Request):
         tenant_id = getattr(request.state, "tenant_id", None)
         if tenant_id:
             schema = f"tenant_{tenant_id}"
+            # print(f"DEBUG: get_crm_db setting schema to {schema}") # Uncomment for verbose debug
             db.execute(text(f"SET search_path TO {schema}"))
+        else:
+            print("WARNING: get_crm_db called without tenant_id in request.state! Search path defaults to public.")
         yield db
     finally:
         db.close()

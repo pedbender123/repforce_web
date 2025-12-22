@@ -94,6 +94,7 @@ class UserCreate(UserBase):
     password: str
     tenant_id: Optional[int] = None
     role_id: Optional[int] = None
+    profile: Optional[str] = "sales_rep"
 
 class User(UserBase):
     id: int
