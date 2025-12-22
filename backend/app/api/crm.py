@@ -134,7 +134,7 @@ def create_client(
         cnpj=client_in.cnpj,
         email=client_in.email,
         phone=client_in.phone,
-        representative_id=client_in.representative_id,
+        representative_id=client_in.representative_id or request.state.user_id,
         custom_attributes=client_in.custom_attributes,
         # tenant_id desnecessário (schema isolado)
         # Mapeando address_data para campos planos
