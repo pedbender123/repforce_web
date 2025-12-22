@@ -3,153 +3,170 @@ import sysAdminApiClient from '../../api/sysAdminApiClient';
 import { PlayIcon, CheckCircleIcon, XCircleIcon, CommandLineIcon } from '@heroicons/react/24/outline';
 
 export default function SysAdminDiagnostics() {
-    const [isRunning, setIsRunning] = useState(false);
-    const [report, setReport] = useState(null);
-    const [logs, setLogs] = useState([]);
+    const [statusData, setStatusData] = useState(null);
+    const [isPolling, setIsPolling] = useState(false);
 
-    const addLog = (msg) => setLogs(prev => [...prev, `[${new Date().toLocaleTimeString()}] ${msg}`]);
+    // Polling Logic
+    useEffect(() => {
+        let interval;
+        if (isPolling) {
+            fetchStatus(); // Immediate check
+            interval = setInterval(fetchStatus, 2000);
+        }
+        return () => clearInterval(interval);
+    }, [isPolling]);
+
+    const fetchStatus = async () => {
+        try {
+            const { data } = await sysAdminApiClient.get('/sysadmin/health/status');
+            setStatusData(data);
+
+            if (data.status === 'finished' || data.status === 'error') {
+                setIsPolling(false);
+            } else if (data.status === 'running') {
+                setIsPolling(true); // Ensure polling stays on if we re-loaded page
+            }
+        } catch (error) {
+            console.error("Error fetching status:", error);
+            setIsPolling(false);
+        }
+    };
 
     const runDiagnostics = async () => {
-        setIsRunning(true);
-        setReport(null);
-        setLogs([]);
-        addLog("Initializing System Health Check...");
-
         try {
-            addLog("Contacting backend Probe...");
-            const { data } = await sysAdminApiClient.post('/sysadmin/health/run');
-
-            addLog("Response received.");
-            if (data.status === 'pass') {
-                addLog("GLOBAL STATUS: PASS ✅");
-            } else {
-                addLog("GLOBAL STATUS: FAIL ❌");
-            }
-
-            data.checks.forEach(check => {
-                addLog(`[${check.name}] ${check.status.toUpperCase()}: ${check.message}`);
-            });
-
-            setReport(data);
-
+            setIsPolling(true);
+            setStatusData(prev => ({ ...prev, status: 'starting' })); // Optimistic UI
+            await sysAdminApiClient.post('/sysadmin/health/run');
         } catch (error) {
-            addLog(`ERROR: ${error.message}`);
-            if (error.response) {
-                addLog(`Server responded with: ${error.response.status}`);
+            if (error.response && error.response.status === 409) {
+                // Already running, just start polling
+                setIsPolling(true);
+            } else {
+                alert("Erro ao iniciar teste: " + error.message);
+                setIsPolling(false);
             }
-        } finally {
-            setIsRunning(false);
-            addLog("Diagnostics finished.");
+        }
+    };
+
+    const downloadLog = async () => {
+        try {
+            const response = await sysAdminApiClient.get('/sysadmin/health/download-log', { responseType: 'blob' });
+            const url = window.URL.createObjectURL(new Blob([response.data]));
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', `stress_test_${new Date().getTime()}.txt`);
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+        } catch (e) {
+            alert("Erro ao baixar log.");
         }
     };
 
     return (
         <div className="p-6">
-            <h1 className="text-2xl font-bold dark:text-white mb-2">Diagnóstico do Sistema</h1>
-            <p className="text-gray-500 mb-6">Execute testes de integridade para verificar banco de dados, schemas e serviços essenciais.</p>
+            <h1 className="text-2xl font-bold dark:text-white mb-2">Diagnóstico Avançado & Stress Test</h1>
+            <p className="text-gray-500 mb-6">Validação completa de infraestrutura, incluindo inserção de 10k itens e simulação de carga.</p>
 
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 mb-6">
-                <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center justify-between mb-6">
                     <h2 className="text-lg font-semibold flex items-center dark:text-white">
                         <CommandLineIcon className="w-5 h-5 mr-2" />
-                        Console de Diagnóstico
+                        Painel de Controle
                     </h2>
-                    <button
-                        onClick={runDiagnostics}
-                        disabled={isRunning}
-                        className={`flex items-center px-4 py-2 rounded text-white font-medium transition-colors ${isRunning ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'
-                            }`}
-                    >
-                        {isRunning ? (
-                            <>
-                                <span className="animate-spin mr-2">⏳</span> Executando...
-                            </>
-                        ) : (
-                            <>
-                                <PlayIcon className="w-5 h-5 mr-2" /> Rodar Diagnóstico
-                            </>
+                    <div className="flex space-x-3">
+                        {statusData?.status === 'finished' && (
+                            <button
+                                onClick={downloadLog}
+                                className="flex items-center px-4 py-2 rounded border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                            >
+                                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                                Baixar Relatório (.txt)
+                            </button>
                         )}
-                    </button>
-                </div>
 
-                {/* Terminal Output */}
-                <div className="bg-gray-900 text-green-400 font-mono text-sm p-4 rounded-lg h-96 overflow-y-auto shadow-inner border border-gray-700">
-                    {logs.length === 0 ? (
-                        <span className="text-gray-500 opacity-50">Pronto para iniciar. Clique em "Rodar Diagnóstico".</span>
-                    ) : (
-                        logs.map((log, index) => (
-                            <div key={index} className="mb-1 border-b border-gray-800/50 pb-1 last:border-0">
-                                {log}
-                            </div>
-                        ))
-                    )}
-                </div>
-            </div>
-
-            {/* Results Summary (Only if Report exists) */}
-            {report && (
-                <div className="space-y-6">
-                    {/* Actions and Score */}
-                    <div className="flex justify-between items-center bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-                        <div>
-                            <div className="flex items-end mb-2">
-                                <h3 className="font-semibold text-gray-700 dark:text-gray-200 mr-4">Integridade do Sistema</h3>
-                                <span className={`text-2xl font-bold ${report.status === 'pass' ? 'text-green-600' : 'text-red-600'}`}>
-                                    {report.status === 'pass' ? '100% APROVADO' : 'ATENÇÃO REQUERIDA'}
-                                </span>
-                            </div>
-                            <div className="w-64 bg-gray-200 rounded-full h-3 dark:bg-gray-700">
-                                <div
-                                    className={`h-3 rounded-full transition-all duration-500 ${report.status === 'pass' ? 'bg-green-500' : 'bg-red-500'}`}
-                                    style={{ width: report.status === 'pass' ? '100%' : '60%' }}
-                                ></div>
-                            </div>
-                        </div>
-
-                        {/* Download Button */}
                         <button
-                            onClick={async () => {
-                                try {
-                                    const response = await sysAdminApiClient.get('/sysadmin/health/download-log', { responseType: 'blob' });
-                                    const url = window.URL.createObjectURL(new Blob([response.data]));
-                                    const link = document.createElement('a');
-                                    link.href = url;
-                                    link.setAttribute('download', `health_check_${new Date().getTime()}.txt`);
-                                    document.body.appendChild(link);
-                                    link.click();
-                                    link.remove();
-                                } catch (e) {
-                                    alert("Erro ao baixar log.");
-                                }
-                            }}
-                            className="bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold py-2 px-4 rounded inline-flex items-center transition-colors dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600"
+                            onClick={runDiagnostics}
+                            disabled={isPolling || statusData?.status === 'running'}
+                            className={`flex items-center px-4 py-2 rounded text-white font-medium transition-colors ${isPolling || statusData?.status === 'running'
+                                    ? 'bg-gray-400 cursor-not-allowed'
+                                    : 'bg-blue-600 hover:bg-blue-700'
+                                }`}
                         >
-                            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
-                            Baixar Log Completo (.txt)
+                            {isPolling || statusData?.status === 'running' ? (
+                                <>
+                                    <span className="animate-spin mr-2">⏳</span> Teste em Andamento...
+                                </>
+                            ) : (
+                                <>
+                                    <PlayIcon className="w-5 h-5 mr-2" /> Iniciar Teste Completo
+                                </>
+                            )}
                         </button>
                     </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {report.checks.map((check, idx) => (
-                            <div key={idx} className={`p-4 rounded-lg border flex items-start ${check.status === 'pass'
-                                ? 'bg-green-50 border-green-200 text-green-800 dark:bg-green-900/20 dark:border-green-800 dark:text-green-300'
-                                : (check.status === 'processing'
-                                    ? 'bg-blue-50 border-blue-200 text-blue-800 dark:bg-blue-900/20 dark:border-blue-800 dark:text-blue-300'
-                                    : 'bg-red-50 border-red-200 text-red-800 dark:bg-red-900/20 dark:border-red-800 dark:text-red-300')
-                                }`}>
-                                {check.status === 'pass' && <CheckCircleIcon className="w-6 h-6 mr-3 flex-shrink-0" />}
-                                {check.status === 'fail' && <XCircleIcon className="w-6 h-6 mr-3 flex-shrink-0" />}
-                                {check.status === 'processing' && <span className="w-6 h-6 mr-3 flex-shrink-0 animate-pulse">💠</span>}
-
-                                <div>
-                                    <h4 className="font-bold text-sm">{check.name}</h4>
-                                    <p className="text-sm mt-1 opacity-90">{check.message}</p>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
                 </div>
-            )}
+
+                {/* Progress Bar (Overall) */}
+                {statusData && (
+                    <div className="mb-8">
+                        <div className="flex justify-between text-sm mb-1 text-gray-600 dark:text-gray-400">
+                            <span>Progresso Global</span>
+                            <span>{statusData.progress_percent || 0}%</span>
+                        </div>
+                        <div className="w-full bg-gray-200 rounded-full h-2.5 dark:bg-gray-700">
+                            <div className="bg-blue-600 h-2.5 rounded-full transition-all duration-500" style={{ width: `${statusData.progress_percent || 0}%` }}></div>
+                        </div>
+                    </div>
+                )}
+
+                {/* Steps List */}
+                <div className="space-y-3">
+                    {statusData?.steps?.map((step, idx) => (
+                        <div key={idx} className="flex items-center p-4 border rounded-lg bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-700">
+                            <div className="mr-4">
+                                {step.status === 'pending' && <div className="w-6 h-6 rounded-full border-2 border-gray-300" />}
+                                {step.status === 'running' && <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />}
+                                {step.status === 'done' && <CheckCircleIcon className="w-6 h-6 text-green-500" />}
+                                {step.status === 'error' && <XCircleIcon className="w-6 h-6 text-red-500" />}
+                            </div>
+                            <div className="flex-1">
+                                <div className="flex justify-between">
+                                    <h4 className={`font-semibold ${step.status === 'running' ? 'text-blue-600' : 'text-gray-800 dark:text-gray-200'}`}>
+                                        {step.name}
+                                    </h4>
+                                    {step.duration && (
+                                        <span className="text-xs font-mono bg-gray-200 dark:bg-gray-700 px-2 py-1 rounded text-gray-600 dark:text-gray-300">
+                                            {step.duration}
+                                        </span>
+                                    )}
+                                </div>
+                                <p className="text-sm text-gray-500 mt-1">{step.details}</p>
+                            </div>
+                        </div>
+                    ))}
+
+                    {!statusData && !isPolling && (
+                        <div className="text-center py-10 text-gray-500">
+                            Nenhum teste executado recentemente.
+                        </div>
+                    )}
+                </div>
+
+                {/* Live Logs */}
+                {statusData?.logs?.length > 0 && (
+                    <div className="mt-8">
+                        <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-2">Logs em Tempo Real</h3>
+                        <div className="bg-black text-green-400 font-mono text-xs p-4 rounded-lg h-60 overflow-y-auto shadow-inner">
+                            {statusData.logs.map((log, index) => (
+                                <div key={index} className="border-b border-gray-800/50 pb-1 last:border-0 opacity-90">
+                                    {log}
+                                </div>
+                            ))}
+                            {/* Auto-scroll anchor if needed */}
+                        </div>
+                    </div>
+                )}
+            </div>
         </div>
     );
 }
