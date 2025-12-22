@@ -63,26 +63,30 @@ export default function AppClientDetails() {
                 {/* Coluna Perfil */}
                 <div className="lg:col-span-4 space-y-6">
                     <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-6">
-                        <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-1">{client.trade_name || client.name}</h1>
-                        <p className="text-sm text-gray-500 mb-6 font-mono">CNPJ: {client.cnpj || '-'}</p>
+                        <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-1">
+                            <EditableField value={client.trade_name || client.name} onSave={(v) => handleUpdate(client.trade_name ? 'trade_name' : 'name', v)} />
+                        </h1>
+                        <div className="text-sm text-gray-500 mb-6 font-mono flex items-center gap-2">
+                            CNPJ: <EditableField value={client.cnpj} onSave={(v) => handleUpdate('cnpj', v)} />
+                        </div>
                         <div className="space-y-1">
                             <EditableField label="Razão Social" value={client.name} onSave={(v) => handleUpdate('name', v)} />
-                            <EditableField label="Nome Fantasia" value={client.trade_name} onSave={(v) => handleUpdate('trade_name', v)} />
+                            <EditableField label="Nome Fantasia" value={client.fantasy_name} onSave={(v) => handleUpdate('fantasy_name', v)} />
+                            <EditableField label="Email" value={client.email} onSave={(v) => handleUpdate('email', v)} />
+                            <EditableField label="Telefone" value={client.phone} onSave={(v) => handleUpdate('phone', v)} />
                             <EditableField label="Status" value={client.status} onSave={(v) => handleUpdate('status', v)} />
                         </div>
                     </div>
 
                     <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-6">
                         <h3 className="font-semibold text-gray-800 dark:text-white mb-3 pb-2 border-b border-gray-100 dark:border-gray-700">Endereço</h3>
-                        <div className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed">
-                            {client.address_data ? (
-                                <>
-                                    {client.address_data.rua}, {client.address_data.numero}<br />
-                                    {client.address_data.bairro}<br />
-                                    {client.address_data.cidade} - {client.address_data.uf}<br />
-                                    <span className="text-gray-400">{client.address_data.cep}</span>
-                                </>
-                            ) : <span className="italic text-gray-400">Endereço não cadastrado</span>}
+                        <div className="space-y-2">
+                            <EditableField label="Endereço Completo" value={client.address} onSave={(v) => handleUpdate('address', v)} />
+                            <div className="grid grid-cols-2 gap-2">
+                                <EditableField label="Cidade" value={client.city} onSave={(v) => handleUpdate('city', v)} />
+                                <EditableField label="Estado" value={client.state} onSave={(v) => handleUpdate('state', v)} />
+                            </div>
+                            <EditableField label="CEP" value={client.zip_code} onSave={(v) => handleUpdate('zip_code', v)} />
                         </div>
                     </div>
                 </div>
