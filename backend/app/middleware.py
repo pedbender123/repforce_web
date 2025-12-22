@@ -3,7 +3,7 @@ from starlette.requests import Request
 from starlette.responses import Response, JSONResponse
 from .core.security import decode_access_token
 from .core.config import settings
-from .db.database import SessionLocal
+from .db.database import SessionSys
 from .db import models
 from sqlalchemy import text
 import jwt
@@ -35,7 +35,7 @@ class TenantMiddleware(BaseHTTPMiddleware):
         if api_key:
             try:
                 # Open a sync session to check key (Middleware is async, but DB access here is quick)
-                db = SessionLocal()
+                db = SessionSys()
                 try:
                     # Query system DB
                     key_record = db.query(models.ApiKey).filter(
