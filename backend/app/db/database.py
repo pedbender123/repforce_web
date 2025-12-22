@@ -40,8 +40,7 @@ def get_crm_db(request: Request):
     """
     db = SessionCrm()
     try:
-    db = SessionCrm()
-    try:
+
         tenant_id = getattr(request.state, "tenant_id", None)
         if tenant_id:
             schema = f"tenant_{tenant_id}"
