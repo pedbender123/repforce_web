@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import sysAdminApiClient from '../../api/sysAdminApiClient';
 import { PlayIcon, CheckCircleIcon, XCircleIcon, CommandLineIcon } from '@heroicons/react/24/outline';
 
@@ -89,8 +89,8 @@ export default function SysAdminDiagnostics() {
                             onClick={runDiagnostics}
                             disabled={isPolling || statusData?.status === 'running'}
                             className={`flex items-center px-4 py-2 rounded text-white font-medium transition-colors ${isPolling || statusData?.status === 'running'
-                                    ? 'bg-gray-400 cursor-not-allowed'
-                                    : 'bg-blue-600 hover:bg-blue-700'
+                                ? 'bg-gray-400 cursor-not-allowed'
+                                : 'bg-blue-600 hover:bg-blue-700'
                                 }`}
                         >
                             {isPolling || statusData?.status === 'running' ? (
