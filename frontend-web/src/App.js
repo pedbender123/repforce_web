@@ -39,6 +39,7 @@ import AllUserManagement from './pages/system/SysAdminAllUserManagement';
 import AreaManagement from './pages/system/SysAdminAreaManagement';
 import ConfigPage from './pages/config/ConfigPage';
 import ProfilePage from './pages/system/ProfilePage';
+import AdminConfigPage from './pages/config/AdminConfigPage';
 
 import CrmLayout from './components/CrmLayout';
 
@@ -81,13 +82,32 @@ function App() {
                   <Route path="products/new" element={<ProductForm />} />
                   <Route path="products/:id" element={<ProductForm />} />
                   <Route path="orders" element={<OrderList />} />
-                  <Route path="users" element={<UserManagement />} />
-                  <Route path="roles" element={<RoleManagement />} />
-                  <Route path="fields" element={<AdminCustomFields />} />
-                  <Route path="rules" element={<AdminPricingRules />} />
+                  {/* New Config Page replaces individual management pages in Sidebar */}
+                  <Route path="config" element={<AdminConfigPage />} />
+
+                  {/* Legacy routes kept but not linked in Sidebar, or redirect? */}
+                  {/* Let's keep them accessible if someone types URL, or we can remove them. 
+                      Plan said: consolidate. AdminConfigPage imports them as components.
+                      So we don't strictly need these routes unless we want deep linking.
+                      For now, disabling direct route to force use of Config Page tabs helps consistency.
+                  */}
+                  {/* <Route path="users" element={<UserManagement />} /> */}
+                  {/* <Route path="roles" element={<RoleManagement />} /> */}
+                  {/* <Route path="fields" element={<AdminCustomFields />} /> */}
+                  {/* <Route path="rules" element={<AdminPricingRules />} /> */}
+
                   <Route index element={<Navigate to="dashboard" replace />} />
                 </Route>
               </Route>
+
+              {/* SHARED PROFILE ROUTE (App Context) */}
+              <Route path="/app" element={<PrivateRoute><CrmLayout /></PrivateRoute>}>
+                <Route element={<AppLayout />}>
+                  {/* ... existing app routes ... */}
+                  <Route path="profile" element={<ProfilePage />} />
+                </Route>
+              </Route>
+
 
               {/* SYSADMIN ROUTES (Platform Owner) */}
               <Route path="/sysadmin" element={<SysAdminLayout />}>
