@@ -89,20 +89,44 @@ export default function SysAdminDiagnostics() {
             {/* Results Summary (Only if Report exists) */}
             {report && (
                 <div className="space-y-6">
-                    {/* Score Bar */}
-                    <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-                        <div className="flex justify-between items-end mb-2">
-                            <h3 className="font-semibold text-gray-700 dark:text-gray-200">Integridade do Sistema</h3>
-                            <span className={`text-2xl font-bold ${report.status === 'pass' ? 'text-green-600' : 'text-red-600'}`}>
-                                {report.status === 'pass' ? '100% APROVADO' : 'ATENÇÃO REQUERIDA'}
-                            </span>
+                    {/* Actions and Score */}
+                    <div className="flex justify-between items-center bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+                        <div>
+                            <div className="flex items-end mb-2">
+                                <h3 className="font-semibold text-gray-700 dark:text-gray-200 mr-4">Integridade do Sistema</h3>
+                                <span className={`text-2xl font-bold ${report.status === 'pass' ? 'text-green-600' : 'text-red-600'}`}>
+                                    {report.status === 'pass' ? '100% APROVADO' : 'ATENÇÃO REQUERIDA'}
+                                </span>
+                            </div>
+                            <div className="w-64 bg-gray-200 rounded-full h-3 dark:bg-gray-700">
+                                <div
+                                    className={`h-3 rounded-full transition-all duration-500 ${report.status === 'pass' ? 'bg-green-500' : 'bg-red-500'}`}
+                                    style={{ width: report.status === 'pass' ? '100%' : '60%' }}
+                                ></div>
+                            </div>
                         </div>
-                        <div className="w-full bg-gray-200 rounded-full h-4 dark:bg-gray-700">
-                            <div
-                                className={`h-4 rounded-full transition-all duration-500 ${report.status === 'pass' ? 'bg-green-500' : 'bg-red-500'}`}
-                                style={{ width: report.status === 'pass' ? '100%' : '60%' }}
-                            ></div>
-                        </div>
+
+                        {/* Download Button */}
+                        <button
+                            onClick={async () => {
+                                try {
+                                    const response = await sysAdminApiClient.get('/sysadmin/health/download-log', { responseType: 'blob' });
+                                    const url = window.URL.createObjectURL(new Blob([response.data]));
+                                    const link = document.createElement('a');
+                                    link.href = url;
+                                    link.setAttribute('download', `health_check_${new Date().getTime()}.txt`);
+                                    document.body.appendChild(link);
+                                    link.click();
+                                    link.remove();
+                                } catch (e) {
+                                    alert("Erro ao baixar log.");
+                                }
+                            }}
+                            className="bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold py-2 px-4 rounded inline-flex items-center transition-colors dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600"
+                        >
+                            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                            Baixar Log Completo (.txt)
+                        </button>
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
