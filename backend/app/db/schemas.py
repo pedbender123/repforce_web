@@ -177,7 +177,7 @@ class ClientBase(BaseModel):
     custom_attributes: Optional[Dict[str, Any]] = {}
 
 class ClientCreate(ClientBase):
-    pass
+    address_data: Optional[Dict[str, Any]] = None
 
 class Client(ClientBase):
     id: int
