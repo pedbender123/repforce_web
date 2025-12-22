@@ -47,6 +47,25 @@ def get_tasks(
     if status:
         query = query.filter(models.Task.status == status)
     
+    # --- DEBUG START ---
+    try:
+        # 1. Verifica Search Path
+        sp = db.execute(text("SHOW search_path")).scalar()
+        print(f"DEBUG[get_tasks]: Active Search Path: {sp}")
+        
+        # 2. Tenta select raw explicito no schema (se conseguirmos pegar o ID)
+        # O tenant_id esta no request.state, mas aqui nao temos o 'request' injetado direto.
+        # Vamos tentar select na tabela 'tasks' direto
+        try:
+            raw_count = db.execute(text("SELECT count(*) FROM tasks")).scalar()
+            print(f"DEBUG[get_tasks]: Raw SELECT count(*) FROM tasks success: {raw_count}")
+        except Exception as e_raw:
+             print(f"DEBUG[get_tasks]: Raw SELECT FROM tasks FAILED: {e_raw}")
+
+    except Exception as e_debug:
+        print(f"DEBUG[get_tasks]: Debug block failed: {e_debug}")
+    # --- DEBUG END ---
+
     # Ordena por created_at desc
     return query.order_by(models.Task.created_at.desc()).all()
 
