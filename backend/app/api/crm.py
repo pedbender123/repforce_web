@@ -11,7 +11,7 @@ router = APIRouter()
 @router.get("/clients", response_model=List[schemas.Client])
 def get_clients(
     request: Request,
-    db: Session = Depends(database.get_db)
+    db: Session = Depends(database.get_crm_db)
 ):
     tenant_id = request.state.tenant_id
     user_id = request.state.user_id
@@ -33,7 +33,7 @@ def get_clients(
 def get_client_details(
     client_id: int,
     request: Request,
-    db: Session = Depends(database.get_db)
+    db: Session = Depends(database.get_crm_db)
 ):
     tenant_id = request.state.tenant_id
     client = db.query(models_crm.Client).options(joinedload(models_crm.Client.contacts)).filter(
@@ -96,11 +96,16 @@ def list_rules(db: Session = Depends(database.get_crm_db)):
 
 @router.post("/config/rules", response_model=schemas.DiscountRule)
 def create_rule(rule: schemas.DiscountRuleCreate, db: Session = Depends(database.get_crm_db)):
-    db_rule = models_crm.DiscountRule(**rule.dict())
-    db.add(db_rule)
-    db.commit()
-    db.refresh(db_rule)
-    return db_rule
+    try:
+        db_rule = models_crm.DiscountRule(**rule.dict())
+        db.add(db_rule)
+        db.commit()
+        db.refresh(db_rule)
+        return db_rule
+    except Exception as e:
+        print(f"ERROR creating pricing rule: {e}", flush=True)
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Internal Server Error: {str(e)}")
 
 @router.delete("/config/rules/{rule_id}")
 def delete_rule(rule_id: int, db: Session = Depends(database.get_crm_db)):
@@ -115,7 +120,7 @@ def delete_rule(rule_id: int, db: Session = Depends(database.get_crm_db)):
 def create_client(
     client_in: schemas.ClientCreate,
     request: Request,
-    db: Session = Depends(database.get_db)
+    db: Session = Depends(database.get_crm_db)
 ):
     tenant_id = request.state.tenant_id
     
@@ -146,7 +151,7 @@ def create_contact(
     client_id: int,
     contact_in: schemas.ContactCreate,
     request: Request,
-    db: Session = Depends(database.get_db)
+    db: Session = Depends(database.get_crm_db)
 ):
     tenant_id = request.state.tenant_id
     # Verifica se cliente existe e pertence ao tenant
@@ -167,7 +172,7 @@ def create_contact(
 def delete_contact(
     contact_id: int,
     request: Request,
-    db: Session = Depends(database.get_db)
+    db: Session = Depends(database.get_crm_db)
 ):
     contact = db.query(models_crm.Contact).filter(models_crm.Contact.id == contact_id).first()
     if not contact:

@@ -27,19 +27,24 @@ def create_custom_field(
     """
     Cria um novo campo customizado.
     """
-    # Verifica duplicidade de chave na mesma entidade
-    existing = db.query(models_crm.CustomFieldConfig)\
-                 .filter(models_crm.CustomFieldConfig.entity == field.entity)\
-                 .filter(models_crm.CustomFieldConfig.key == field.key)\
-                 .first()
-    if existing:
-        raise HTTPException(status_code=400, detail="Já existe um campo com esta chave para esta entidade.")
-        
-    db_field = models_crm.CustomFieldConfig(**field.dict())
-    db.add(db_field)
-    db.commit()
-    db.refresh(db_field)
-    return db_field
+    try:
+        # Verifica duplicidade de chave na mesma entidade
+        existing = db.query(models_crm.CustomFieldConfig)\
+                     .filter(models_crm.CustomFieldConfig.entity == field.entity)\
+                     .filter(models_crm.CustomFieldConfig.key == field.key)\
+                     .first()
+        if existing:
+            raise HTTPException(status_code=400, detail="Já existe um campo com este ID para esta entidade.")
+            
+        db_field = models_crm.CustomFieldConfig(**field.dict())
+        db.add(db_field)
+        db.commit()
+        db.refresh(db_field)
+        return db_field
+    except Exception as e:
+        print(f"ERROR creating custom field: {e}", flush=True)
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Internal Server Error: {str(e)}")
 
 @router.delete("/config/fields/{field_id}")
 def delete_custom_field(

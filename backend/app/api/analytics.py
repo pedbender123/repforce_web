@@ -31,9 +31,9 @@ def get_dashboard_kpis(
  
     # Base Query (User Scope + Time Range + Status != Canceled)
     query = db.query(models_crm.Order).filter(
-        models.Order.representative_id == user_id,
-        models.Order.created_at >= start_date,
-        models.Order.status != "canceled"
+        models_crm.Order.representative_id == user_id,
+        models_crm.Order.created_at >= start_date,
+        models_crm.Order.status != "canceled"
     )
     
     # 1. Total Vendido & Contagem
