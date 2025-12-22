@@ -129,8 +129,13 @@ def create_client(
     
     db_client = models_crm.Client(
         name=client_in.name,
+        fantasy_name=client_in.fantasy_name,
         trade_name=client_in.trade_name,
         cnpj=client_in.cnpj,
+        email=client_in.email,
+        phone=client_in.phone,
+        representative_id=client_in.representative_id,
+        custom_attributes=client_in.custom_attributes,
         # tenant_id desnecessário (schema isolado)
         # Mapeando address_data para campos planos
         city=addr_data.get('cidade'),
