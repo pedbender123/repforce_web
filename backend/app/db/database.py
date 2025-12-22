@@ -46,7 +46,7 @@ def get_crm_db(request: Request):
             schema = f"tenant_{tenant_id}"
             print(f"DEBUG: Setting search_path to {schema}", flush=True)
             db.execute(text(f"SET search_path TO {schema}"))
-            # db.commit() # EXPERIMENTAL: Force commit of the configuration parameter
+            db.commit() # Force commit of the configuration parameter
 
             
             # VERIFICATION

@@ -64,9 +64,11 @@ def get_tasks(
             print(f"DEBUG[get_tasks]: Raw SELECT count(*) FROM tasks success: {raw_count}", flush=True)
         except Exception as e_raw:
              print(f"DEBUG[get_tasks]: Raw SELECT FROM tasks FAILED: {e_raw}", flush=True)
+             db.rollback()
 
     except Exception as e_debug:
         print(f"DEBUG[get_tasks]: Debug block failed: {e_debug}", flush=True)
+        db.rollback()
     # --- DEBUG END ---
 
     # Ordena por created_at desc
