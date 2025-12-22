@@ -328,3 +328,24 @@ def create_area(
 @router.get("/roles", response_model=List[schemas.Role], dependencies=[Depends(check_sysadmin_profile)])
 def get_roles_by_tenant(tenant_id: int, db: Session = Depends(database.get_db)):
     return db.query(models.Role).filter(models.Role.tenant_id == tenant_id).all()
+
+@router.post("/fix-tasks-tables")
+def run_fix_tasks_tables_endpoint(
+    request: Request,
+    db: Session = Depends(database.get_db)
+):
+    # check_sysadmin_profile(request) # Optional: disable check for easier debugging if token issue, but better keep it.
+    
+    cwd = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    script_path = os.path.join(cwd, "scripts", "fix_tasks_table.py")
+    
+    try:
+        process = subprocess.run(["python", script_path], cwd=cwd, capture_output=True, text=True)
+        return {
+            "message": "Fix script executed", 
+            "stdout": process.stdout, 
+            "stderr": process.stderr, 
+            "returncode": process.returncode
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

@@ -44,13 +44,13 @@ def get_crm_db(request: Request):
         tenant_id = getattr(request.state, "tenant_id", None)
         if tenant_id:
             schema = f"tenant_{tenant_id}"
-            # print(f"DEBUG: Setting search_path to {schema}")
+            print(f"DEBUG: Setting search_path to {schema}")
             db.execute(text(f"SET search_path TO {schema}"))
             
             # VERIFICATION
-            # result = db.execute(text("SHOW search_path"))
-            # current_path = result.scalar()
-            # print(f"DEBUG: Current search_path is: {current_path}")
+            result = db.execute(text("SHOW search_path"))
+            current_path = result.scalar()
+            print(f"DEBUG: Current search_path is: {current_path}")
         else:
             print(f"WARNING: get_crm_db called without tenant_id! URL: {request.url}")
         yield db
