@@ -37,6 +37,7 @@ import SysAdminDashboard from './pages/system/SysAdminDashboard';
 import TenantManagement from './pages/system/SysAdminTenantManagement';
 import AllUserManagement from './pages/system/SysAdminAllUserManagement';
 import AreaManagement from './pages/system/SysAdminAreaManagement';
+import SysAdminDiagnostics from './pages/system/SysAdminDiagnostics';
 import ConfigPage from './pages/config/ConfigPage';
 import ProfilePage from './pages/system/ProfilePage';
 import AdminConfigPage from './pages/config/AdminConfigPage';
@@ -115,6 +116,7 @@ function App() {
                 <Route path="tenants" element={<TenantManagement />} />
                 <Route path="users" element={<AllUserManagement />} />
                 <Route path="areas" element={<AreaManagement />} />
+                <Route path="diagnostics" element={<SysAdminDiagnostics />} />
                 <Route path="config" element={<ConfigPage />} />
                 <Route path="profile" element={<ProfilePage />} />
                 <Route index element={<Navigate to="dashboard" replace />} />
