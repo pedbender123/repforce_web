@@ -162,7 +162,7 @@ class Product(ProductBase):
 
 # --- CLIENT ---
 class ClientBase(BaseModel):
-    fantasy_name: str
+    fantasy_name: Optional[str] = None
     name: str # Razão Social
     trade_name: Optional[str] = None
     cnpj: str
