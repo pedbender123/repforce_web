@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import apiClient from '../../api/apiClient';
-import { PlayIcon, CheckCircleIcon, XCircleIcon, TerminalIcon } from '@heroicons/react/24/outline';
+import { PlayIcon, CheckCircleIcon, XCircleIcon, CommandLineIcon } from '@heroicons/react/24/outline';
 
 export default function SysAdminDiagnostics() {
     const [isRunning, setIsRunning] = useState(false);
@@ -51,7 +51,7 @@ export default function SysAdminDiagnostics() {
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 mb-6">
                 <div className="flex items-center justify-between mb-4">
                     <h2 className="text-lg font-semibold flex items-center dark:text-white">
-                        <TerminalIcon className="w-5 h-5 mr-2" />
+                        <CommandLineIcon className="w-5 h-5 mr-2" />
                         Console de Diagnóstico
                     </h2>
                     <button
@@ -88,23 +88,42 @@ export default function SysAdminDiagnostics() {
 
             {/* Results Summary (Only if Report exists) */}
             {report && (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {report.checks.map((check, idx) => (
-                        <div key={idx} className={`p-4 rounded-lg border flex items-start ${check.status === 'pass'
-                                ? 'bg-green-50 border-green-200 text-green-800 dark:bg-green-900/20 dark:border-green-800 dark:text-green-300'
-                                : 'bg-red-50 border-red-200 text-red-800 dark:bg-red-900/20 dark:border-red-800 dark:text-red-300'
-                            }`}>
-                            {check.status === 'pass' ? (
-                                <CheckCircleIcon className="w-6 h-6 mr-3 flex-shrink-0" />
-                            ) : (
-                                <XCircleIcon className="w-6 h-6 mr-3 flex-shrink-0" />
-                            )}
-                            <div>
-                                <h4 className="font-bold text-sm">{check.name}</h4>
-                                <p className="text-sm mt-1 opacity-90">{check.message}</p>
-                            </div>
+                <div className="space-y-6">
+                    {/* Score Bar */}
+                    <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+                        <div className="flex justify-between items-end mb-2">
+                            <h3 className="font-semibold text-gray-700 dark:text-gray-200">Integridade do Sistema</h3>
+                            <span className={`text-2xl font-bold ${report.status === 'pass' ? 'text-green-600' : 'text-red-600'}`}>
+                                {report.status === 'pass' ? '100% APROVADO' : 'ATENÇÃO REQUERIDA'}
+                            </span>
                         </div>
-                    ))}
+                        <div className="w-full bg-gray-200 rounded-full h-4 dark:bg-gray-700">
+                            <div
+                                className={`h-4 rounded-full transition-all duration-500 ${report.status === 'pass' ? 'bg-green-500' : 'bg-red-500'}`}
+                                style={{ width: report.status === 'pass' ? '100%' : '60%' }}
+                            ></div>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {report.checks.map((check, idx) => (
+                            <div key={idx} className={`p-4 rounded-lg border flex items-start ${check.status === 'pass'
+                                    ? 'bg-green-50 border-green-200 text-green-800 dark:bg-green-900/20 dark:border-green-800 dark:text-green-300'
+                                    : (check.status === 'processing'
+                                        ? 'bg-blue-50 border-blue-200 text-blue-800 dark:bg-blue-900/20 dark:border-blue-800 dark:text-blue-300'
+                                        : 'bg-red-50 border-red-200 text-red-800 dark:bg-red-900/20 dark:border-red-800 dark:text-red-300')
+                                }`}>
+                                {check.status === 'pass' && <CheckCircleIcon className="w-6 h-6 mr-3 flex-shrink-0" />}
+                                {check.status === 'fail' && <XCircleIcon className="w-6 h-6 mr-3 flex-shrink-0" />}
+                                {check.status === 'processing' && <span className="w-6 h-6 mr-3 flex-shrink-0 animate-pulse">💠</span>}
+
+                                <div>
+                                    <h4 className="font-bold text-sm">{check.name}</h4>
+                                    <p className="text-sm mt-1 opacity-90">{check.message}</p>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
                 </div>
             )}
         </div>
