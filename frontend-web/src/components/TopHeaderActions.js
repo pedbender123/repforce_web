@@ -43,7 +43,7 @@ const TopHeaderActions = () => {
 
             {/* Profile Avatar */}
             <button
-                onClick={() => navigate('/sysadmin/profile')} // or config? user said "pode ser agrupada na mesma pagina, config" but circle goes to profile
+                onClick={() => navigate('/sysadmin/config?tab=profile')}
                 className="h-8 w-8 rounded-full bg-blue-600 text-white flex items-center justify-center text-sm font-bold shadow hover:bg-blue-700 transition-colors"
                 title="Perfil"
             >

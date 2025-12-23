@@ -116,9 +116,7 @@ function App() {
                 <Route path="tenants" element={<TenantManagement />} />
                 <Route path="users" element={<AllUserManagement />} />
                 <Route path="areas" element={<AreaManagement />} />
-                <Route path="diagnostics" element={<SysAdminDiagnostics />} />
                 <Route path="config" element={<ConfigPage />} />
-                <Route path="profile" element={<ProfilePage />} />
                 <Route index element={<Navigate to="dashboard" replace />} />
               </Route>
 

@@ -37,13 +37,22 @@ export default function SysAdminDashboard() {
           </p>
         </div>
 
-        <Link to="/sysadmin/diagnostics" className="p-6 border border-gray-200 dark:border-gray-700 rounded-lg hover:shadow-md transition-shadow bg-blue-50 dark:bg-blue-900/20 group cursor-pointer block">
+        <Link to="/sysadmin/config?tab=diagnostics" className="p-6 border border-gray-200 dark:border-gray-700 rounded-lg hover:shadow-md transition-shadow bg-blue-50 dark:bg-blue-900/20 group cursor-pointer block">
           <h3 className="text-xl font-semibold text-blue-800 dark:text-blue-300 mb-2 flex items-center">
             <Activity className="w-5 h-5 mr-2" />
             Diagnóstico de Sistema
           </h3>
           <p className="text-blue-700 dark:text-blue-200 opacity-80">
-            Execute testes de integridade, verifique banco de dados e simule operações.
+            Execute testes "Ultra Galaxy" de integridade, verifique banco de dados e simule operações.
+          </p>
+        </Link>
+        <Link to="/sysadmin/config?tab=profile" className="p-6 border border-gray-200 dark:border-gray-700 rounded-lg hover:shadow-md transition-shadow bg-green-50 dark:bg-green-900/20 group cursor-pointer block">
+          <h3 className="text-xl font-semibold text-green-800 dark:text-green-300 mb-2 flex items-center">
+            <Users className="w-5 h-5 mr-2" />
+            Meu Perfil
+          </h3>
+          <p className="text-green-700 dark:text-green-200 opacity-80">
+            Gerencie suas informações pessoais e credenciais de acesso.
           </p>
         </Link>
       </div>
