@@ -23,6 +23,8 @@ import AppClientDetails from './pages/crm/AppClientDetails';
 import AppClientForm from './pages/crm/AppClientForm';
 import AppOrderCreate from './pages/crm/AppOrderCreate';
 import AppRouteCreate from './pages/crm/AppRouteCreate';
+import ProductDetails from './pages/crm/ProductDetails';
+import OrderDetails from './pages/crm/OrderDetails';
 
 // Admin Pages (Tenant Admin)
 import AdminDashboard from './pages/system/AdminDashboard';
@@ -66,9 +68,12 @@ function App() {
                   <Route path="dashboard" element={<AppDashboard />} />
                   <Route path="clients" element={<ClientList />} />
                   <Route path="clients/new" element={<AppClientForm />} />
+
+
                   <Route path="clients/:id" element={<AppClientDetails />} />
                   <Route path="orders" element={<OrderList />} />
                   <Route path="orders/new" element={<AppOrderCreate />} />
+                  <Route path="orders/:id" element={<OrderDetails />} />
                   <Route path="routes/new" element={<AppRouteCreate />} />
                   <Route index element={<Navigate to="dashboard" replace />} />
                 </Route>
@@ -81,8 +86,9 @@ function App() {
                   <Route path="clients" element={<ClientList />} />
                   <Route path="products" element={<ProductList />} />
                   <Route path="products/new" element={<ProductForm />} />
-                  <Route path="products/:id" element={<ProductForm />} />
+                  <Route path="products/:id" element={<ProductDetails />} />
                   <Route path="orders" element={<OrderList />} />
+                  <Route path="orders/:id" element={<OrderDetails />} />
                   {/* New Config Page replaces individual management pages in Sidebar */}
                   <Route path="config" element={<AdminConfigPage />} />
 
