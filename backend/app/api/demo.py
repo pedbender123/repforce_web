@@ -42,7 +42,7 @@ class DemoService:
             # 1. Brands
             brands = []
             for name in ["Apex Innovations", "Nebula Corp", "Quantum Gear", "Synapse Sol", "Echo Dynamics"]:
-                b = models_crm.Brand(name=name, active=True)
+                b = models_crm.Brand(name=name)
                 crm_db.add(b)
                 brands.append(b)
             crm_db.commit() # Get IDs
@@ -63,8 +63,7 @@ class DemoService:
                     sku=f"DEMO-{uuid.uuid4().hex[:6].upper()}",
                     price=float(random.randint(10, 500)),
                     brand_id=random.choice(brands).id,
-                    supplier_id=supplier.id,
-                    active=True
+                    supplier_id=supplier.id
                 )
                 crm_db.add(p)
                 products.append(p)
@@ -76,6 +75,7 @@ class DemoService:
             for i in range(1, 11):
                 c = models_crm.Client(
                     name=f"Demo Client {i}",
+                    fantasy_name=f"Demo Client {i} LLC",
                     cnpj=f"00.000.000/000{i}-00",
                     status="active",
                     representative_id=rp_id
@@ -150,33 +150,40 @@ class DemoService:
             # Actually, let's delete parents and rely on cascade or manual child deletion if needed.
             # Safe logic: Delete leaves first.
             
-            params = {"start": start_time}
+            # 1. Order Items (Delete items belonging to orders of Demo Clients)
+            crm_db.execute(text("""
+                DELETE FROM order_items 
+                WHERE order_id IN (
+                    SELECT id FROM orders 
+                    WHERE client_id IN (SELECT id FROM clients WHERE name LIKE 'Demo Client%')
+                )
+            """))
             
-            # Order Items (if created in demo)
-            crm_db.execute(text("DELETE FROM order_items WHERE created_at >= :start"), params)
+            # 2. Orders (Delete orders of Demo Clients)
+            crm_db.execute(text("""
+                DELETE FROM orders 
+                WHERE client_id IN (SELECT id FROM clients WHERE name LIKE 'Demo Client%')
+            """))
             
-            # Orders
-            crm_db.execute(text("DELETE FROM orders WHERE created_at >= :start"), params)
+            # 3. Clients (Delete by name pattern)
+            crm_db.execute(text("DELETE FROM clients WHERE name LIKE 'Demo Client%'"))
             
-            # Visits/Routes (if any, script didn't create, but user might have)
-            crm_db.execute(text("DELETE FROM visits WHERE created_at >= :start"), params)
-            crm_db.execute(text("DELETE FROM routes WHERE created_at >= :start"), params)
+            # 4. Products (Delete by name pattern - careful of FKs in OrderItems, already deleted)
+            crm_db.execute(text("DELETE FROM products WHERE name LIKE 'Demo Product%'"))
             
-            # Contacts
-            crm_db.execute(text("DELETE FROM contacts WHERE created_at >= :start"), params)
+            # 5. Brands & Suppliers (Delete by specific names)
+            demo_brands = ["Apex Innovations", "Nebula Corp", "Quantum Gear", "Synapse Sol", "Echo Dynamics"]
+            crm_db.execute(text("DELETE FROM brands WHERE name = ANY(:brands)"), {"brands": demo_brands})
+            crm_db.execute(text("DELETE FROM suppliers WHERE name = 'Global Demo Supply'"))
             
-            # Clients
-            crm_db.execute(text("DELETE FROM clients WHERE created_at >= :start"), params)
+            # 6. Visits/Routes and others
+            # If tasks refer to these, they might block deletion? 
+            # Task has related_id but usually not FK constraint at DB level for generic related_id.
+            # But just in case:
+            # crm_db.execute(text("DELETE FROM tasks WHERE ...")) 
             
-            # Products
-            crm_db.execute(text("DELETE FROM products WHERE created_at >= :start"), params)
-            
-            # Brands & Suppliers
-            crm_db.execute(text("DELETE FROM brands WHERE created_at >= :start"), params)
-            crm_db.execute(text("DELETE FROM suppliers WHERE created_at >= :start"), params)
-            
-            # Pricing Rules
-            crm_db.execute(text("DELETE FROM discount_rules WHERE created_at >= :start"), params)
+            # 7. Pricing Rules
+            # Skipped as before.
             
             crm_db.commit()
             
