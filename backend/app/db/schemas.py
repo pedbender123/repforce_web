@@ -20,7 +20,7 @@ class AreaCreate(AreaBase):
 
 class Area(AreaBase):
     id: int
-    tenant_id: int
+    tenant_id: Optional[int] = None
     class Config:
         from_attributes = True
 
@@ -36,7 +36,7 @@ class RoleUpdate(RoleBase):
 
 class Role(RoleBase):
     id: int
-    tenant_id: int
+    tenant_id: Optional[int] = None
     # Importante: Usamos Area aqui. O Pydantic resolve a referência pois Area já foi definido acima.
     areas: List[Area] = [] 
     class Config:
