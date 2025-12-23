@@ -382,61 +382,87 @@ async def execute_galaxy_test(db: Session):
         f.write(f"--- ULTRA GALAXY SYSTEM TEST REPORT ---\n")
         f.write(f"Timestamp: {datetime.now().isoformat()}\n\n")
 
+    # --- EXECUTION CHAIN (CONTINUE ON ERROR) ---
+
+    # Global State for Dependencies
+    pid, price = None, 100.0 # Default fallback
+    cid = 1
+
+    # Step 1: Foundation (CRITICAL - Abort on Failure)
     try:
-        # Step 1: Foundation
         update_step_status(0, "running")
         t0 = time.time()
         runner.suite_foundation_galaxy()
         update_step_status(0, "done", "Micro-Tests Passed", time.time() - t0)
+    except Exception as e:
+        log_raw(f"[CRITICAL] Foundation Failed: {e}")
+        update_step_status(0, "error", str(e))
+        # Cannot proceed without Tenant/Schema
+        data = get_status_data()
+        data["status"] = "error"
+        save_status_data(data)
+        
+        # Cleanup & Exit
+        runner.cleanup()
+        if os.path.exists(LOCK_FILE): os.remove(LOCK_FILE)
+        return
 
-        # Step 2: Catalog
+    # Step 2: Catalog (Soft Fail)
+    try:
         update_step_status(1, "running")
         t0 = time.time()
         pid, price = runner.suite_catalog_galaxy()
         update_step_status(1, "done", "Micro-Tests Passed", time.time() - t0)
+    except Exception as e:
+        log_raw(f"[FAIL] Catalog Suite Failed: {e}")
+        update_step_status(1, "error", str(e))
+        # Proceed with defaults (pid=None)
 
-        # Step 3: Stress (Prerequisite for Clients)
+    # Step 3: Stress (Soft Fail)
+    try:
         update_step_status(2, "running")
         t0 = time.time()
-        # Note: We need a client for Sales. Stress suite creates 300 clients. 
-        # But we also need a specific client for 'Sales Physics'.
-        # Let's verify Stress suite returns a valid client ID or we ensure one.
-        # Actually in suite_sales_physics we need a client. 
-        # Let's run Stress FIRST to populate 300 clients, then pick one for Sales Physics.
         cid = runner.suite_stress_singularity() 
-        # Note: suite_stress_singularity returns '1'. 
         update_step_status(2, "done", "10k Products & 300 Clients", time.time() - t0)
-
-        # Step 4: Sales Physics
+    except Exception as e:
+        log_raw(f"[FAIL] Stress Suite Failed: {e}")
+        update_step_status(2, "error", str(e))
+    
+    # Step 4: Sales Physics (Soft Fail)
+    try:
         update_step_status(3, "running")
         t0 = time.time()
+        if not pid: raise Exception("Skipped: No Product ID from Catalog")
+        
         runner.suite_sales_physics(cid, pid, price)
         update_step_status(3, "done", "Math Verified", time.time() - t0)
-
     except Exception as e:
-        log_raw(f"CRITICAL TEST SUITE FAILURE: {e}")
-        data = get_status_data()
-        data["status"] = "error"
-        # Mark current step error
-        for i, s in enumerate(data["steps"]):
-            if s["status"] == "running":
-                update_step_status(i, "error", str(e))
-                break
-        save_status_data(data)
-    
-    finally:
+        log_raw(f"[FAIL] Sales Suite Failed: {e}")
+        update_step_status(3, "error", str(e))
+
+    # Finalize
+    try:
         # Step 5: Cleanup
         update_step_status(4, "running")
         runner.cleanup()
         update_step_status(4, "done")
-        
-        if os.path.exists(LOCK_FILE):
-             os.remove(LOCK_FILE)
-        
-        data = get_status_data()
-        if data["status"] != "error":
-            data["status"] = "finished"
-        save_status_data(data)
+    except Exception as e:
+        log_raw(f"[FAIL] Cleanup Failed: {e}")
+        update_step_status(4, "error", str(e))
+    
+    # Always unlock and save final status
+    if os.path.exists(LOCK_FILE):
+            os.remove(LOCK_FILE)
+    
+    data = get_status_data()
+    # If any step failed, mark global status as error, otherwise finished
+    has_error = any(s["status"] == "error" for s in data["steps"])
+    data["status"] = "finished" if not has_error else "error" 
+    # NOTE: "finished" means completed execution, "error" might imply crash. 
+    # But frontend handles both essentially the same (stops polling).
+    # Let's keep "finished" if we ran through everything, even with sub-failures? 
+    # No, user wants to know if it failed. "error" is safer for Red UI.
+    save_status_data(data)
 
 # --- ENDPOINTS ---
 
