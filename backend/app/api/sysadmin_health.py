@@ -139,7 +139,9 @@ class MicroTestRunner:
         
         # 1. Tenant
         def action_create_tenant():
-            t = models.Tenant(name=f"Galaxy_{self.run_id}", cnpj="00000000000000", status="active")
+            # Use timestamp based CNPJ to avoid collision if cleanup fails
+            random_cnpj = f"{int(time.time()*1000)}"[:14]
+            t = models.Tenant(name=f"Galaxy_{self.run_id}", cnpj=random_cnpj, status="active")
             self.db_sys.add(t)
             self.db_sys.commit()
             self.db_sys.refresh(t)
