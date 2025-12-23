@@ -52,7 +52,7 @@ class CartService:
             cost = (product.cost_price or 0.0) * item_in.quantity
             total_cost += cost
 
-            cart_items.append(CartItemSummary(
+            cart_items.append(schemas.CartItemSummary(
                 product_id=product.id,
                 name=product.name,
                 quantity=item_in.quantity,
@@ -66,7 +66,7 @@ class CartService:
         # TODO: Apply global Order Rules here (e.g. Total > 1000 get 5% off everything)
         # self.pricing_service.apply_global_rules(cart_items)
 
-        return CartSummary(
+        return schemas.CartSummary(
             items=cart_items,
             total_gross=round(total_gross, 2),
             total_discount=round(total_discount, 2),
