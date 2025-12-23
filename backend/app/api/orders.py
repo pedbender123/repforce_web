@@ -110,3 +110,25 @@ def get_order_details(
     if not order:
         raise HTTPException(status_code=404, detail="Pedido não encontrado")
     return order
+
+@router.put("/{order_id}", response_model=schemas.Order)
+def update_order(
+    order_id: int,
+    request: Request,
+    order_in: schemas.OrderUpdate,
+    db: Session = Depends(database.get_crm_db)
+):
+    order = db.query(models_crm.Order).filter(models_crm.Order.id == order_id).first()
+    if not order:
+        raise HTTPException(status_code=404, detail="Pedido não encontrado")
+        
+    if order_in.status:
+        # TODO: Add state machine validation (e.g. can't go from draft to approved directly without checks)
+        order.status = order_in.status
+        
+    if order_in.notes is not None:
+        order.notes = order_in.notes
+        
+    db.commit()
+    db.refresh(order)
+    return order

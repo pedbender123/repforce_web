@@ -120,6 +120,56 @@ def create_product(
     db.refresh(db_product)
     return db_product
 
+@router.put("/products/{product_id}", response_model=schemas.Product)
+def update_product(
+    product_id: int,
+    request: Request,
+    db: Session = Depends(database.get_crm_db),
+    name: Optional[str] = Form(None),
+    price: Optional[float] = Form(None),
+    sku: Optional[str] = Form(None),
+    cost_price: Optional[float] = Form(None),
+    stock: Optional[int] = Form(None),
+    supplier_id: Optional[int] = Form(None),
+    custom_attributes: Optional[str] = Form(None), # JSON String
+    image: Optional[UploadFile] = File(None)
+):
+    if request.state.profile not in ['admin', 'sysadmin']:
+        raise HTTPException(status_code=403, detail="Apenas admins podem editar produtos")
+
+    product = db.query(models_crm.Product).filter(models_crm.Product.id == product_id).first()
+    if not product:
+        raise HTTPException(status_code=404, detail="Produto não encontrado")
+
+    # Update Fields
+    if name: product.name = name
+    if price is not None: product.price = price
+    if sku: product.sku = sku
+    if cost_price is not None: product.cost_price = cost_price
+    if stock is not None: product.stock = stock
+    if supplier_id: product.supplier_id = supplier_id
+    
+    if custom_attributes:
+        import json
+        try:
+            product.custom_attributes = json.loads(custom_attributes)
+        except:
+            pass # Ignore invalid JSON
+    
+    # Image Upload
+    if image:
+        tenant_id = request.state.tenant_id
+        tenant_prod_dir = os.path.join(UPLOAD_DIR_PRODUCTS, str(tenant_id))
+        os.makedirs(tenant_prod_dir, exist_ok=True)
+        file_path = os.path.join(tenant_prod_dir, image.filename)
+        with open(file_path, "wb") as buffer:
+            shutil.copyfileobj(image.file, buffer)
+        product.image_url = f"{STATIC_URL_PRODUCTS}/{tenant_id}/{image.filename}"
+
+    db.commit()
+    db.refresh(product)
+    return product
+
 # --- FORNECEDORES (NOVO) ---
 
 @router.get("/suppliers", response_model=List[schemas.Supplier])

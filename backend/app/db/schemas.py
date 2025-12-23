@@ -312,6 +312,10 @@ class OrderCreate(BaseModel):
     items: List[OrderItemCreate]
     notes: Optional[str] = None
 
+class OrderUpdate(BaseModel):
+    status: Optional[str] = None
+    notes: Optional[str] = None
+
 class Order(BaseModel):
     id: int
     created_at: datetime
