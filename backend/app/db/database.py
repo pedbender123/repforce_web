@@ -14,7 +14,7 @@ Base = declarative_base() # BaseSys implies Base for System, keeping name 'Base'
 # Fallback to SYS URL if CRM URL is not set (e.g. dev environment using same DB instance)
 SQLALCHEMY_DATABASE_URL_CRM = settings.CRM_DATABASE_URL or settings.DATABASE_URL
 engine_crm = create_engine(SQLALCHEMY_DATABASE_URL_CRM, pool_pre_ping=True)
-SessionCrm = sessionmaker(autocommit=False, autoflush=False, bind=engine_crm)
+SessionCrm = sessionmaker(autocommit=False, autoflush=False, bind=engine_crm, expire_on_commit=False)
 BaseCrm = declarative_base()
 
 # Dependency for System DB (default)
