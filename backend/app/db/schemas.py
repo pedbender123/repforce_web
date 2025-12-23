@@ -80,6 +80,7 @@ class Tenant(TenantBase):
     status: Optional[str] = 'active'
     is_active: bool
     created_at: datetime
+    demo_mode_start: Optional[datetime] = None
     class Config:
         from_attributes = True
 
