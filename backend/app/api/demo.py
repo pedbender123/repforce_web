@@ -39,6 +39,11 @@ class DemoService:
         # POPULATE DATA
         crm_db = self._get_crm_session(tenant_id)
         try:
+            # 0. Find a Target Representative (First user in tenant)
+            # This ensures the demo data is visible to someone in the tenant
+            target_rep = self.sys_db.query(models.User).filter(models.User.tenant_id == tenant_id).first()
+            rp_id = target_rep.id if target_rep else (user_id if user_id else 1)
+
             # 1. Brands
             brands = []
             for name in ["Apex Innovations", "Nebula Corp", "Quantum Gear", "Synapse Sol", "Echo Dynamics"]:
@@ -71,14 +76,18 @@ class DemoService:
 
             # 5. Clients (10 items)
             clients = []
-            rp_id = user_id if user_id else 1 # Assign to requestor or admin
+            # rp_id determined above
             for i in range(1, 11):
                 c = models_crm.Client(
                     name=f"Demo Client {i}",
                     fantasy_name=f"Demo Client {i} LLC",
                     cnpj=f"00.000.000/000{i}-00",
                     status="active",
-                    representative_id=rp_id
+                    representative_id=rp_id,
+                    address="Rua Demo, 123 - Centro",
+                    city="Demo City",
+                    state="SP",
+                    zip_code="00000-000"
                 )
                 crm_db.add(c)
                 clients.append(c)
@@ -112,6 +121,26 @@ class DemoService:
                 )
                 crm_db.add(item)
                 crm_db.commit()
+
+            # 7. Visit Routes (1 sample route)
+            # Route for today with 5 stops
+            today_str = datetime.now().strftime("%Y-%m-%d")
+            stops_data = []
+            for client in clients[:5]:
+                stops_data.append({
+                    "client_id": client.id, 
+                    "status": "pending",
+                    "order": len(stops_data) + 1
+                })
+            
+            route = models_crm.VisitRoute(
+                name=f"Rota Demonstração - {today_str}",
+                date=today_str,
+                stops=stops_data,
+                user_id=rp_id
+            )
+            crm_db.add(route)
+            crm_db.commit()
 
             return {"message": "Demo Mode Activated", "start_time": start_time}
             
@@ -165,25 +194,25 @@ class DemoService:
                 WHERE client_id IN (SELECT id FROM clients WHERE name LIKE 'Demo Client%')
             """))
             
-            # 3. Clients (Delete by name pattern)
+            # 3. Routes (Delete demo routes)
+            crm_db.execute(text("DELETE FROM visit_routes WHERE name LIKE 'Rota Demonstração%'"))
+
+            # 4. Contacts (Delete contacts of Demo Clients - if created)
+            crm_db.execute(text("""
+                DELETE FROM contacts
+                WHERE client_id IN (SELECT id FROM clients WHERE name LIKE 'Demo Client%')
+            """))
+
+            # 5. Clients (Delete by name pattern)
             crm_db.execute(text("DELETE FROM clients WHERE name LIKE 'Demo Client%'"))
             
-            # 4. Products (Delete by name pattern - careful of FKs in OrderItems, already deleted)
+            # 6. Products (Delete by name pattern - careful of FKs in OrderItems, already deleted)
             crm_db.execute(text("DELETE FROM products WHERE name LIKE 'Demo Product%'"))
             
-            # 5. Brands & Suppliers (Delete by specific names)
+            # 7. Brands & Suppliers (Delete by specific names)
             demo_brands = ["Apex Innovations", "Nebula Corp", "Quantum Gear", "Synapse Sol", "Echo Dynamics"]
             crm_db.execute(text("DELETE FROM brands WHERE name = ANY(:brands)"), {"brands": demo_brands})
             crm_db.execute(text("DELETE FROM suppliers WHERE name = 'Global Demo Supply'"))
-            
-            # 6. Visits/Routes and others
-            # If tasks refer to these, they might block deletion? 
-            # Task has related_id but usually not FK constraint at DB level for generic related_id.
-            # But just in case:
-            # crm_db.execute(text("DELETE FROM tasks WHERE ...")) 
-            
-            # 7. Pricing Rules
-            # Skipped as before.
             
             crm_db.commit()
             

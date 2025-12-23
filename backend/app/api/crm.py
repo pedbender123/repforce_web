@@ -160,7 +160,7 @@ def create_contact(
 ):
     tenant_id = request.state.tenant_id
     # Verifica se cliente existe e pertence ao tenant
-    client = db.query(models_crm.Client).filter(models_crm.Client.id == client_id, models_crm.Client.tenant_id == tenant_id).first()
+    client = db.query(models_crm.Client).filter(models_crm.Client.id == client_id).first()
     if not client:
         raise HTTPException(status_code=404, detail="Cliente não encontrado")
 
