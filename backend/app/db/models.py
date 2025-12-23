@@ -38,6 +38,9 @@ class Tenant(Base):
     commercial_info = Column(Text, nullable=True)
     logo_url = Column(String, nullable=True)
     
+    # Demo Mode
+    demo_mode_start = Column(DateTime(timezone=True), nullable=True)
+    
     users = relationship("User", back_populates="tenant")
     # CRM relationships removed (products, clients, orders, suppliers, routes)
     

@@ -8,7 +8,7 @@ from .core import security
 from sqlalchemy.orm import Session
 
 # Importa as rotas
-from .api import auth, catalog, orders, admin, sysadmin, sysadmin_health, webhooks, crm, routes, analytics, custom_fields, tasks
+from .api import auth, catalog, orders, admin, sysadmin, sysadmin_health, webhooks, crm, routes, analytics, custom_fields, tasks, demo
 
 # Cria tabelas
 models.Base.metadata.create_all(bind=database.engine_sys)
@@ -239,6 +239,7 @@ app.include_router(orders.router, prefix="/orders", tags=["Pedidos"])
 app.include_router(routes.router, prefix="/routes", tags=["Rotas de Visita"])
 app.include_router(admin.router, prefix="/admin", tags=["Admin Tenant"])
 app.include_router(sysadmin.router, prefix="/sysadmin", tags=["SysAdmin"])
-app.include_router(sysadmin_health.router, prefix="/sysadmin/health", tags=["SysAdmin Health"]) # <-- New Router
+app.include_router(sysadmin_health.router, prefix="/sysadmin/health", tags=["SysAdmin Health"])
+app.include_router(demo.router, prefix="/sysadmin/demo", tags=["System Demo"])
 app.include_router(webhooks.router, prefix="/webhooks", tags=["Webhooks"])
 app.include_router(analytics.router, prefix="/crm/analytics", tags=["Analytics"])

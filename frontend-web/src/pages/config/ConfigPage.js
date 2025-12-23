@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Users, Shield, ArrowLeft, Activity, User } from 'lucide-react';
+import { Users, Shield, ArrowLeft, Activity, User, Play } from 'lucide-react';
 import { Link, useSearchParams } from 'react-router-dom';
 
 // Tabs
@@ -7,6 +7,7 @@ import SysAdminAllUserManagement from '../system/SysAdminAllUserManagement';
 import SysAdminRoleManagement from '../system/SysAdminRoleManagement';
 import SysAdminDiagnostics from '../system/SysAdminDiagnostics';
 import ProfilePage from '../system/ProfilePage';
+import SysAdminDemoManager from '../system/SysAdminDemoManager'; // New Import
 
 const ConfigPage = () => {
     const [searchParams, setSearchParams] = useSearchParams();
@@ -28,6 +29,7 @@ const ConfigPage = () => {
         { id: 'users', label: 'Gestão de Usuários', icon: <Users size={20} /> },
         { id: 'roles', label: 'Cargos e Permissões', icon: <Shield size={20} /> },
         { id: 'diagnostics', label: 'Diagnóstico de Sistema', icon: <Activity size={20} /> },
+        { id: 'demo', label: 'Demonstrações', icon: <Play size={20} /> }, // New Tab
         { id: 'profile', label: 'Meu Perfil', icon: <User size={20} /> },
     ];
 
@@ -40,7 +42,7 @@ const ConfigPage = () => {
                 </Link>
                 <div>
                     <h1 className="text-2xl font-bold text-gray-800 dark:text-white">Configurações do Sistema</h1>
-                    <p className="text-gray-500 dark:text-gray-400 mt-1">Gerencie usuários globais, permissões, diagnósticos e perfil.</p>
+                    <p className="text-gray-500 dark:text-gray-400 mt-1">Gerencie usuários globais, permissões, demonstrações e perfil.</p>
                 </div>
             </div>
 
@@ -66,6 +68,7 @@ const ConfigPage = () => {
                 {activeTab === 'users' && <SysAdminAllUserManagement />}
                 {activeTab === 'roles' && <SysAdminRoleManagement />}
                 {activeTab === 'diagnostics' && <SysAdminDiagnostics />}
+                {activeTab === 'demo' && <SysAdminDemoManager />} {/* New Content */}
                 {activeTab === 'profile' && <ProfilePage />}
             </div>
         </div>
