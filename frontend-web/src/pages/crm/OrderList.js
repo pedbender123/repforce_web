@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import apiClient from '../../api/apiClient';
 import {
     PlusIcon,
@@ -31,7 +31,11 @@ const STATUS_LABELS = {
 
 export default function OrderList() {
     const navigate = useNavigate();
+    const location = useLocation();
     const [searchTerm, setSearchTerm] = useState('');
+
+    const isAdmin = location.pathname.includes('/admin');
+    const basePath = isAdmin ? '/admin' : '/app';
 
     const { data: orders, isLoading, isError } = useQuery(['orders'], async () => {
         const response = await apiClient.get('/crm/orders');
@@ -52,7 +56,7 @@ export default function OrderList() {
                     <p className="text-gray-500 dark:text-gray-400 text-sm">Acompanhe suas vendas e status</p>
                 </div>
                 <button
-                    onClick={() => navigate('/app/orders/new')}
+                    onClick={() => navigate(`${basePath}/orders/new`)}
                     className="flex items-center justify-center bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors shadow-sm"
                 >
                     <PlusIcon className="w-5 h-5 mr-2" />
@@ -104,7 +108,11 @@ export default function OrderList() {
                         </thead>
                         <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                             {filteredOrders.map((order) => (
-                                <tr key={order.id} className="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+                                <tr
+                                    key={order.id}
+                                    className="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors cursor-pointer"
+                                    onClick={() => navigate(`${basePath}/orders/${order.id}`)}
+                                >
                                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
                                         #{order.id}
                                     </td>
@@ -128,9 +136,9 @@ export default function OrderList() {
                                             {STATUS_LABELS[order.status] || order.status}
                                         </span>
                                     </td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium" onClick={(e) => e.stopPropagation()}>
                                         <button
-                                            onClick={() => navigate(`/app/orders/${order.id}`)}
+                                            onClick={() => navigate(`${basePath}/orders/${order.id}`)}
                                             className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300"
                                         >
                                             <EyeIcon className="w-5 h-5" />

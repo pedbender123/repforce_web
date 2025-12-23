@@ -75,6 +75,8 @@ function App() {
                   <Route path="orders/new" element={<AppOrderCreate />} />
                   <Route path="orders/:id" element={<OrderDetails />} />
                   <Route path="routes/new" element={<AppRouteCreate />} />
+                  <Route path="products" element={<ProductList />} />
+                  <Route path="products/:id" element={<ProductDetails />} />
                   <Route index element={<Navigate to="dashboard" replace />} />
                 </Route>
               </Route>

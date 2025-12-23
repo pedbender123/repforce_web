@@ -1,7 +1,7 @@
 import React, { useContext } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import apiClient from '../../api/apiClient';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { PencilIcon, TrashIcon, PlusIcon } from '@heroicons/react/24/outline';
 import { AuthContext } from '../../context/AuthContext';
 
@@ -13,9 +13,13 @@ export default function ProductList() {
     const queryClient = useQueryClient();
     const { user } = useContext(AuthContext);
     const navigate = useNavigate();
+    const location = useLocation();
 
-    // Verifica permissão simplificada (idealmente viria do backend/token)
-    // Assumindo que apenas não-vendedores podem editar catálogo por enquanto
+    // Determine base path (admin or app)
+    const isAdmin = location.pathname.includes('/admin');
+    const basePath = isAdmin ? '/admin' : '/app';
+
+    // Verifica permissão simplificada
     const canEdit = user?.profile !== 'representante' && user?.profile !== 'sales_rep';
 
     const { data: products, isLoading } = useQuery(['products'], async () => {
@@ -39,7 +43,7 @@ export default function ProductList() {
                 <h2 className="text-xl font-bold dark:text-white text-gray-800">Catálogo de Produtos</h2>
                 {canEdit && (
                     <button
-                        onClick={() => navigate('/admin/products/new')}
+                        onClick={() => navigate(`${basePath}/products/new`)}
                         className="bg-blue-600 text-white px-4 py-2 rounded shadow hover:bg-blue-700 transition-colors flex items-center gap-2"
                     >
                         <PlusIcon className="w-5 h-5" /> Novo Produto
@@ -61,7 +65,11 @@ export default function ProductList() {
                     </thead>
                     <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                         {products?.map((p) => (
-                            <tr key={p.id} className="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+                            <tr
+                                key={p.id}
+                                className="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors cursor-pointer"
+                                onClick={() => navigate(`${basePath}/products/${p.id}`)}
+                            >
                                 <td className="px-6 py-4">
                                     {p.image_url ?
                                         <img src={p.image_url} alt="" className="h-10 w-10 object-cover rounded border dark:border-gray-600" /> :
@@ -73,16 +81,16 @@ export default function ProductList() {
                                 <td className="px-6 py-4 text-sm text-green-600 dark:text-green-400 font-bold">R$ {p.price?.toFixed(2)}</td>
                                 <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">{p.stock}</td>
                                 {canEdit && (
-                                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium flex justify-end gap-2">
+                                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium flex justify-end gap-2" onClick={(e) => e.stopPropagation()}>
                                         <button
-                                            onClick={() => navigate(`/admin/products/${p.id}`)}
+                                            onClick={() => navigate(`${basePath}/products/${p.id}`)}
                                             className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300 p-1"
                                             title="Editar"
                                         >
                                             <PencilIcon className="w-5 h-5" />
                                         </button>
                                         <button
-                                            onClick={() => { if (window.confirm('Excluir produto?')) deleteMutation.mutate(p.id) }}
+                                            onClick={(e) => { e.stopPropagation(); if (window.confirm('Excluir produto?')) deleteMutation.mutate(p.id) }}
                                             className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 p-1"
                                             title="Excluir"
                                         >
