@@ -34,10 +34,8 @@ def login_for_access_token(
     if role_name == 'sysadmin':
         raise HTTPException(status_code=403, detail="Login de SysAdmin deve ser feito na área restrita.")
     
-    # Define o profile baseado no role_name (já que a coluna profile foi removida)
-    profile = "sales_rep"
-    if role_name == "Admin":
-        profile = "admin"
+    # Define o profile
+    profile = role_name.lower() if role_name else "sales_rep"
     
     token_data = {
         "sub": str(user.id), 
@@ -95,6 +93,12 @@ def read_users_me(request: Request, db: Session = Depends(database.get_db)):
     
     if user is None:
         raise HTTPException(status_code=404, detail="Usuário não encontrado")
+    
+    # DEBUG MENU
+    print(f"DEBUG[me]: User {user.username} Role {user.role_obj.name}", flush=True)
+    if user.role_obj:
+        print(f"DEBUG[me]: Areas: {[a.name for a in user.role_obj.areas]}", flush=True)
+
     return user
 
 from fastapi import Body
