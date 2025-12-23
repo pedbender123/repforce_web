@@ -124,7 +124,7 @@ class TestRunner:
 
         # 2. RBAC (Area & Role)
         log("Creating Area: CRM_TEST")
-        area = models.Area(name="CRM_TEST", slug="crm_test", description="Test Area")
+        area = models.Area(name="CRM_TEST", icon="Cube", pages_json=[])
         self.db_sys.add(area)
         self.db_sys.commit()
 
