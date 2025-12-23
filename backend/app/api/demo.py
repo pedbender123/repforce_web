@@ -193,26 +193,35 @@ class DemoService:
             crm_db.close()
 
 
+from fastapi import APIRouter, Depends, HTTPException, status, Body, Request
+
+# ... (DemoService class remains same)
+
+# --- DEPENDENCIES ---
+
+def check_sysadmin(request: Request):
+    if getattr(request.state, "role_name", "") != "sysadmin":
+        raise HTTPException(status_code=403, detail="Acesso restrito a SysAdmin")
+    return True
+
 # --- ENDPOINTS ---
 
 @router.post("/{tenant_id}/start")
 def start_demo_mode(
     tenant_id: int, 
+    request: Request,
     db: Session = Depends(database.get_db),
-    current_user: models.User = Depends(permissions.get_current_sysadmin_user) 
+    _ = Depends(check_sysadmin)
 ):
     service = DemoService(db)
-    # Pass user_id if we want the data assigned to the admin running it? 
-    # Or just generic? Logic used None default, maybe user_id=current_user.id if they are in that tenant?
-    # SysAdmin is global, might not exist in tenant schema as Rep.
-    # The script uses user_id=1 as default fallback.
-    return service.start_demo(tenant_id)
+    user_id = int(request.state.user_id) if request.state.user_id else None
+    return service.start_demo(tenant_id, user_id)
 
 @router.post("/{tenant_id}/stop")
 def stop_demo_mode(
     tenant_id: int, 
     db: Session = Depends(database.get_db),
-    current_user: models.User = Depends(permissions.get_current_sysadmin_user)
+    _ = Depends(check_sysadmin)
 ):
     service = DemoService(db)
     return service.stop_demo(tenant_id)
