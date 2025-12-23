@@ -15,7 +15,7 @@ STATIC_URL_PRODUCTS = "/uploads/products"
 @router.get("/products", response_model=List[schemas.Product])
 def get_products(
     request: Request,
-    db: Session = Depends(database.get_db),
+    db: Session = Depends(database.get_crm_db),
     search: str = ""
 ):
     tenant_id = request.state.tenant_id
@@ -29,7 +29,7 @@ def get_products(
 @router.post("/products", response_model=schemas.Product, status_code=201)
 def create_product(
     request: Request,
-    db: Session = Depends(database.get_db),
+    db: Session = Depends(database.get_crm_db),
     name: str = Form(...),
     price: float = Form(...),
     sku: Optional[str] = Form(None),
