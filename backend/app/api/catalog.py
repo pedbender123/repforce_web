@@ -26,6 +26,23 @@ def get_products(
         
     return query.all()
 
+@router.get("/products/{product_id}", response_model=schemas.Product)
+def get_product_details(
+    product_id: int,
+    request: Request,
+    db: Session = Depends(database.get_crm_db)
+):
+    product = db.query(models_crm.Product).options(
+        joinedload(models_crm.Product.supplier),
+        joinedload(models_crm.Product.brand),
+        joinedload(models_crm.Product.family),
+        joinedload(models_crm.Product.type)
+    ).filter(models_crm.Product.id == product_id).first()
+
+    if not product:
+        raise HTTPException(status_code=404, detail="Produto não encontrado")
+    return product
+
 @router.post("/products", response_model=schemas.Product, status_code=201)
 def create_product(
     request: Request,

@@ -95,3 +95,18 @@ def list_orders(
     # Por enquanto retorna tudo (Scope deve ser aplicado aqui se tiver regra de "Só vejo meus pedidos")
     
     return db.query(models_crm.Order).order_by(models_crm.Order.created_at.desc()).all()
+
+@router.get("/{order_id}", response_model=schemas.Order)
+def get_order_details(
+    order_id: int,
+    request: Request,
+    db: Session = Depends(database.get_crm_db)
+):
+    order = db.query(models_crm.Order).options(
+        joinedload(models_crm.Order.items).joinedload(models_crm.OrderItem.product),
+        joinedload(models_crm.Order.client)
+    ).filter(models_crm.Order.id == order_id).first()
+
+    if not order:
+        raise HTTPException(status_code=404, detail="Pedido não encontrado")
+    return order
