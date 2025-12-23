@@ -166,8 +166,8 @@ class MicroTestRunner:
 
         # 3. Area
         def action_create_area():
-            # Correct fields: name, icon, pages_json
-            a = models.Area(name="CRM_GALAXY", icon="Star", pages_json=[])
+            # Bind area to tenant so we can clean it up, and use icon/pages_json
+            a = models.Area(name="CRM_GALAXY", icon="Star", pages_json=[], tenant_id=self.tenant_id)
             self.db_sys.add(a)
             self.db_sys.commit()
             self.db_sys.refresh(a)
@@ -346,16 +346,36 @@ class MicroTestRunner:
         log_raw("--- CLEANUP ---")
         if self.tenant_id:
             try:
+                # 1. Drop CRM Schema (Cascades to all data in schema)
                 with database.engine_crm.connect() as conn:
                     conn.execute(text(f"DROP SCHEMA IF EXISTS {self.schema_name} CASCADE"))
                     conn.commit()
+                
+                # 2. Clean System DB (Order matters for FK)
+                
+                # A. Remove Role-Area links manually
+                roles = self.db_sys.query(models.Role).filter(models.Role.tenant_id == self.tenant_id).all()
+                for r in roles:
+                    r.areas = [] # Clear Many-Many
+                self.db_sys.commit()
+
+                # B. Delete Users
                 self.db_sys.query(models.User).filter(models.User.tenant_id == self.tenant_id).delete()
+                
+                # C. Delete Roles
                 self.db_sys.query(models.Role).filter(models.Role.tenant_id == self.tenant_id).delete()
+                
+                # D. Delete Areas (Now that we bind them to tenant)
+                self.db_sys.query(models.Area).filter(models.Area.tenant_id == self.tenant_id).delete()
+
+                # E. Delete Tenant
                 self.db_sys.query(models.Tenant).filter(models.Tenant.id == self.tenant_id).delete()
                 self.db_sys.commit()
-                log_raw("Environment Destroyed")
+                
+                log_raw("Environment Destroyed (Clean)")
             except Exception as e:
                 log_raw(f"Cleanup Error: {e}")
+                self.db_sys.rollback()
 
 # --- ASYNC JOB ---
 
