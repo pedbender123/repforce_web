@@ -11,6 +11,8 @@ services:
       - .env
     networks:
       - repforce_net
+    ports:
+      - "127.0.0.1:5440:5432"
     
     # --- INÍCIO DA CORREÇÃO ---
     # Adiciona uma verificação de saúde. O 'backend' vai esperar por isto.
@@ -33,7 +35,7 @@ services:
     volumes:
       - ./backend:/app
     ports:
-      - "127.0.0.1:8000:8000"
+      - "127.0.0.1:8100:8000"
       
     # --- INÍCIO DA CORREÇÃO ---
     # Altera 'depends_on' para esperar pela condição de 'service_healthy'
@@ -63,7 +65,7 @@ services:
       dockerfile: Dockerfile
     container_name: repforce_frontend
     ports:
-      - "127.0.0.1:3000:80"
+      - "127.0.0.1:3100:80"
     networks:
       - repforce_net
     depends_on:
@@ -75,7 +77,7 @@ services:
     image: n8nio/n8n
     container_name: repforce_n8n
     ports:
-      - "127.0.0.1:5678:5678"
+      - "127.0.0.1:5700:5678"
     environment:
       - N8N_HOST=n8n.repforce.com.br
       - N8N_PORT=5678
