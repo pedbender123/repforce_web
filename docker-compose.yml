@@ -69,7 +69,7 @@ services:
     depends_on:
       - backend
     # O Dockerfile DENTRO de ./frontend-web já copia o nginx.conf
-    # que agora está em ./frontend-web/nginx.conf
+    # que agora está em ./frontend-web/nginx.con
 
   n8n:
     image: n8nio/n8n
