@@ -28,6 +28,13 @@ class DemoService:
         1. Set tenant.demo_mode_start = NOW()
         2. Populate sample data (Brands, Products, Clients, etc.)
         """
+        # Ensure schema tables exist (prevent 500 if tables missing)
+        # Note: This is an attempt to recover, though migrations should handle it.
+        try:
+            database.BaseCrm.metadata.create_all(bind=database.engine_crm)
+        except Exception as e:
+            print(f"Warning: Could not create tables for demo: {e}")
+
         tenant = self.sys_db.query(models.Tenant).filter(models.Tenant.id == tenant_id).first()
         if not tenant:
             raise HTTPException(status_code=404, detail="Tenant not found")
@@ -44,105 +51,146 @@ class DemoService:
             target_rep = self.sys_db.query(models.User).filter(models.User.tenant_id == tenant_id).first()
             rp_id = target_rep.id if target_rep else (user_id if user_id else 1)
 
+            from ..furniture_data import BRANDS, SUPPLIER, PRODUCTS, CLIENTS
+
             # 1. Brands
-            brands = []
-            for name in ["Apex Innovations", "Nebula Corp", "Quantum Gear", "Synapse Sol", "Echo Dynamics"]:
-                b = models_crm.Brand(name=name)
-                crm_db.add(b)
-                brands.append(b)
-            crm_db.commit() # Get IDs
+            db_brands = []
+            for name in BRANDS:
+                # Check if exists
+                existing = crm_db.query(models_crm.Brand).filter(models_crm.Brand.name == name).first()
+                if not existing:
+                    b = models_crm.Brand(name=name)
+                    crm_db.add(b)
+                    db_brands.append(b)
+                else:
+                    db_brands.append(existing)
+            crm_db.commit()
 
-            # 2. Families & Types (Skip for brevity, use defaults if model allows, or create simple ones)
-            # Assuming Product just needs Brand/Supplier
+            # Refresh brands to get IDs
+            for b in db_brands:
+                crm_db.refresh(b)
             
-            # 3. Suppliers
-            supplier = models_crm.Supplier(name="Global Demo Supply", email="demo@supply.com")
-            crm_db.add(supplier)
-            crm_db.commit()
+            # 2. Suppliers
+            db_supplier = crm_db.query(models_crm.Supplier).filter(models_crm.Supplier.name == SUPPLIER["name"]).first()
+            if not db_supplier:
+                db_supplier = models_crm.Supplier(name=SUPPLIER["name"], email=SUPPLIER["email"])
+                crm_db.add(db_supplier)
+                crm_db.commit()
+                crm_db.refresh(db_supplier)
 
-            # 4. Products (20 items)
-            products = []
-            for i in range(1, 21):
-                p = models_crm.Product(
-                    name=f"Demo Product {i}",
-                    sku=f"DEMO-{uuid.uuid4().hex[:6].upper()}",
-                    price=float(random.randint(10, 500)),
-                    brand_id=random.choice(brands).id,
-                    supplier_id=supplier.id
-                )
-                crm_db.add(p)
-                products.append(p)
-            crm_db.commit()
-
-            # 5. Clients (10 items)
-            clients = []
-            # rp_id determined above
-            for i in range(1, 11):
-                c = models_crm.Client(
-                    name=f"Demo Client {i}",
-                    fantasy_name=f"Demo Client {i} LLC",
-                    cnpj=f"00.000.000/000{i}-00",
-                    status="active",
-                    representative_id=rp_id,
-                    address="Rua Demo, 123 - Centro",
-                    city="Demo City",
-                    state="SP",
-                    zip_code="00000-000"
-                )
-                crm_db.add(c)
-                clients.append(c)
+            # 3. Products
+            db_products = []
+            for prod_data in PRODUCTS:
+                existing = crm_db.query(models_crm.Product).filter(models_crm.Product.sku == prod_data["sku"]).first()
+                if not existing:
+                    p = models_crm.Product(
+                        name=prod_data["name"],
+                        sku=prod_data["sku"],
+                        price=prod_data["price"],
+                        brand_id=random.choice(db_brands).id,
+                        supplier_id=db_supplier.id
+                    )
+                    crm_db.add(p)
+                    db_products.append(p)
+                else:
+                    db_products.append(existing)
             crm_db.commit()
             
-            # 6. Orders (5 samples)
-            # Create a few orders for the first few clients
-            for i in range(5):
-                client = clients[i]
-                prod = random.choice(products)
-                qty = random.randint(1, 5)
-                total = prod.price * qty
-                
-                o = models_crm.Order(
-                    client_id=client.id,
-                    representative_id=rp_id,
-                    status="draft",
-                    total_value=total,
-                    notes="Demonstração gerada automaticamente"
-                )
-                crm_db.add(o)
-                crm_db.commit()
-                
-                item = models_crm.OrderItem(
-                    order_id=o.id,
-                    product_id=prod.id,
-                    quantity=qty,
-                    unit_price=prod.price,
-                    net_unit_price=prod.price,
-                    total=total
-                )
-                crm_db.add(item)
-                crm_db.commit()
+            # Refresh products
+            for p in db_products:
+                crm_db.refresh(p)
 
-            # 7. Visit Routes (1 sample route)
-            # Route for today with 5 stops
+            # 4. Clients
+            db_clients = []
+            for client_data in CLIENTS:
+                existing = crm_db.query(models_crm.Client).filter(models_crm.Client.cnpj == client_data["cnpj"]).first()
+                if not existing:
+                    c = models_crm.Client(
+                        name=client_data["name"],
+                        fantasy_name=client_data["fantasy_name"],
+                        cnpj=client_data["cnpj"],
+                        status="active",
+                        representative_id=rp_id,
+                        address="Rua Exemplo, 100",
+                        city=client_data["city"],
+                        state=client_data["state"],
+                        zip_code="00000-000",
+                        email=client_data.get("email") # Handle optional email
+                    )
+                    crm_db.add(c)
+                    db_clients.append(c)
+                else:
+                    db_clients.append(existing)
+            crm_db.commit()
+            
+            # Refresh clients
+            for c in db_clients:
+                crm_db.refresh(c)
+            
+            # 5. Orders (Create if Products and Clients exist)
+            if db_products and db_clients:
+                # Create a few random orders using these realistic entities
+                for i in range(5):
+                    client = random.choice(db_clients)
+                    
+                    # Create Order
+                    o = models_crm.Order(
+                        client_id=client.id,
+                        representative_id=rp_id,
+                        status="draft",
+                        total_value=0, # Will calc below
+                        notes="Demonstração gerada automaticamente"
+                    )
+                    crm_db.add(o)
+                    crm_db.commit()
+                    crm_db.refresh(o)
+                    
+                    # Add items
+                    total = 0
+                    num_items = random.randint(1, 3)
+                    for _ in range(num_items):
+                        prod = random.choice(db_products)
+                        qty = random.randint(1, 3)
+                        item_total = prod.price * qty
+                        
+                        item = models_crm.OrderItem(
+                            order_id=o.id,
+                            product_id=prod.id,
+                            quantity=qty,
+                            unit_price=prod.price,
+                            net_unit_price=prod.price,
+                            total=item_total
+                        )
+                        crm_db.add(item)
+                        total += item_total
+                    
+                    o.total_value = total
+                    crm_db.commit()
+
+            # 6. Visit Routes (1 sample route)
             today_str = datetime.now().strftime("%Y-%m-%d")
             stops_data = []
-            for client in clients[:5]:
+            for client in db_clients[:5]:
                 stops_data.append({
                     "client_id": client.id, 
                     "status": "pending",
                     "order": len(stops_data) + 1
                 })
             
-            route = models_crm.VisitRoute(
-                name=f"Rota Demonstração - {today_str}",
-                date=today_str,
-                stops=stops_data,
-                user_id=rp_id
-            )
-            crm_db.add(route)
-            crm_db.commit()
+            route_name = f"Rota Demonstração - {today_str}"
+            existing_route = crm_db.query(models_crm.VisitRoute).filter(models_crm.VisitRoute.name == route_name).first()
+            if not existing_route:
+                route = models_crm.VisitRoute(
+                    name=route_name,
+                    date=today_str,
+                    stops=stops_data,
+                    user_id=rp_id
+                )
+                crm_db.add(route)
+                crm_db.commit()
 
             return {"message": "Demo Mode Activated", "start_time": start_time}
+
             
         except Exception as e:
             crm_db.rollback()
