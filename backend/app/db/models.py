@@ -2,7 +2,11 @@ from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, Float, Date
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from app.db.database import Base
+from .models_global import Tenant, GlobalUser, ApiKey
 import enum
+
+# Backwards compatibility alias
+User = GlobalUser
 
 # Enums
 class UserRole(str, enum.Enum):
@@ -26,27 +30,7 @@ role_area_association = Table(
 )
 
 # --- CORE ---
-class Tenant(Base):
-    __tablename__ = "tenants"
-    id = Column(Integer, primary_key=True, index=True)
-    name = Column(String, index=True)
-    cnpj = Column(String, unique=True, index=True)
-    status = Column(String, default="active") 
-    is_active = Column(Boolean, default=True)
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
-    tenant_type = Column(String, default="industry") 
-    commercial_info = Column(Text, nullable=True)
-    logo_url = Column(String, nullable=True)
-    
-    # Demo Mode
-    demo_mode_start = Column(DateTime(timezone=True), nullable=True)
-    
-    users = relationship("User", back_populates="tenant")
-    # CRM relationships removed (products, clients, orders, suppliers, routes)
-    
-    # Novos relacionamentos de configuração
-    roles = relationship("Role", back_populates="tenant")
-    areas = relationship("Area", back_populates="tenant")
+# Tenant is imported from models_global
 
 class Area(Base):
     """
@@ -62,7 +46,7 @@ class Area(Base):
     pages_json = Column(JSON, default=[]) 
     
     tenant_id = Column(Integer, ForeignKey("tenants.id"))
-    tenant = relationship("Tenant", back_populates="areas")
+    tenant = relationship("Tenant") # Simplified relationship
     
     roles = relationship("Role", secondary=role_area_association, back_populates="areas")
 
@@ -80,50 +64,27 @@ class Role(Base):
     access_level = Column(String, default=AccessLevel.OWN) # global, team, own
     
     tenant_id = Column(Integer, ForeignKey("tenants.id"))
-    tenant = relationship("Tenant", back_populates="roles")
+    tenant = relationship("Tenant")
     
     areas = relationship("Area", secondary=role_area_association, back_populates="roles")
-    users = relationship("User", back_populates="role_obj")
-
-class User(Base):
-    __tablename__ = "users"
-    id = Column(Integer, primary_key=True, index=True)
-    username = Column(String, unique=True, index=True)
-    email = Column(String, index=True)
-    hashed_password = Column(String)
-    name = Column(String)
-    full_name = Column(String, nullable=True)
     
-    # Mantemos 'profile' para distinguir SysAdmin vs Usuário de Tenant
-    # profile = Column(String, default="sales_rep") # REMOVED 
-    is_active = Column(Boolean, default=True)
-    
-    tenant_id = Column(Integer, ForeignKey("tenants.id"), nullable=True)
-    tenant = relationship("Tenant", back_populates="users")
-    
-    # Novo: Link para o Cargo (Role)
-    role_id = Column(Integer, ForeignKey("roles.id"), nullable=True)
-    role_obj = relationship("Role", back_populates="users")
+    # User relationship here is tricky because User is Global.
+    # But old User had 'role_id'.
+    # GlobalUser doesn't have role_id (Membership has role as string).
+    # So this relationship will likely fail if we try to access it via ORM unless we map GlobalUser.role_id (which doesn't exist anymore).
+    # We must remove the User relationship or accept it breaks.
+    # users = relationship("User", back_populates="role_obj") # DELETED
 
-    # CRM relationships removed (orders, routes, clients)
+# User is imported from models_global
 
-    grid_preferences = relationship("UserGridPreference", back_populates="user")
-
-class ApiKey(Base):
-    __tablename__ = "api_keys"
-    id = Column(Integer, primary_key=True, index=True)
-    key = Column(String, unique=True, index=True)
-    name = Column(String) # Ex: "n8n Integration"
-    tenant_id = Column(Integer, ForeignKey("tenants.id"))
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
-    is_active = Column(Boolean, default=True)
-    scopes = Column(JSON, default=["crm_full"]) # Ex: ["crm_full", "system_read"]
+# ApiKey is imported from models_global
 
 class UserGridPreference(Base):
     __tablename__ = "user_grid_preferences"
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"))
+    user_id = Column(Integer, ForeignKey("global_users.id")) # Fixed FK
     grid_id = Column(String, index=True) # Ex: "product_list", "client_list"
     columns_json = Column(JSON, default=[]) # Ex: [{"field": "sku", "visible": true}, ...]
     
-    user = relationship("User", back_populates="grid_preferences")
+    # user = relationship("User", back_populates="grid_preferences")
+    # For now, disable relationship back_populates if it causes issues, or fix User model.
