@@ -1,8 +1,9 @@
 from pydantic_settings import BaseSettings
+from typing import Optional
 
 class Settings(BaseSettings):
-    DATABASE_URL: str
-    CRM_DATABASE_URL: str
+    DATABASE_URL: Optional[str] = "sqlite:///./app/data/manager.db"
+    CRM_DATABASE_URL: Optional[str] = None # Not used in SaaS Lite
     SECRET_KEY: str
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 12 # 12 horas padrão
