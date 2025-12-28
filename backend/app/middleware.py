@@ -79,6 +79,7 @@ class TenantMiddleware(BaseHTTPMiddleware):
                 # SysAdmin bypass?
                 is_sysadmin = payload.get("is_sysadmin", False)
                 if is_sysadmin:
+                    request.state.role_name = "sysadmin" # Explicitly set for check_sysadmin dependency
                     pass # Allow
                 else:
                     membership = db.query(models_global.Membership).filter(
