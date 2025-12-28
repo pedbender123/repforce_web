@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import sysAdminApiClient from '../api/sysAdminApiClient'; 
+import sysAdminApiClient from '../api/sysAdminApiClient';
 import { jwtDecode } from 'jwt-decode';
 
 const SYSADMIN_TOKEN_KEY = 'sysadmin_token';
@@ -20,13 +20,14 @@ export const SysAdminAuthProvider = ({ children }) => {
         const storedToken = localStorage.getItem(SYSADMIN_TOKEN_KEY);
         if (storedToken) {
           const decodedToken = jwtDecode(storedToken);
-          
+
           if (decodedToken.exp * 1000 < Date.now()) {
             throw new Error("Token expirado");
           }
 
           setToken(storedToken);
-          setUserProfile(decodedToken.profile);
+          const isSysAdmin = decodedToken.is_sysadmin;
+          setUserProfile(isSysAdmin ? 'sysadmin' : null);
         } else {
           setToken(null);
           setUserProfile(null);
@@ -58,13 +59,20 @@ export const SysAdminAuthProvider = ({ children }) => {
 
       const { access_token } = response.data;
       const decodedToken = jwtDecode(access_token);
-      const profile = decodedToken.profile;
+
+      // FIX: Backend 'SaaS Lite' manda is_sysadmin: true, não profile
+      const isSysAdmin = decodedToken.is_sysadmin;
+      const profile = isSysAdmin ? 'sysadmin' : null;
+
+      if (!isSysAdmin) {
+        throw new Error("Usuário não é SysAdmin");
+      }
 
       localStorage.setItem(SYSADMIN_TOKEN_KEY, access_token);
       setToken(access_token);
-      setUserProfile(profile);
+      setUserProfile('sysadmin');
 
-      return profile;
+      return 'sysadmin';
     } catch (error) {
       console.error('Erro no login SysAdmin:', error);
       throw error;
