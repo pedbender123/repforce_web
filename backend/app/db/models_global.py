@@ -1,0 +1,69 @@
+from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, DateTime, Text
+from sqlalchemy.orm import relationship
+from sqlalchemy.sql import func
+from app.db.database import Base
+
+class GlobalUser(Base):
+    __tablename__ = "global_users"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    username = Column(String, unique=True, index=True)
+    email = Column(String, index=True) # Optional or required, but username is primary login
+    hashed_password = Column(String)
+    full_name = Column(String, nullable=True)
+    is_active = Column(Boolean, default=True)
+    is_sysadmin = Column(Boolean, default=False)
+    
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    
+    # Relationships
+    memberships = relationship("Membership", back_populates="user")
+
+class Tenant(Base):
+    __tablename__ = "tenants"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, index=True)
+    slug = Column(String, unique=True, index=True) # Critical for routing
+    plan_type = Column(String, default="trial")
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    
+    # Relationships
+    memberships = relationship("Membership", back_populates="tenant")
+    invites = relationship("Invite", back_populates="tenant")
+
+class Membership(Base):
+    __tablename__ = "memberships"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("global_users.id"))
+    tenant_id = Column(Integer, ForeignKey("tenants.id"))
+    role = Column(String, default="user") # 'owner', 'admin', 'user' - Global Tenant Role
+    
+    user = relationship("GlobalUser", back_populates="memberships")
+    tenant = relationship("Tenant", back_populates="memberships")
+
+class Invite(Base):
+    __tablename__ = "invites"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    code = Column(String, unique=True, index=True)
+    email = Column(String)
+    tenant_id = Column(Integer, ForeignKey("tenants.id"))
+    role = Column(String, default="user")
+    expires_at = Column(DateTime)
+    
+    tenant = relationship("Tenant", back_populates="invites")
+
+class ApiKey(Base):
+    __tablename__ = "api_keys"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    key = Column(String, unique=True, index=True)
+    name = Column(String) 
+    tenant_id = Column(Integer, ForeignKey("tenants.id"))
+    is_active = Column(Boolean, default=True)
+    scopes = Column(Text, default="crm_full") # JSON not strictly needed for MVP
+    
+    tenant = relationship("Tenant")

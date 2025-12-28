@@ -1,64 +1,30 @@
 services:
-  db:
-    image: postgres:15
-    container_name: repforce_db
-    volumes:
-      - ./postgres-data:/var/lib/postgresql/data
-    
-    # AQUI: O Docker Compose vai ler o arquivo .env na pasta raiz
-    # e injetar as variáveis (POSTGRES_USER, etc.) neste contêiner.
-    env_file:
-      - .env
-    networks:
-      - repforce_net
-    ports:
-      - "127.0.0.1:5440:5432"
-    
-    # --- INÍCIO DA CORREÇÃO ---
-    # Adiciona uma verificação de saúde. O 'backend' vai esperar por isto.
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-    # --- FIM DA CORREÇÃO ---
-
   backend:
     build:
       context: ./backend
       dockerfile: Dockerfile
     container_name: repforce_backend
     
-    # REMOVIDO: O '--reload' não deve ser usado em produção.
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000
     
     volumes:
       - ./backend:/app
+      - ./backend/app/data:/app/data # PERSISTENCE for SQLite
+      - ./backend/uploads:/app/uploads # Helper for uploads
     ports:
       - "127.0.0.1:8100:8000"
       
-    # --- INÍCIO DA CORREÇÃO ---
-    # Altera 'depends_on' para esperar pela condição de 'service_healthy'
-    depends_on:
-      db:
-        condition: service_healthy
-    # --- FIM DA CORREÇÃO ---
-      
-    # AQUI: Injeta as variáveis do .env (SECRET_KEY, ALGORITHM, etc.)
     env_file:
       - .env
       
-    # AQUI: Construímos a DATABASE_URL usando as variáveis
-    # que foram injetadas do .env.
     environment:
-      DATABASE_URL: "postgresql+psycopg2://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}"
-      CRM_DATABASE_URL: "postgresql+psycopg2://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}"
+      # SQLite doesn't need URL env var if hardcoded in database.py, but good to keep clean
+      DATABASE_URL: "sqlite:////app/data/manager.db"
     networks:
       - repforce_net
 
   frontend-web:
     build:
-      # O contexto agora aponta para a pasta correta
       context: ./frontend-web
       args:
         - REACT_APP_API_URL=https://repforce.com.br/api 
@@ -70,8 +36,6 @@ services:
       - repforce_net
     depends_on:
       - backend
-    # O Dockerfile DENTRO de ./frontend-web já copia o nginx.conf
-    # que agora está em ./frontend-web/nginx.con
 
   n8n:
     image: n8nio/n8n
@@ -96,5 +60,4 @@ networks:
     driver: bridge
 
 volumes:
-  postgres-data:
   n8n_data:
