@@ -29,9 +29,24 @@ class Tenant(Base):
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     
+    # Legacy Fields Support
+    cnpj = Column(String, nullable=True)
+    commercial_info = Column(Text, nullable=True)
+    logo_url = Column(String, nullable=True)
+    status = Column(String, default="active")
+    tenant_type = Column(String, default="industry")
+    demo_mode_start = Column(DateTime(timezone=True), nullable=True)
+    
     # Relationships
     memberships = relationship("Membership", back_populates="tenant")
     invites = relationship("Invite", back_populates="tenant")
+    
+    # Back-compat for 'users' rel? 
+    # GlobalUser links via Membership. 
+    # If legacy code checks tenant.users, it expects User objects.
+    # We can't easily proxy this. Legacy code checking tenant.users must be refactored to use memberships.
+    # But for now, we leave it. If code accesses tenant.users, it will crash.
+
 
 class Membership(Base):
     __tablename__ = "memberships"
