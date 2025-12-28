@@ -10,12 +10,16 @@ def get_database_url():
     Retorna a URL de conexão do PostgreSQL.
     Tenta ler de variáveis de ambiente do Docker ou usa localhost como fallback.
     """
+    # Priority 1: DATABASE_URL (Docker)
+    if os.getenv("DATABASE_URL"):
+        return os.getenv("DATABASE_URL")
+
+    # Priority 2: Build from components
     user = os.getenv("POSTGRES_USER", "postgres")
     password = os.getenv("POSTGRES_PASSWORD", "postgres")
-    server = os.getenv("POSTGRES_HOST", "db") # 'db' é o nome do serviço no Docker Compose
-    # Se estiver rodando localmente (fora do docker), 'db' não resolve. Tenta localhost.
-    # Mas o env POSTGRES_HOST deve vir do docker-compose.
-    # Fallback seguro para dev local sem docker env:
+    server = os.getenv("POSTGRES_HOST", "db") 
+    
+    # Fallback logic for local dev
     if os.getenv("KUBERNETES_SERVICE_HOST") is None and not os.getenv("POSTGRES_HOST"):
         server = "localhost"
         
