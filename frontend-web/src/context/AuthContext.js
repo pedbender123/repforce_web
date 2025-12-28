@@ -9,45 +9,46 @@ export const AuthContext = createContext({});
 export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null);
     const [token, setToken] = useState(null);
+    const [tenant, setTenant] = useState(null); // Selected Tenant
     const [loading, setLoading] = useState(true);
 
-    // Função auxiliar para hidratar dados completos do usuário
     const hydrateUserData = async (tokenStr) => {
         try {
-            // 1. Decodifica básico para não bloquear UX imediata (opcional)
-            // const decoded = jwtDecode(tokenStr);
-            // setUser(decoded); // Se quiser mostrar algo rápido
-
-            // 2. Busca dados completos da API (/me)
-            // Precisamos importar o sysAdminApiClient (ou criar um client genérico, mas sysAdminClient pode não ter o header correto setado ainda se não for singleton com interceptor dinâmico)
-            // Melhor usar fetch direto ou garantir que o client use o token passado
-            const response = await fetch('http://localhost:8000/auth/users/me', {
+            // Use relative URL via fetch or apiClient. Here using fetch relative to origin (via Nginx proxy)
+            const response = await fetch('/api/auth/users/me', {
                 headers: { 'Authorization': `Bearer ${tokenStr}` }
             });
 
             if (response.ok) {
                 const fullUser = await response.json();
-                // Garante que profile venha correto (priority: Role Name > Profile > 'sales_rep')
-                // Mas o backend já manda role_obj.
                 setUser(fullUser);
             } else {
-                // Fallback para o token decode se API falhar? Ou logout?
-                // Se falhar /me, provavelmente token inválido ou erro server. Melhor logout ou retry.
-                console.error("Erro ao hidratar usuário via /me", response.status);
-                const decoded = jwtDecode(tokenStr);
-                setUser(decoded); // Fallback parcial
+                console.error("Error hydrating user", response.status);
+                // Don't logout immediately, might be network error. But if 401, yes.
+                if (response.status === 401) logout();
+                else {
+                    const decoded = jwtDecode(tokenStr);
+                    setUser(decoded);
+                }
             }
         } catch (err) {
-            console.error("Erro fetch /me", err);
-            // Fallback
+            console.error("Error fetching /me", err);
             const decoded = jwtDecode(tokenStr);
             setUser(decoded);
         }
     }
 
+    const selectTenant = (slug) => {
+        setTenant(slug);
+        localStorage.setItem('tenantSlug', slug);
+        // Optimistically update profile/role if needed, or rely on next API call
+    };
+
     useEffect(() => {
         const recoverUser = async () => {
             const storedToken = localStorage.getItem('token');
+            const storedTenant = localStorage.getItem('tenantSlug');
+
             if (storedToken) {
                 try {
                     const decoded = jwtDecode(storedToken);
@@ -56,11 +57,10 @@ export const AuthProvider = ({ children }) => {
                         logout();
                     } else {
                         setToken(storedToken);
-                        // AQUI: Chama hidratação em vez de apenas setUser(decoded)
+                        if (storedTenant) setTenant(storedTenant);
                         await hydrateUserData(storedToken);
                     }
                 } catch (error) {
-                    console.error("Token inválido", error);
                     logout();
                 }
             }
@@ -70,17 +70,19 @@ export const AuthProvider = ({ children }) => {
         recoverUser();
     }, []);
 
-    const login = async (newToken) => {
-        localStorage.setItem('token', newToken);
-        setToken(newToken);
-        // AQUI: Chama hidratação também
-        await hydrateUserData(newToken);
+    const login = async (newToken, access_token) => { // Accept object or string? Login page sends string.
+        const t = newToken || access_token;
+        localStorage.setItem('token', t);
+        setToken(t);
+        await hydrateUserData(t);
     };
 
     const logout = () => {
         localStorage.removeItem('token');
+        localStorage.removeItem('tenantSlug');
         setToken(null);
         setUser(null);
+        setTenant(null);
     };
 
     return (
@@ -88,7 +90,10 @@ export const AuthProvider = ({ children }) => {
             authenticated: !!user,
             user,
             token,
-            userProfile: user?.profile,
+            tenant,
+            userProfile: user?.profile, // Legacy support if field exists
+            isSysAdmin: user?.is_sysadmin,
+            selectTenant,
             login,
             logout,
             isLoadingAuth: loading,
