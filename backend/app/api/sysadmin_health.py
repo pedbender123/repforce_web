@@ -41,7 +41,11 @@ def save_status_data(data):
         json.dump(data, f, default=str)
 
 def check_sysadmin_profile(request: Request):
-    if getattr(request.state, "role_name", None) != 'sysadmin':
+    # Check both legacy role_name and new is_sysadmin flag
+    role = getattr(request.state, "role_name", "")
+    is_sys = getattr(request.state, "is_sysadmin", False)
+    
+    if role != 'sysadmin' and not is_sys:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Acesso restrito a SysAdmins."
