@@ -5,6 +5,7 @@ from app.db.database import Base
 
 class GlobalUser(Base):
     __tablename__ = "global_users"
+    __table_args__ = {"schema": "public"}
     
     id = Column(Integer, primary_key=True, index=True)
     username = Column(String, unique=True, index=True)
@@ -21,6 +22,7 @@ class GlobalUser(Base):
 
 class Tenant(Base):
     __tablename__ = "tenants"
+    __table_args__ = {"schema": "public"}
     
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, index=True)
@@ -40,20 +42,14 @@ class Tenant(Base):
     # Relationships
     memberships = relationship("Membership", back_populates="tenant")
     invites = relationship("Invite", back_populates="tenant")
-    
-    # Back-compat for 'users' rel? 
-    # GlobalUser links via Membership. 
-    # If legacy code checks tenant.users, it expects User objects.
-    # We can't easily proxy this. Legacy code checking tenant.users must be refactored to use memberships.
-    # But for now, we leave it. If code accesses tenant.users, it will crash.
-
 
 class Membership(Base):
     __tablename__ = "memberships"
+    __table_args__ = {"schema": "public"}
     
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("global_users.id"))
-    tenant_id = Column(Integer, ForeignKey("tenants.id"))
+    user_id = Column(Integer, ForeignKey("public.global_users.id")) # Explicit schema
+    tenant_id = Column(Integer, ForeignKey("public.tenants.id")) # Explicit schema
     role = Column(String, default="user") # 'owner', 'admin', 'user' - Global Tenant Role
     
     user = relationship("GlobalUser", back_populates="memberships")
@@ -61,11 +57,12 @@ class Membership(Base):
 
 class Invite(Base):
     __tablename__ = "invites"
+    __table_args__ = {"schema": "public"}
     
     id = Column(Integer, primary_key=True, index=True)
     code = Column(String, unique=True, index=True)
     email = Column(String)
-    tenant_id = Column(Integer, ForeignKey("tenants.id"))
+    tenant_id = Column(Integer, ForeignKey("public.tenants.id"))
     role = Column(String, default="user")
     expires_at = Column(DateTime)
     
@@ -73,11 +70,12 @@ class Invite(Base):
 
 class ApiKey(Base):
     __tablename__ = "api_keys"
+    __table_args__ = {"schema": "public"}
     
     id = Column(Integer, primary_key=True, index=True)
     key = Column(String, unique=True, index=True)
     name = Column(String) 
-    tenant_id = Column(Integer, ForeignKey("tenants.id"))
+    tenant_id = Column(Integer, ForeignKey("public.tenants.id"))
     is_active = Column(Boolean, default=True)
     scopes = Column(Text, default="crm_full") # JSON not strictly needed for MVP
     

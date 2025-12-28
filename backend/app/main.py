@@ -26,36 +26,33 @@ def serve_upload(file_path: str):
 
 @app.on_event("startup")
 def startup_event():
-    # 1. Initialize Manager DB (Global)
-    print("Initializing Manager DB...")
-    models_global.Base.metadata.create_all(bind=database.engine_sys)
+    # 1. Initialize Global Tables (Public Schema)
+    print("Initializing Global Tables (Public Schema)...")
+    try:
+        models_global.Base.metadata.create_all(bind=database.engine)
+    except Exception as e:
+        print(f"Schema Init Error (Ensure Postgres is up): {e}")
     
-    # 2. Initialize Template DB (CRM Source)
-    template_path = os.path.join(database.DATA_DIR, "template.db")
-    if not os.path.exists(template_path):
-        print(f"Creating template.db at {template_path}...")
-        url = f"sqlite:///{template_path}"
-        engine_template = create_engine(url)
-        models_crm.BaseCrm.metadata.create_all(bind=engine_template)
-        print("Template DB initialized.")
-
-    # 3. Seed SysAdmin (Global)
+    # 2. Seed SysAdmin (Global)
     db = database.SessionSys()
     try:
+        # Check if user exists
+        # Note: SessionSys is bound to engine, default search_path=public usually
         sysadmin_user = db.query(models_global.GlobalUser).filter(models_global.GlobalUser.username == "sysadmin").first()
         if not sysadmin_user:
+            print("Seeding SysAdmin...")
             hashed_pw = security.get_password_hash("12345678")
             sysadmin_user = models_global.GlobalUser(
                 username="sysadmin",
                 email="sysadmin@repforce.com",
                 hashed_password=hashed_pw,
                 full_name="System Administrator",
-                is_sysadmin=True
+                is_sysadmin=True,
+                is_active=True
             )
             db.add(sysadmin_user)
             db.commit()
             print("SysAdmin created: sysadmin / 12345678")
-            
     except Exception as e:
         print(f"Startup Seeding Error: {e}")
     finally:

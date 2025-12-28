@@ -1,27 +1,43 @@
 services:
+  db:
+    image: postgres:15-alpine
+    container_name: repforce_db
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=repforce
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    ports:
+      - "127.0.0.1:5432:5432"
+    networks:
+      - repforce_net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
   backend:
     build:
       context: ./backend
       dockerfile: Dockerfile
     container_name: repforce_backend
-    
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8000
-    
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
     volumes:
       - ./backend:/app
-      - ./backend/app/data:/app/data # PERSISTENCE for SQLite
-      - ./backend/uploads:/app/uploads # Helper for uploads
+      - ./backend/uploads:/app/uploads
     ports:
       - "127.0.0.1:8100:8000"
-      
     env_file:
       - .env
-      
     environment:
-      # SQLite doesn't need URL env var if hardcoded in database.py, but good to keep clean
-      DATABASE_URL: "sqlite:////app/data/manager.db"
+      DATABASE_URL: postgresql://postgres:postgres@db:5432/repforce
     networks:
       - repforce_net
+    depends_on:
+      db:
+        condition: service_healthy
 
   frontend-web:
     build:
@@ -60,4 +76,5 @@ networks:
     driver: bridge
 
 volumes:
+  pg_data:
   n8n_data:

@@ -20,7 +20,8 @@ class DemoService:
     def _get_crm_session(self, tenant_id: int):
         db = database.SessionCrm()
         schema_name = f"tenant_{tenant_id}"
-        db.execute(text(f"SET search_path TO {schema_name}"))
+        # Set Search Path to Tenant schema then Public (for global access if needed)
+        db.execute(text(f"SET search_path TO \"{schema_name}\", public"))
         return db
 
     def start_demo(self, tenant_id: int, user_id: Optional[int] = None):
