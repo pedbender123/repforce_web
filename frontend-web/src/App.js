@@ -13,6 +13,7 @@ import SysAdminLayout from './components/SysAdminLayout';
 // Public Pages
 import Login from './pages/system/Login';
 import SysAdminLogin from './pages/system/SysAdminLogin';
+import TenantSelection from './pages/TenantSelection';
 
 // App Pages (Sales Rep)
 import AppDashboard from './pages/crm/AppDashboard';
@@ -59,8 +60,11 @@ function App() {
               <Route path="/login" element={<Login />} />
               <Route path="/sysadmin/login" element={<SysAdminLogin />} />
 
+              {/* Lobby (Select Tenant) */}
+              <Route path="/lobby" element={<PrivateRoute><TenantSelection /></PrivateRoute>} />
+
               {/* Root Redirect */}
-              <Route path="/" element={<Navigate to="/app/dashboard" replace />} />
+              <Route path="/" element={<Navigate to="/lobby" replace />} />
 
               {/* APP ROUTES (Sales Rep) */}
               <Route path="/app" element={<PrivateRoute><CrmLayout /></PrivateRoute>}>
