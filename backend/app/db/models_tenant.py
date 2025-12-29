@@ -40,7 +40,7 @@ class Order(BaseCrm):
 
     client = relationship("Client", back_populates="orders")
 
-    client = relationship("Client", back_populates="orders")
+
 
 class ProductCategory(BaseCrm):
     __tablename__ = "products_categories"
@@ -55,6 +55,25 @@ class Product(BaseCrm):
     price = Column(Float)
     specs = Column(JSONB, default={}) # Flexible specs
     category_id = Column(UUID(as_uuid=True), ForeignKey("products_categories.id"))
+    brand_id = Column(UUID(as_uuid=True), ForeignKey("brands.id"))
+    supplier_id = Column(UUID(as_uuid=True), ForeignKey("suppliers.id"))
+
+    brand = relationship("Brand", back_populates="products")
+    supplier = relationship("Supplier", back_populates="products")
+
+class Brand(BaseCrm):
+    __tablename__ = "brands"
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    name = Column(String)
+    products = relationship("Product", back_populates="brand")
+
+class Supplier(BaseCrm):
+    __tablename__ = "suppliers"
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    name = Column(String)
+    email = Column(String)
+    phone = Column(String)
+    products = relationship("Product", back_populates="supplier")
 
 class DiscountRule(BaseCrm):
     __tablename__ = "discount_rules"
