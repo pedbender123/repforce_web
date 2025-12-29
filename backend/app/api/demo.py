@@ -36,7 +36,7 @@ class DemoService:
         except Exception as e:
             print(f"Warning: Could not create tables for demo: {e}")
 
-        tenant = self.sys_db.query(models.Tenant).filter(models.Tenant.id == tenant_id).first()
+        tenant = self.sys_db.query(models_system.Tenant).filter(models_system.Tenant.id == tenant_id).first()
         if not tenant:
             raise HTTPException(status_code=404, detail="Tenant not found")
         
@@ -49,7 +49,7 @@ class DemoService:
         try:
             # 0. Find a Target Representative (First user in tenant)
             # This ensures the demo data is visible to someone in the tenant
-            target_rep = self.sys_db.query(models.User).filter(models.User.tenant_id == tenant_id).first()
+            target_rep = self.sys_db.query(models_system.GlobalUser).filter(models_system.GlobalUser.tenant_id == tenant_id).first()
             rp_id = target_rep.id if target_rep else (user_id if user_id else 1)
 
             from ..furniture_data import BRANDS, SUPPLIER, PRODUCTS, CLIENTS
@@ -209,7 +209,7 @@ class DemoService:
         2. DELETE FROM tables WHERE created_at >= start
         3. Set demo_mode_start = NULL
         """
-        tenant = self.sys_db.query(models.Tenant).filter(models.Tenant.id == tenant_id).first()
+        tenant = self.sys_db.query(models_system.Tenant).filter(models_system.Tenant.id == tenant_id).first()
         if not tenant:
             raise HTTPException(status_code=404, detail="Tenant not found")
         

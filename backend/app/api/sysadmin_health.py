@@ -145,7 +145,7 @@ class MicroTestRunner:
         def action_create_tenant():
             # Use timestamp based CNPJ to avoid collision if cleanup fails
             random_cnpj = f"{int(time.time()*1000)}"[:14]
-            t = models.Tenant(name=f"Galaxy_{self.run_id}", cnpj=random_cnpj, status="active")
+            t = models_system.Tenant(name=f"Galaxy_{self.run_id}", cnpj=random_cnpj, status="active")
             self.db_sys.add(t)
             self.db_sys.commit()
             self.db_sys.refresh(t)
@@ -171,7 +171,7 @@ class MicroTestRunner:
         # 3. Area
         def action_create_area():
             # Bind area to tenant so we can clean it up, and use icon/pages_json
-            a = models.Area(name="CRM_GALAXY", icon="Star", pages_json=[], tenant_id=self.tenant_id)
+            a = models_system.Area(name="CRM_GALAXY", icon="Star", pages_json=[], tenant_id=self.tenant_id)
             self.db_sys.add(a)
             self.db_sys.commit()
             self.db_sys.refresh(a)
@@ -181,9 +181,9 @@ class MicroTestRunner:
         
         # 4. Role
         def action_create_role():
-            r = models.Role(name="GalaxyCommander", tenant_id=self.tenant_id, access_level="tenant")
+            r = models_system.Role(name="GalaxyCommander", tenant_id=self.tenant_id, access_level="tenant")
             # Link Area
-            area = self.db_sys.query(models.Area).get(area_res["id"])
+            area = self.db_sys.query(models_system.Area).get(area_res["id"])
             r.areas.append(area)
             self.db_sys.add(r)
             self.db_sys.commit()
@@ -194,7 +194,7 @@ class MicroTestRunner:
 
         # 5. User
         def action_create_user():
-            u = models.User(
+            u = models_system.GlobalUser(
                 username=f"cmdr_{self.run_id}",
                 name="Commander Shepard",
                 email=f"cmdr_{self.run_id}@alliance.net",
@@ -209,7 +209,7 @@ class MicroTestRunner:
             return {"id": u.id, "username": u.username}
 
         def validate_user(res):
-            u = self.db_sys.query(models.User).get(res["id"])
+            u = self.db_sys.query(models_system.GlobalUser).get(res["id"])
             if u.role_obj.name != "GalaxyCommander": raise Exception("Role mismatch")
             
         self.run_micro_test("Create User & Assign Role", {"username": f"cmdr_{self.run_id}"}, action_create_user, validate_user)
@@ -358,22 +358,22 @@ class MicroTestRunner:
                 # 2. Clean System DB (Order matters for FK)
                 
                 # A. Remove Role-Area links manually
-                roles = self.db_sys.query(models.Role).filter(models.Role.tenant_id == self.tenant_id).all()
+                roles = self.db_sys.query(models_system.Role).filter(models_system.Role.tenant_id == self.tenant_id).all()
                 for r in roles:
                     r.areas = [] # Clear Many-Many
                 self.db_sys.commit()
 
                 # B. Delete Users
-                self.db_sys.query(models.User).filter(models.User.tenant_id == self.tenant_id).delete()
+                self.db_sys.query(models_system.GlobalUser).filter(models_system.GlobalUser.tenant_id == self.tenant_id).delete()
                 
                 # C. Delete Roles
-                self.db_sys.query(models.Role).filter(models.Role.tenant_id == self.tenant_id).delete()
+                self.db_sys.query(models_system.Role).filter(models_system.Role.tenant_id == self.tenant_id).delete()
                 
                 # D. Delete Areas (Now that we bind them to tenant)
-                self.db_sys.query(models.Area).filter(models.Area.tenant_id == self.tenant_id).delete()
+                self.db_sys.query(models_system.Area).filter(models_system.Area.tenant_id == self.tenant_id).delete()
 
                 # E. Delete Tenant
-                self.db_sys.query(models.Tenant).filter(models.Tenant.id == self.tenant_id).delete()
+                self.db_sys.query(models_system.Tenant).filter(models_system.Tenant.id == self.tenant_id).delete()
                 self.db_sys.commit()
                 
                 log_raw("Environment Destroyed (Clean)")

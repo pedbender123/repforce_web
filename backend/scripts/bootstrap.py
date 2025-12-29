@@ -14,9 +14,9 @@ def bootstrap():
         print("Starting Bootstrap...")
 
         # 1. Create Systems Tenant
-        sys_tenant = db.query(models.Tenant).filter(models.Tenant.name == "Systems").first()
+        sys_tenant = db.query(models_system.Tenant).filter(models_system.Tenant.name == "Systems").first()
         if not sys_tenant:
-            sys_tenant = models.Tenant(
+            sys_tenant = models_system.Tenant(
                 name="Systems",
                 cnpj="00000000000000",
                 status="active",
@@ -30,9 +30,9 @@ def bootstrap():
             print("Systems Tenant already exists")
 
         # 2. Create Super Admin Role
-        sa_role = db.query(models.Role).filter(models.Role.name == "Super Admin", models.Role.tenant_id == sys_tenant.id).first()
+        sa_role = db.query(models_system.Role).filter(models_system.Role.name == "Super Admin", models_system.Role.tenant_id == sys_tenant.id).first()
         if not sa_role:
-            sa_role = models.Role(
+            sa_role = models_system.Role(
                 name="Super Admin",
                 description="Super Administrator",
                 access_level="global",
@@ -44,9 +44,9 @@ def bootstrap():
             print("Created Super Admin Role")
 
         # 3. Create SysAdmin User
-        sys_user = db.query(models.User).filter(models.User.username == "sysadmin").first()
+        sys_user = db.query(models_system.GlobalUser).filter(models_system.GlobalUser.username == "sysadmin").first()
         if not sys_user:
-            sys_user = models.User(
+            sys_user = models_system.GlobalUser(
                 username="sysadmin",
                 email="sysadmin@repforce.com",
                 name="System Administrator",
@@ -60,9 +60,9 @@ def bootstrap():
             print("Created User: sysadmin (password: sysadmin)")
         
         # 4. Create Demo Tenant
-        demo_tenant = db.query(models.Tenant).filter(models.Tenant.name == "Demo Corp").first()
+        demo_tenant = db.query(models_system.Tenant).filter(models_system.Tenant.name == "Demo Corp").first()
         if not demo_tenant:
-            demo_tenant = models.Tenant(
+            demo_tenant = models_system.Tenant(
                 name="Demo Corp",
                 cnpj="12345678000199",
                 status="active",
@@ -81,7 +81,7 @@ def bootstrap():
             # OR we can let the user create a tenant via UI.
             
             # Creating Admin Role for Demo
-            admin_role = models.Role(
+            admin_role = models_system.Role(
                 name="Admin",
                 description="Demo Admin",
                 tenant_id=demo_tenant.id
@@ -91,7 +91,7 @@ def bootstrap():
             db.refresh(admin_role)
             
             # Create User
-            demo_user = models.User(
+            demo_user = models_system.GlobalUser(
                 username="admin_demo",
                 email="admin@demo.com",
                 name="Demo Admin",
