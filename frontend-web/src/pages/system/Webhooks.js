@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import api from '../../services/api';
+import api from '../../api/apiClient';
 import SkeletonList from '../../components/common/SkeletonList';
 
 export default function Webhooks() {
