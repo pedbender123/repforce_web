@@ -6,14 +6,20 @@ import { ThemeProvider } from './context/ThemeContext';
 import PrivateRoute from './components/PrivateRoute';
 
 // Layouts
-import AppLayout from './components/AppLayout';
-import SysAdminLayout from './components/SysAdminLayout';
+import CrmLayout from './layouts/CrmLayout';
+import SystemLayout from './layouts/SystemLayout';
+import AppLayout from './components/AppLayout'; // Keep for nested routes if needed, or replace usage.
+// Note: In CrmLayout implementation, I defined Sidebar logic. 
+// But App.js line 72 uses <CrmLayout><AppLayout>...
+// If CrmLayout mirrors AppLayout, we don't need nested AppLayout for sidebar.
+// But AppLayout might be expected by existing structure?
+// Wait, CrmLayout code I wrote IS AppLayout logic.
+// So usage should be: <Route element={<CrmLayout />}> ... children ... </Route>
+// Not <Route element={<CrmLayout />}><Route element={<AppLayout />}...
 
 // Public Pages
-// Public Pages
-// Public Pages
-import Login from './pages/system/Login';
-import SysAdminLogin from './pages/system/SysAdminLogin';
+import Login from './pages/system/Login'; // Tenant Login
+import SysAdminLogin from './pages/sysadmin/Login'; // SysAdmin Login
 import Lobby from './pages/system/Lobby';
 
 // App Pages (Sales Rep)
@@ -30,26 +36,21 @@ import OrderDetails from './pages/crm/OrderDetails';
 
 // Admin Pages (Tenant Admin)
 import AdminDashboard from './pages/system/AdminDashboard';
-import ProductForm from './pages/crm/AdminProductForm'; // Moved to CRM
-import UserManagement from './pages/system/AdminUserManagement';
-import RoleManagement from './pages/system/AdminRoleManagement';
-import AdminCustomFields from './pages/system/AdminCustomFields';
-import AdminPricingRules from './pages/system/AdminPricingRules';
-
-// SysAdmin Pages (Global Admin)
-import SysAdminDashboard from './pages/system/SysAdminDashboard';
-import TenantManagement from './pages/system/SysAdminTenantManagement';
-import AllUserManagement from './pages/system/SysAdminAllUserManagement';
-import AreaManagement from './pages/system/SysAdminAreaManagement';
-import SysAdminDiagnostics from './pages/system/SysAdminDiagnostics';
-import ConfigPage from './pages/config/ConfigPage';
-import ProfilePage from './pages/system/ProfilePage';
+import ProductForm from './pages/crm/AdminProductForm';
 import AdminConfigPage from './pages/config/AdminConfigPage';
 import Webhooks from './pages/system/Webhooks';
 
-import CrmLayout from './components/CrmLayout';
+// SysAdmin Pages (Global Admin)
+import CompanyList from './pages/sysadmin/CompanyList';
+import SysAdminDashboard from './pages/system/SysAdminDashboard'; // Legacy? Or keep?
+// "Área SysAdmin (Gestão de Empresas) -> Rota: /sysadmin/companies"
+// User implies SysAdmin Dashboard might be just redirects to Companies?
+// Or I keep SysAdminDashboard at /sysadmin/dashboard if user wants.
+// But SystemLayout Sidebar only has "Empresas" and "Faturamento".
+// So Dashboard is likely "Empresas".
+// I'll set /sysadmin index to companies.
 
-// ... (imports)
+import ProfilePage from './pages/system/ProfilePage';
 
 function App() {
   return (
@@ -68,71 +69,42 @@ function App() {
               {/* Root Redirect */}
               <Route path="/" element={<Navigate to="/lobby" replace />} />
 
-              {/* APP ROUTES (Sales Rep) */}
+              {/* APP ROUTES (Sales Rep & Tenant Admin) */}
+              {/* Using CrmLayout as the wrapper */}
               <Route path="/app" element={<PrivateRoute><CrmLayout /></PrivateRoute>}>
-                <Route element={<AppLayout />}>
-                  <Route path="dashboard" element={<AppDashboard />} />
-                  <Route path="clients" element={<ClientList />} />
-                  <Route path="clients/new" element={<AppClientForm />} />
-
-
-                  <Route path="clients/:id" element={<AppClientDetails />} />
-                  <Route path="orders" element={<OrderList />} />
-                  <Route path="orders/new" element={<AppOrderCreate />} />
-                  <Route path="orders/:id" element={<OrderDetails />} />
-                  <Route path="routes/new" element={<AppRouteCreate />} />
-                  <Route path="products" element={<ProductList />} />
-                  <Route path="products/:id" element={<ProductDetails />} />
-                  <Route index element={<Navigate to="dashboard" replace />} />
-                </Route>
+                <Route path="dashboard" element={<AppDashboard />} />
+                <Route path="clients" element={<ClientList />} />
+                <Route path="clients/new" element={<AppClientForm />} />
+                <Route path="clients/:id" element={<AppClientDetails />} />
+                <Route path="orders" element={<OrderList />} />
+                <Route path="orders/new" element={<AppOrderCreate />} />
+                <Route path="orders/:id" element={<OrderDetails />} />
+                <Route path="routes/new" element={<AppRouteCreate />} />
+                <Route path="products" element={<ProductList />} />
+                <Route path="products/:id" element={<ProductDetails />} />
+                <Route path="profile" element={<ProfilePage />} />
+                <Route index element={<Navigate to="dashboard" replace />} />
               </Route>
 
               {/* ADMIN ROUTES (Tenant Owner) */}
               <Route path="/admin" element={<PrivateRoute><CrmLayout /></PrivateRoute>}>
-                <Route element={<AppLayout />}>
-                  <Route path="dashboard" element={<AdminDashboard />} />
-                  <Route path="clients" element={<ClientList />} />
-                  <Route path="products" element={<ProductList />} />
-                  <Route path="products/new" element={<ProductForm />} />
-                  <Route path="products/:id" element={<ProductDetails />} />
-                  <Route path="orders" element={<OrderList />} />
-                  <Route path="orders/:id" element={<OrderDetails />} />
-                  {/* New Config Page replaces individual management pages in Sidebar */}
-                  <Route path="config" element={<AdminConfigPage />} />
-                  <Route path="webhooks" element={<Webhooks />} />
-
-                  {/* Legacy routes kept but not linked in Sidebar, or redirect? */}
-                  {/* Let's keep them accessible if someone types URL, or we can remove them. 
-                      Plan said: consolidate. AdminConfigPage imports them as components.
-                      So we don't strictly need these routes unless we want deep linking.
-                      For now, disabling direct route to force use of Config Page tabs helps consistency.
-                  */}
-                  {/* <Route path="users" element={<UserManagement />} /> */}
-                  {/* <Route path="roles" element={<RoleManagement />} /> */}
-                  {/* <Route path="fields" element={<AdminCustomFields />} /> */}
-                  {/* <Route path="rules" element={<AdminPricingRules />} /> */}
-
-                  <Route index element={<Navigate to="dashboard" replace />} />
-                </Route>
+                <Route path="dashboard" element={<AdminDashboard />} />
+                <Route path="clients" element={<ClientList />} />
+                <Route path="products" element={<ProductList />} />
+                <Route path="products/new" element={<ProductForm />} />
+                <Route path="products/:id" element={<ProductDetails />} />
+                <Route path="orders" element={<OrderList />} />
+                <Route path="orders/:id" element={<OrderDetails />} />
+                <Route path="config" element={<AdminConfigPage />} />
+                <Route path="webhooks" element={<Webhooks />} />
+                <Route index element={<Navigate to="dashboard" replace />} />
               </Route>
-
-              {/* SHARED PROFILE ROUTE (App Context) */}
-              <Route path="/app" element={<PrivateRoute><CrmLayout /></PrivateRoute>}>
-                <Route element={<AppLayout />}>
-                  {/* ... existing app routes ... */}
-                  <Route path="profile" element={<ProfilePage />} />
-                </Route>
-              </Route>
-
 
               {/* SYSADMIN ROUTES (Platform Owner) */}
-              <Route path="/sysadmin" element={<SysAdminLayout />}>
-                <Route path="dashboard" element={<SysAdminDashboard />} />
-                <Route path="tenants" element={<TenantManagement />} />
-                <Route path="users" element={<AllUserManagement />} />
-                <Route path="areas" element={<AreaManagement />} />
-                <Route path="config" element={<ConfigPage />} />
-                <Route index element={<Navigate to="dashboard" replace />} />
+              <Route path="/sysadmin" element={<SystemLayout />}>
+                <Route path="companies" element={<CompanyList />} />
+                {/* Fallback to companies */}
+                <Route index element={<Navigate to="companies" replace />} />
               </Route>
 
               {/* Catch all */}
