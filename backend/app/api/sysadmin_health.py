@@ -322,7 +322,7 @@ class MicroTestRunner:
         try:
             # 1. 10k Products
             def action_bulk_products():
-                data = [{"name": f"P-{i}", "sku": f"SKU-{i}", "price": 10.0} for i in range(10000)]
+                data = [{"id": uuid.uuid4(), "name": f"P-{i}", "sku": f"SKU-{i}", "price": 10.0} for i in range(10000)]
                 conn = crm_session.connection()
                 conn.execute(models_tenant.Product.__table__.insert(), data)
                 crm_session.commit()
@@ -332,14 +332,21 @@ class MicroTestRunner:
 
             # 2. 300 Clients
             def action_bulk_clients():
-                data = [{"name": f"C-{i}", "cnpj": f"{i}", "representative_id": self.user_id} for i in range(300)]
+                data = [{"id": uuid.uuid4(), "name": f"C-{i}", "cnpj": f"{i}", "representative_id": self.user_id} for i in range(300)]
                 conn = crm_session.connection()
                 conn.execute(models_tenant.Client.__table__.insert(), data)
                 crm_session.commit()
                 return "300 Rows Inserted"
                 
-            client_id = 1 # safely assume
             self.run_micro_test("Bulk Insert Clients", {"count": 300}, action_bulk_clients)
+
+            # Fetch a valid Client ID for next suite
+            real_client = crm_session.query(models_tenant.Client).first()
+            if not real_client:
+                 raise Exception("Bulk Insert Failed to persist clients")
+            
+            client_id = real_client.id
+            log_raw(f"Selected Client ID for Sales Suite: {client_id}")
 
             return client_id
 
