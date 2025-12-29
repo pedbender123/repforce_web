@@ -47,7 +47,24 @@ class TenantMiddleware(BaseHTTPMiddleware):
             finally:
                 db.close()
 
-        # 2. JWT Auth (Skipped lines...)
+        # 2. JWT Auth
+        auth_header = request.headers.get("Authorization")
+        payload = {}
+        user_id = None
+        if auth_header and auth_header.startswith("Bearer "):
+            token = auth_header.split(" ")[1]
+            try:
+                payload = decode_access_token(token)
+                if payload:
+                    user_id = int(payload.get("sub"))
+                    request.state.user_id = user_id
+                    
+                    # SysAdmin Global Flag
+                    if payload.get("is_sysadmin"):
+                         request.state.is_sysadmin = True
+                         request.state.role_name = "sysadmin"
+            except Exception as e:
+                print(f"JWT Error: {e}")
 
         # 3. Tenant Context Validation
         # Check if X-Tenant-Slug header is present
