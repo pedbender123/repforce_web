@@ -9,7 +9,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status, Backgrou
 from fastapi.responses import FileResponse, JSONResponse
 from sqlalchemy.orm import Session
 from sqlalchemy import text
-from ..db import session, models, models_tenant, schemas
+from ..db import session, models, models_system, models_tenant, schemas
 from ..core import permissions, security
 
 router = APIRouter()
