@@ -19,6 +19,9 @@ class GlobalUser(Base):
     
     # Relationships
     memberships = relationship("Membership", back_populates="user")
+    
+    role_id = Column(Integer, ForeignKey("public.roles.id"), nullable=True) # Linked to Role 
+    role_obj = relationship("Role", foreign_keys=[role_id])
 
 class Tenant(Base):
     __tablename__ = "tenants"
@@ -93,3 +96,57 @@ class ApiKey(Base):
     scopes = Column(Text, default="crm_full") # JSON not strictly needed for MVP
     
     tenant = relationship("Tenant")
+
+from sqlalchemy import Table, JSON, Enum
+import enum
+
+class AccessLevel(str, enum.Enum):
+    GLOBAL = "global"
+    TEAM = "team"
+    OWN = "own"
+
+# Association Table
+role_area_association = Table(
+    'role_area_association',
+    Base.metadata,
+    Column('role_id', Integer, ForeignKey('public.roles.id')),
+    Column('area_id', Integer, ForeignKey('public.areas.id')),
+    schema='public'
+)
+
+class Area(Base):
+    __tablename__ = "areas"
+    __table_args__ = {"schema": "public"}
+    
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String)
+    icon = Column(String, nullable=True)
+    pages_json = Column(JSON, default=[]) 
+    
+    tenant_id = Column(Integer, ForeignKey("public.tenants.id"))
+    tenant = relationship("Tenant")
+    
+    roles = relationship("Role", secondary=role_area_association, back_populates="areas")
+
+class Role(Base):
+    __tablename__ = "roles"
+    __table_args__ = {"schema": "public"}
+    
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String)
+    description = Column(String, nullable=True)
+    access_level = Column(String, default=AccessLevel.OWN)
+    
+    tenant_id = Column(Integer, ForeignKey("public.tenants.id"))
+    tenant = relationship("Tenant")
+    
+    areas = relationship("Area", secondary=role_area_association, back_populates="roles")
+
+class UserGridPreference(Base):
+    __tablename__ = "user_grid_preferences"
+    __table_args__ = {"schema": "public"}
+    
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("public.global_users.id"))
+    grid_id = Column(String, index=True)
+    columns_json = Column(JSON, default=[])
