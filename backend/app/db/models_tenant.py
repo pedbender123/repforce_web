@@ -27,6 +27,7 @@ class Order(BaseCrm):
     
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     client_id = Column(UUID(as_uuid=True), ForeignKey("clients.id"))
+    representative_id = Column(Integer) # ID from GlobalUser
     
     status = Column(String, default="draft", index=True)
     total_value = Column(Float, default=0.0)
@@ -39,6 +40,22 @@ class Order(BaseCrm):
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
     client = relationship("Client", back_populates="orders")
+    items = relationship("OrderItem", back_populates="order")
+
+class OrderItem(BaseCrm):
+    __tablename__ = "order_items"
+    
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    order_id = Column(UUID(as_uuid=True), ForeignKey("orders.id"))
+    product_id = Column(UUID(as_uuid=True), ForeignKey("products.id"))
+    
+    quantity = Column(Float, default=1.0)
+    unit_price = Column(Float, default=0.0)
+    net_unit_price = Column(Float, default=0.0)
+    total = Column(Float, default=0.0)
+    
+    order = relationship("Order", back_populates="items")
+    product = relationship("Product")
 
 
 
