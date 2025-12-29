@@ -81,6 +81,11 @@ class DiscountRule(BaseCrm):
     name = Column(String)
     conditions = Column(JSONB, default={}) # Logic for discount
     effect = Column(JSONB, default={}) # What happens
+    
+    # Legacy/Simple support
+    type = Column(String, default="value")
+    discount_percent = Column(Float, default=0.0)
+    active = Column(Boolean, default=True)
 
 class CustomFieldConfig(BaseCrm):
     __tablename__ = "custom_fields_config"
