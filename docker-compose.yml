@@ -9,7 +9,7 @@ services:
     volumes:
       - pg_data:/var/lib/postgresql/data
     ports:
-      - "127.0.0.1:5432:5432"
+      - "5432:5432"
     networks:
       - repforce_net
     healthcheck:
@@ -28,7 +28,7 @@ services:
       - ./backend:/app
       - ./backend/uploads:/app/uploads
     ports:
-      - "127.0.0.1:8100:8000"
+      - "8100:8000"
     env_file:
       - .env
     environment:
@@ -47,7 +47,7 @@ services:
       dockerfile: Dockerfile
     container_name: repforce_frontend
     ports:
-      - "127.0.0.1:3100:80"
+      - "3100:80"
     networks:
       - repforce_net
     depends_on:
@@ -57,7 +57,7 @@ services:
     image: n8nio/n8n
     container_name: repforce_n8n
     ports:
-      - "127.0.0.1:5700:5678"
+      - "5700:5678"
     environment:
       - N8N_HOST=n8n.repforce.com.br
       - N8N_PORT=5678
