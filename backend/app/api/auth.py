@@ -1,4 +1,4 @@
-```python
+
 from fastapi import APIRouter, Depends, HTTPException, status, Request, Form
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session, joinedload
@@ -14,7 +14,7 @@ def login_for_access_token(
     db: Session = Depends(session.get_db)
 ):
     # 1. Fetch Global User
-    user = db.query(models_global.GlobalUser).filter(models_global.GlobalUser.username == username).first()
+    user = db.query(models_system.GlobalUser).filter(models_system.GlobalUser.username == username).first()
     
     # 2. Verify
     if not user or not security.verify_password(password, user.hashed_password):
