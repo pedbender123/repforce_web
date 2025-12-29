@@ -11,6 +11,17 @@ ALLOWED_NETWORKS = [
     ipaddress.ip_network("192.168.0.0/16"),
 ]
 
+# Allow generic whitelist via ENV (for VPS public IP loopback)
+import os
+EXTRA_IPS = os.getenv("N8N_WHITELIST_IPS", "").split(",")
+for ip_str in EXTRA_IPS:
+    if ip_str.strip():
+        try:
+             # Assume single IPs usually, can extend to networks if needed
+             ALLOWED_NETWORKS.append(ipaddress.ip_network(ip_str.strip() + "/32"))
+        except:
+             pass
+
 def validate_n8n_request(request: Request):
     """
     Dependency to validate if the request comes from a trusted internal IP (n8n container).
