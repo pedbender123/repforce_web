@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, Request, HTTPException, File, UploadFile, Form
 from sqlalchemy.orm import Session, joinedload
-from ..db import session, models, models_crm, schemas
+from ..db import session, models_tenant as models, schemas
 from typing import List, Optional
 import os
 import shutil
