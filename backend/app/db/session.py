@@ -88,9 +88,21 @@ def get_crm_db(request=None):
 
     db = SessionCrm()
     try:
-        schema_name = f"tenant_{tenant_id}"
+        # Use slug if available (set by middleware), or fallback to ID logic (deprecated)
+        tenant_slug = getattr(request.state, "tenant_slug", None)
+        if tenant_slug:
+             # Sanitize slug just in case
+             safe_slug = tenant_slug.replace("-", "_")
+             schema_name = f"tenant_{safe_slug}"
+        elif tenant_id:
+             schema_name = f"tenant_{tenant_id}"
+        else:
+             # Should not happen
+             yield None
+             return
+
         # Set Search Path: Tenant First, then Public (for shared funcs if any)
-        db.execute(text(f"SET search_path TO {schema_name}, public"))
+        db.execute(text(f"SET search_path TO \"{schema_name}\", public"))
         yield db
     finally:
         db.close()

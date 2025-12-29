@@ -11,9 +11,10 @@ import SysAdminLayout from './components/SysAdminLayout';
 
 // Public Pages
 // Public Pages
+// Public Pages
 import Login from './pages/system/Login';
 import SysAdminLogin from './pages/system/SysAdminLogin';
-import TenantSelection from './pages/TenantSelection';
+import Lobby from './pages/system/Lobby';
 
 // App Pages (Sales Rep)
 import AppDashboard from './pages/crm/AppDashboard';
@@ -44,6 +45,7 @@ import SysAdminDiagnostics from './pages/system/SysAdminDiagnostics';
 import ConfigPage from './pages/config/ConfigPage';
 import ProfilePage from './pages/system/ProfilePage';
 import AdminConfigPage from './pages/config/AdminConfigPage';
+import Webhooks from './pages/system/Webhooks';
 
 import CrmLayout from './components/CrmLayout';
 
@@ -61,7 +63,7 @@ function App() {
               <Route path="/sysadmin/login" element={<SysAdminLogin />} />
 
               {/* Lobby (Select Tenant) */}
-              <Route path="/lobby" element={<PrivateRoute><TenantSelection /></PrivateRoute>} />
+              <Route path="/lobby" element={<PrivateRoute><Lobby /></PrivateRoute>} />
 
               {/* Root Redirect */}
               <Route path="/" element={<Navigate to="/lobby" replace />} />
@@ -97,6 +99,7 @@ function App() {
                   <Route path="orders/:id" element={<OrderDetails />} />
                   {/* New Config Page replaces individual management pages in Sidebar */}
                   <Route path="config" element={<AdminConfigPage />} />
+                  <Route path="webhooks" element={<Webhooks />} />
 
                   {/* Legacy routes kept but not linked in Sidebar, or redirect? */}
                   {/* Let's keep them accessible if someone types URL, or we can remove them. 

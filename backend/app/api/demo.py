@@ -6,7 +6,7 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status, Body
 from sqlalchemy.orm import Session
 from sqlalchemy import text
-from ..db import database, models, models_crm, schemas
+from ..db import session, models, models_crm, schemas
 from ..core import permissions, security
 
 router = APIRouter()
@@ -18,7 +18,7 @@ class DemoService:
         self.sys_db = sys_db
 
     def _get_crm_session(self, tenant_id: int):
-        db = database.SessionCrm()
+        db = session.SessionCrm()
         schema_name = f"tenant_{tenant_id}"
         # Set Search Path to Tenant schema then Public (for global access if needed)
         db.execute(text(f"SET search_path TO \"{schema_name}\", public"))
@@ -32,7 +32,7 @@ class DemoService:
         # Ensure schema tables exist (prevent 500 if tables missing)
         # Note: This is an attempt to recover, though migrations should handle it.
         try:
-            database.BaseCrm.metadata.create_all(bind=database.engine_crm)
+            session.BaseCrm.metadata.create_all(bind=session.engine_crm)
         except Exception as e:
             print(f"Warning: Could not create tables for demo: {e}")
 
@@ -295,7 +295,7 @@ def check_sysadmin(request: Request):
 def start_demo_mode(
     tenant_id: int, 
     request: Request,
-    db: Session = Depends(database.get_db),
+    db: Session = Depends(session.get_db),
     _ = Depends(check_sysadmin)
 ):
     service = DemoService(db)
@@ -305,7 +305,7 @@ def start_demo_mode(
 @router.post("/{tenant_id}/stop")
 def stop_demo_mode(
     tenant_id: int, 
-    db: Session = Depends(database.get_db),
+    db: Session = Depends(session.get_db),
     _ = Depends(check_sysadmin)
 ):
     service = DemoService(db)

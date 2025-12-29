@@ -1,7 +1,8 @@
+```python
 from fastapi import APIRouter, Depends, HTTPException, status, Request, Form
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session, joinedload
-from ..db import database, models_global, schemas
+from ..db import session, models_system, schemas
 from ..core import security
 
 router = APIRouter()
@@ -10,7 +11,7 @@ router = APIRouter()
 def login_for_access_token(
     username: str = Form(...),
     password: str = Form(...),
-    db: Session = Depends(database.get_db)
+    db: Session = Depends(session.get_db)
 ):
     # 1. Fetch Global User
     user = db.query(models_global.GlobalUser).filter(models_global.GlobalUser.username == username).first()
@@ -40,9 +41,9 @@ def login_for_access_token(
 @router.post("/sysadmin/token", response_model=schemas.Token)
 def sysadmin_login(
     form_data: OAuth2PasswordRequestForm = Depends(),
-    db: Session = Depends(database.get_db)
+    db: Session = Depends(session.get_db)
 ):
-    user = db.query(models_global.GlobalUser).filter(models_global.GlobalUser.username == form_data.username).first()
+    user = db.query(models_system.GlobalUser).filter(models_system.GlobalUser.username == form_data.username).first()
     
     if not user or not security.verify_password(form_data.password, user.hashed_password):
         raise HTTPException(status_code=401, detail="Invalid credentials")
@@ -59,7 +60,7 @@ def sysadmin_login(
     return {"access_token": access_token, "token_type": "bearer"}
 
 @router.get("/users/me", response_model=schemas.User)
-def read_users_me(request: Request, db: Session = Depends(database.get_db)):
+def read_users_me(request: Request, db: Session = Depends(session.get_db)):
     # User ID comes from Token (via Middleware or manually decoded if middleware doesn't set it yet)
     # The middleware sets request.state.user_id if valid token found
     user_id = getattr(request.state, "user_id", None)
@@ -69,9 +70,9 @@ def read_users_me(request: Request, db: Session = Depends(database.get_db)):
         # Ideally middleware handles this.
         raise HTTPException(status_code=401, detail="Not authenticated")
 
-    user = db.query(models_global.GlobalUser).options(
-        joinedload(models_global.GlobalUser.memberships).joinedload(models_global.Membership.tenant)
-    ).filter(models_global.GlobalUser.id == user_id).first()
+    user = db.query(models_system.GlobalUser).options(
+        joinedload(models_system.GlobalUser.memberships).joinedload(models_system.Membership.tenant)
+    ).filter(models_system.GlobalUser.id == user_id).first()
     
     if not user:
          raise HTTPException(status_code=404, detail="User not found")

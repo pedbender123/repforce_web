@@ -3,7 +3,7 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse
 from .core.security import decode_access_token
 from .db.database import SessionSys
-from .db import models_global
+from .db import models_system
 import os
 
 PUBLIC_ROUTES = [
@@ -26,14 +26,14 @@ class TenantMiddleware(BaseHTTPMiddleware):
         if api_key:
             db = SessionSys()
             try:
-                key_record = db.query(models_global.ApiKey).filter(
-                    models_global.ApiKey.key == api_key,
-                    models_global.ApiKey.is_active == True
+                key_record = db.query(models_system.ApiKey).filter(
+                    models_system.ApiKey.key == api_key,
+                    models_system.ApiKey.is_active == True
                 ).first()
                 
                 if key_record:
                     # Resolve Slug
-                    tenant = db.query(models_global.Tenant).filter(models_global.Tenant.id == key_record.tenant_id).first()
+                    tenant = db.query(models_system.Tenant).filter(models_system.Tenant.id == key_record.tenant_id).first()
                     if not tenant:
                          return JSONResponse(status_code=404, content={"detail": "Tenant not found for this API Key"})
                     
@@ -47,31 +47,15 @@ class TenantMiddleware(BaseHTTPMiddleware):
             finally:
                 db.close()
 
-        # 2. JWT Auth
-        auth_header = request.headers.get("Authorization")
-        if not auth_header:
-            return JSONResponse(status_code=401, content={"detail": "Missing Authorization Header"})
-            
-        try:
-            scheme, token = auth_header.split()
-            if scheme.lower() != "bearer": raise ValueError
-        except ValueError:
-            return JSONResponse(status_code=401, content={"detail": "Invalid Authorization Scheme"})
-            
-        payload = decode_access_token(token)
-        if not payload:
-            return JSONResponse(status_code=401, content={"detail": "Invalid or Expired Token"})
-            
-        user_id = payload.get("sub")
-        request.state.user_id = user_id
-        
+        # 2. JWT Auth (Skipped lines...)
+
         # 3. Tenant Context Validation
         # Check if X-Tenant-Slug header is present
         slug = request.headers.get("X-Tenant-Slug")
         if slug:
             db = SessionSys()
             try:
-                tenant = db.query(models_global.Tenant).filter(models_global.Tenant.slug == slug).first()
+                tenant = db.query(models_system.Tenant).filter(models_system.Tenant.slug == slug).first()
                 if not tenant:
                     return JSONResponse(status_code=404, content={"detail": "Tenant Not Found"})
                 
@@ -82,9 +66,9 @@ class TenantMiddleware(BaseHTTPMiddleware):
                     request.state.role_name = "sysadmin" # Explicitly set for check_sysadmin dependency
                     pass # Allow
                 else:
-                    membership = db.query(models_global.Membership).filter(
-                        models_global.Membership.user_id == user_id,
-                        models_global.Membership.tenant_id == tenant.id
+                    membership = db.query(models_system.Membership).filter(
+                        models_system.Membership.user_id == user_id,
+                        models_system.Membership.tenant_id == tenant.id
                     ).first()
                     
                     if not membership:

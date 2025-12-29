@@ -5,11 +5,11 @@ import os
 # Add parent dir to path to import app modules
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from app.db import database, models
+from app.db import session, models
 from app.core import security
 
 def bootstrap():
-    db = database.SessionSys()
+    db = session.SessionSys()
     try:
         print("Starting Bootstrap...")
 

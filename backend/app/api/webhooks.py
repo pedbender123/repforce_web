@@ -1,31 +1,55 @@
+
 from fastapi import APIRouter, Depends, HTTPException, Body
 from sqlalchemy.orm import Session
-from ..db import database, models
-from ..core import security
+from app.db import session, models_tenant
+from pydantic import BaseModel
+from typing import List
 
 router = APIRouter()
 
-@router.post("/n8n/order-update")
-def update_order_status_from_n8n(
-    api_key: str = Depends(security.get_api_key), # Valida header X-API-Key
-    payload: dict = Body(...),
-    db: Session = Depends(database.get_db)
+class WebhookSchema(BaseModel):
+    event_type: str
+    target_url: str
+    active: bool = True
+
+@router.get("/webhooks", response_model=List[WebhookSchema])
+def list_webhooks(db: Session = Depends(session.get_crm_db)):
+    if not db: raise HTTPException(status_code=400, detail="Tenant context missing")
+    return db.query(models_tenant.WebhookSubscription).all()
+
+@router.post("/webhooks", response_model=WebhookSchema)
+def subscribe_webhook(
+    payload: WebhookSchema,
+    db: Session = Depends(session.get_crm_db)
 ):
-    """
-    Webhook para automação N8N.
-    Body: { "order_id": 123, "new_status": "approved" }
-    """
-    order_id = payload.get("order_id")
-    new_status = payload.get("new_status")
+    if not db: raise HTTPException(status_code=400, detail="Tenant context missing")
     
-    if not order_id or not new_status:
-        raise HTTPException(status_code=400, detail="Faltando order_id ou new_status")
-        
-    order = db.query(models.Order).filter(models.Order.id == order_id).first()
-    if not order:
-        raise HTTPException(status_code=404, detail="Pedido não encontrado")
-        
-    order.status = new_status
+    # Upsert logic
+    sub = db.query(models_tenant.WebhookSubscription).filter(models_tenant.WebhookSubscription.event_type == payload.event_type).first()
+    if not sub:
+        sub = models_tenant.WebhookSubscription(
+            event_type=payload.event_type,
+            target_url=payload.target_url,
+            active=payload.active
+        )
+        db.add(sub)
+    else:
+        sub.target_url = payload.target_url
+        sub.active = payload.active
+    
     db.commit()
+    db.refresh(sub)
+    return sub
+
+@router.delete("/webhooks/{event_type}")
+def unsubscribe_webhook(
+    event_type: str,
+    db: Session = Depends(session.get_crm_db)
+):
+    if not db: raise HTTPException(status_code=400, detail="Tenant context missing")
     
-    return {"message": "Status atualizado", "id": order_id, "status": new_status}
+    sub = db.query(models_tenant.WebhookSubscription).filter(models_tenant.WebhookSubscription.event_type == event_type).first()
+    if sub:
+        db.delete(sub)
+        db.commit()
+    return {"message": "Unsubscribed"}

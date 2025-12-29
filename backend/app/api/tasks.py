@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
-from ..db import database
+from ..db import session
 from ..db import models_crm as models
 from pydantic import BaseModel
 from typing import List, Optional
@@ -37,7 +37,7 @@ class TaskOut(TaskBase):
 @router.get("/tasks", response_model=List[TaskOut])
 def get_tasks(
     status: Optional[str] = "open",
-    db: Session = Depends(database.get_crm_db)
+    db: Session = Depends(session.get_crm_db)
 ):
     """
     Lista tarefas do tenant atual. 
@@ -80,7 +80,7 @@ def get_tasks(
 @router.post("/tasks", response_model=TaskOut, status_code=201)
 def create_task(
     task_in: TaskCreate,
-    db: Session = Depends(database.get_crm_db)
+    db: Session = Depends(session.get_crm_db)
 ):
     db_task = models.Task(
         title=task_in.title,
@@ -100,7 +100,7 @@ def create_task(
 def update_task_status(
     task_id: int,
     task_update: TaskUpdate,
-    db: Session = Depends(database.get_crm_db)
+    db: Session = Depends(session.get_crm_db)
 ):
     db_task = db.query(models.Task).filter(models.Task.id == task_id).first()
     if not db_task:

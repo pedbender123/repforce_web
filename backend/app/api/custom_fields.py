@@ -8,7 +8,7 @@ router = APIRouter()
 @router.get("/config/fields/{entity}", response_model=List[schemas.CustomFieldConfig])
 def list_custom_fields(
     entity: str,
-    db: Session = Depends(database.get_crm_db)
+    db: Session = Depends(session.get_crm_db)
 ):
     """
     Lista campos customizados para uma entidade (product, client, order).
@@ -22,7 +22,7 @@ def list_custom_fields(
 @router.post("/config/fields", response_model=schemas.CustomFieldConfig)
 def create_custom_field(
     field: schemas.CustomFieldConfigCreate,
-    db: Session = Depends(database.get_crm_db)
+    db: Session = Depends(session.get_crm_db)
 ):
     """
     Cria um novo campo customizado.
@@ -49,7 +49,7 @@ def create_custom_field(
 @router.delete("/config/fields/{field_id}")
 def delete_custom_field(
     field_id: int,
-    db: Session = Depends(database.get_crm_db)
+    db: Session = Depends(session.get_crm_db)
 ):
     """
     Remove um campo customizado.
