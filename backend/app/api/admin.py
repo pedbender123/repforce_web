@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, Request, HTTPException, status
 from sqlalchemy.orm import Session
-from ..db import database, models, schemas
+from ..db import session, models, schemas
 from ..core import security
 from typing import List
 
@@ -29,7 +29,7 @@ def check_tenant_admin_profile(request: Request):
 def create_tenant_user( # Renomeado para clareza
     user: schemas.UserCreate,
     request: Request,
-    db: Session = Depends(database.get_db)
+    db: Session = Depends(session.get_db)
 ):
     """
     (Admin de Tenant) Cria um novo usuário (Representante ou Admin) 
@@ -78,7 +78,7 @@ def create_tenant_user( # Renomeado para clareza
             dependencies=[Depends(check_tenant_admin_profile)])
 def get_users_in_tenant(
     request: Request,
-    db: Session = Depends(database.get_db)
+    db: Session = Depends(session.get_db)
 ):
     """
     (Admin de Tenant) Lista todos os usuários do SEU PRÓPRIO tenant.
@@ -90,7 +90,7 @@ def get_users_in_tenant(
 # --- PASSO 2: API DE GESTÃO DE CARGOS (ROLES) ---
 
 @router.get("/roles", response_model=List[schemas.Role], dependencies=[Depends(check_tenant_admin_profile)])
-def get_tenant_roles(request: Request, db: Session = Depends(database.get_db)):
+def get_tenant_roles(request: Request, db: Session = Depends(session.get_db)):
     """Lista todos os cargos do tenant atual."""
     tenant_id = request.state.tenant_id
     return db.query(models.Role).filter(models.Role.tenant_id == tenant_id).all()
@@ -99,7 +99,7 @@ def get_tenant_roles(request: Request, db: Session = Depends(database.get_db)):
 def create_tenant_role(
     role_in: schemas.RoleCreate,
     request: Request,
-    db: Session = Depends(database.get_db)
+    db: Session = Depends(session.get_db)
 ):
     """Cria um novo cargo para o tenant."""
     tenant_id = request.state.tenant_id
@@ -136,7 +136,7 @@ def update_tenant_role(
     role_id: int,
     role_in: schemas.RoleUpdate,
     request: Request,
-    db: Session = Depends(database.get_db)
+    db: Session = Depends(session.get_db)
 ):
     tenant_id = request.state.tenant_id
     role = db.query(models.Role).filter(models.Role.id == role_id, models.Role.tenant_id == tenant_id).first()
@@ -170,7 +170,7 @@ def update_tenant_role(
 def delete_tenant_role(
     role_id: int,
     request: Request,
-    db: Session = Depends(database.get_db)
+    db: Session = Depends(session.get_db)
 ):
     tenant_id = request.state.tenant_id
     role = db.query(models.Role).filter(models.Role.id == role_id, models.Role.tenant_id == tenant_id).first()
@@ -187,7 +187,7 @@ def delete_tenant_role(
     return {"message": "Cargo excluído com sucesso"}
 
 @router.get("/areas", response_model=List[schemas.Area], dependencies=[Depends(check_tenant_admin_profile)])
-def get_tenant_available_areas(request: Request, db: Session = Depends(database.get_db)):
+def get_tenant_available_areas(request: Request, db: Session = Depends(session.get_db)):
     """Retorna todas as áreas disponíveis para este tenant (para vincular aos cargos)."""
     tenant_id = request.state.tenant_id
     return db.query(models.Area).filter(models.Area.tenant_id == tenant_id).all()

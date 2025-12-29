@@ -3,14 +3,14 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func
 from typing import List, Dict, Any
 from datetime import datetime, timedelta
-from ..db import database, models_crm
+from ..db import session, models_crm
 
 router = APIRouter()
 
 @router.get("/kpis", response_model=Dict[str, Any])
 def get_dashboard_kpis(
     time_range: str = "30d",
-    db: Session = Depends(database.get_crm_db),
+    db: Session = Depends(session.get_crm_db),
     request: Request = None
 ):
     """
@@ -60,7 +60,7 @@ def get_dashboard_kpis(
 @router.get("/sales-history", response_model=List[Dict[str, Any]])
 def get_sales_history(
     days: int = 30,
-    db: Session = Depends(database.get_crm_db),
+    db: Session = Depends(session.get_crm_db),
     request: Request = None
 ):
     user_id = request.state.user_id
@@ -81,7 +81,7 @@ def get_sales_history(
 @router.get("/top-products", response_model=List[Dict[str, Any]])
 def get_top_products(
     limit: int = 5,
-    db: Session = Depends(database.get_crm_db),
+    db: Session = Depends(session.get_crm_db),
     request: Request = None
 ):
     user_id = request.state.user_id # Opcional: Filtrar apenas vendas deste user? 

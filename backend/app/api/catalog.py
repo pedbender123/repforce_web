@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, Request, HTTPException, File, UploadFile, Form
 from sqlalchemy.orm import Session, joinedload
-from ..db import database, models, models_crm, schemas
+from ..db import session, models, models_crm, schemas
 from typing import List, Optional
 import os
 import shutil
@@ -15,7 +15,7 @@ STATIC_URL_PRODUCTS = "/uploads/products"
 @router.get("/products", response_model=List[schemas.Product])
 def get_products(
     request: Request,
-    db: Session = Depends(database.get_crm_db),
+    db: Session = Depends(session.get_crm_db),
     search: str = ""
 ):
     tenant_id = request.state.tenant_id
@@ -30,7 +30,7 @@ def get_products(
 def get_product_details(
     product_id: int,
     request: Request,
-    db: Session = Depends(database.get_crm_db)
+    db: Session = Depends(session.get_crm_db)
 ):
     product = db.query(models_crm.Product).options(
         joinedload(models_crm.Product.supplier),
@@ -46,7 +46,7 @@ def get_product_details(
 @router.post("/products", response_model=schemas.Product, status_code=201)
 def create_product(
     request: Request,
-    db: Session = Depends(database.get_crm_db),
+    db: Session = Depends(session.get_crm_db),
     name: str = Form(...),
     price: float = Form(...),
     sku: Optional[str] = Form(None),
@@ -124,7 +124,7 @@ def create_product(
 def update_product(
     product_id: int,
     request: Request,
-    db: Session = Depends(database.get_crm_db),
+    db: Session = Depends(session.get_crm_db),
     name: Optional[str] = Form(None),
     price: Optional[float] = Form(None),
     sku: Optional[str] = Form(None),
@@ -175,7 +175,7 @@ def update_product(
 @router.get("/suppliers", response_model=List[schemas.Supplier])
 def get_suppliers(
     request: Request,
-    db: Session = Depends(database.get_db)
+    db: Session = Depends(session.get_db)
 ):
     tenant_id = request.state.tenant_id
     suppliers = db.query(models_crm.Supplier).all()
@@ -185,7 +185,7 @@ def get_suppliers(
 def create_supplier(
     supplier: schemas.SupplierCreate,
     request: Request,
-    db: Session = Depends(database.get_db)
+    db: Session = Depends(session.get_db)
 ):
     if request.state.profile not in ['admin', 'sysadmin']:
         raise HTTPException(status_code=403, detail="Apenas admins podem criar fornecedores")

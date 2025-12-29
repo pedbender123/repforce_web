@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, Request, HTTPException, status, File, Up
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import text
 from pydantic import EmailStr
-from ..db import database, models, schemas
+from ..db import session, models, schemas
 from ..core import security
 from typing import List, Optional
 import shutil
@@ -30,7 +30,7 @@ def provision_tenant_schema(tenant_id: int, tenant_name: str, tenant_cnpj: str, 
     try:
         # 1. Create Schema
         # Use engine_crm from database module
-        with database.engine_crm.connect() as conn:
+        with session.engine_crm.connect() as conn:
             conn.execute(text(f"CREATE SCHEMA IF NOT EXISTS {schema_name}"))
             conn.commit()
         
@@ -59,7 +59,7 @@ def provision_tenant_schema(tenant_id: int, tenant_name: str, tenant_cnpj: str, 
         # 3. Seed Initial Data (Supplier for Industry)
         if tenant_type == 'industry':
             try:
-                with database.engine_crm.connect() as conn:
+                with session.engine_crm.connect() as conn:
                     # Set search path to tenant schema
                     conn.execute(text(f"SET search_path TO {schema_name}"))
                     
@@ -90,7 +90,7 @@ def provision_tenant_schema(tenant_id: int, tenant_name: str, tenant_cnpj: str, 
              dependencies=[Depends(check_sysadmin_profile)])
 def create_tenant(
     background_tasks: BackgroundTasks,
-    db: Session = Depends(database.get_db),
+    db: Session = Depends(session.get_db),
     name: str = Form(...),
     cnpj: Optional[str] = Form(None),
     # Email e Phone removidos do Form pois não existem no model Tenant
@@ -160,7 +160,7 @@ def create_tenant(
 @router.get("/tenants", 
             response_model=List[schemas.Tenant],
             dependencies=[Depends(check_sysadmin_profile)])
-def get_tenants(db: Session = Depends(database.get_db)):
+def get_tenants(db: Session = Depends(session.get_db)):
     return db.query(models.Tenant).order_by(models.Tenant.id).all()
 
 @router.put("/tenants/{tenant_id}", 
@@ -169,7 +169,7 @@ def get_tenants(db: Session = Depends(database.get_db)):
 def update_tenant(
     tenant_id: int,
     tenant_update: schemas.TenantUpdate,
-    db: Session = Depends(database.get_db)
+    db: Session = Depends(session.get_db)
 ):
     db_tenant = db.query(models.Tenant).filter(models.Tenant.id == tenant_id).first()
     if not db_tenant:
@@ -188,7 +188,7 @@ def update_tenant(
                dependencies=[Depends(check_sysadmin_profile)])
 def delete_tenant(
     tenant_id: int,
-    db: Session = Depends(database.get_db)
+    db: Session = Depends(session.get_db)
 ):
     db_tenant = db.query(models.Tenant).filter(models.Tenant.id == tenant_id).first()
     if not db_tenant:
@@ -209,7 +209,7 @@ def delete_tenant(
              dependencies=[Depends(check_sysadmin_profile)])
 def create_sysadmin_user_entry(
     user: schemas.UserCreate,
-    db: Session = Depends(database.get_db)
+    db: Session = Depends(session.get_db)
 ):
     """
     Cria usuários no sistema.
@@ -282,14 +282,14 @@ def create_sysadmin_user_entry(
 @router.get("/all-users", 
             response_model=List[schemas.User], 
             dependencies=[Depends(check_sysadmin_profile)])
-def get_all_users_in_system(db: Session = Depends(database.get_db)):
+def get_all_users_in_system(db: Session = Depends(session.get_db)):
     users = db.query(models.User).options(joinedload(models.User.tenant), joinedload(models.User.role_obj)).order_by(models.User.id).all()
     return users
 
 # --- AREAS ---
 
 @router.get("/areas", response_model=List[schemas.Area], dependencies=[Depends(check_sysadmin_profile)])
-def get_all_areas(db: Session = Depends(database.get_db), tenant_id: Optional[int] = None):
+def get_all_areas(db: Session = Depends(session.get_db), tenant_id: Optional[int] = None):
     query = db.query(models.Area)
     if tenant_id:
         query = query.filter(models.Area.tenant_id == tenant_id)
@@ -298,7 +298,7 @@ def get_all_areas(db: Session = Depends(database.get_db), tenant_id: Optional[in
 @router.post("/areas", response_model=schemas.Area, status_code=201, dependencies=[Depends(check_sysadmin_profile)])
 def create_area(
     area_in: schemas.AreaCreate,
-    db: Session = Depends(database.get_db)
+    db: Session = Depends(session.get_db)
 ):
     db_area = models.Area(
         name=area_in.name,
@@ -326,13 +326,13 @@ def create_area(
     return db_area
 
 @router.get("/roles", response_model=List[schemas.Role], dependencies=[Depends(check_sysadmin_profile)])
-def get_roles_by_tenant(tenant_id: int, db: Session = Depends(database.get_db)):
+def get_roles_by_tenant(tenant_id: int, db: Session = Depends(session.get_db)):
     return db.query(models.Role).filter(models.Role.tenant_id == tenant_id).all()
 
 @router.post("/fix-tasks-tables")
 def run_fix_tasks_tables_endpoint(
     request: Request,
-    db: Session = Depends(database.get_db)
+    db: Session = Depends(session.get_db)
 ):
     # check_sysadmin_profile(request) # Optional: disable check for easier debugging if token issue, but better keep it.
     

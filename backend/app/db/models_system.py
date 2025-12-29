@@ -1,7 +1,7 @@
 from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, DateTime, Text
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
-from app.db.database import Base
+from app.db.session import Base
 
 class GlobalUser(Base):
     __tablename__ = "global_users"
@@ -67,6 +67,19 @@ class Invite(Base):
     expires_at = Column(DateTime)
     
     tenant = relationship("Tenant", back_populates="invites")
+
+class ShadowBackup(Base):
+    __tablename__ = "shadow_backups"
+
+    id = Column(Integer, primary_key=True, index=True)
+    tenant_slug = Column(String, index=True)
+    table_name = Column(String, index=True)
+    record_id = Column(String) # UUID or Int as string
+    data = Column(Text) # JSON string (Text for storage safety in generic SQL, or JSONB if Postgres specific)
+    # Let's use JSONB since we are Postgres 15+
+    # But Base imports need JSONB.
+    # For now, Text is simplest and robust.
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
 
 class ApiKey(Base):
     __tablename__ = "api_keys"

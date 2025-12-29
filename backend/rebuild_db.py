@@ -2,8 +2,8 @@
 import os
 import sys
 from sqlalchemy import create_engine, text
-from app.db.database import get_database_url, Base
-from app.db import models_global
+from app.db.session import get_database_url, Base
+from app.db import models_system
 from app.core import security
 
 def rebuild_database():
@@ -24,7 +24,7 @@ def rebuild_database():
             
         # 2. Create Global Tables
         print("Creating Global Tables...")
-        models_global.Base.metadata.create_all(bind=engine)
+        models_system.Base.metadata.create_all(bind=engine)
         print("Global Tables Created.")
         
         # 3. Seed SysAdmin

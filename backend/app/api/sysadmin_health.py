@@ -9,7 +9,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status, Backgrou
 from fastapi.responses import FileResponse, JSONResponse
 from sqlalchemy.orm import Session
 from sqlalchemy import text
-from ..db import database, models, models_crm, schemas
+from ..db import session, models, models_crm, schemas
 from ..core import permissions, security
 
 router = APIRouter()
@@ -102,7 +102,7 @@ class MicroTestRunner:
     def _get_crm_session(self):
         if not self.schema_name:
              raise Exception("Schema not initialized")
-        db = database.SessionCrm()
+        db = session.SessionCrm()
         db.execute(text(f"SET search_path TO {self.schema_name}"))
         return db
 
@@ -157,7 +157,7 @@ class MicroTestRunner:
 
         # 2. Schema
         def action_create_schema():
-            with database.engine_crm.connect() as conn:
+            with session.engine_crm.connect() as conn:
                 conn.execute(text(f"CREATE SCHEMA IF NOT EXISTS {self.schema_name}"))
                 conn.commit()
                 conn.execute(text(f"SET search_path TO {self.schema_name}"))
@@ -351,7 +351,7 @@ class MicroTestRunner:
         if self.tenant_id:
             try:
                 # 1. Drop CRM Schema (Cascades to all data in schema)
-                with database.engine_crm.connect() as conn:
+                with session.engine_crm.connect() as conn:
                     conn.execute(text(f"DROP SCHEMA IF EXISTS {self.schema_name} CASCADE"))
                     conn.commit()
                 
@@ -493,7 +493,7 @@ async def execute_galaxy_test(db: Session):
 # --- ENDPOINTS ---
 
 @router.post("/run", dependencies=[Depends(check_sysadmin_profile)])
-def trigger_galaxy_test(background_tasks: BackgroundTasks, db: Session = Depends(database.get_db)):
+def trigger_galaxy_test(background_tasks: BackgroundTasks, db: Session = Depends(session.get_db)):
     if os.path.exists(LOCK_FILE):
         return JSONResponse(status_code=409, content={"detail": "Tests already running", "status": "running"})
     

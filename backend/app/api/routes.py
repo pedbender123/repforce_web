@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, Request
 from sqlalchemy.orm import Session
-from ..db import database, models, schemas
+from ..db import session, models, schemas
 
 router = APIRouter()
 
@@ -8,7 +8,7 @@ router = APIRouter()
 def create_visit_route(
     route_in: schemas.VisitRouteCreate,
     request: Request,
-    db: Session = Depends(database.get_db)
+    db: Session = Depends(session.get_db)
 ):
     tenant_id = request.state.tenant_id
     user_id = request.state.user_id

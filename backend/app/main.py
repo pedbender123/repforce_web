@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 import os 
 from .middleware import TenantMiddleware
-from .db import database, models_global, models_crm
+from .db import session, models_system, models_tenant
 from .core import security
 from sqlalchemy.orm import Session
 from sqlalchemy import create_engine
@@ -29,12 +29,12 @@ def startup_event():
     # 1. Initialize Global Tables (Public Schema)
     print("Initializing Global Tables (Public Schema)...")
     try:
-        models_global.Base.metadata.create_all(bind=database.engine)
+        models_global.Base.metadata.create_all(bind=session.engine)
     except Exception as e:
         print(f"Schema Init Error (Ensure Postgres is up): {e}")
     
     # 2. Seed SysAdmin (Global)
-    db = database.SessionSys()
+    db = session.SessionSys()
     try:
         # Check if user exists
         # Note: SessionSys is bound to engine, default search_path=public usually

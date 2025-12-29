@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, Request, HTTPException, BackgroundTasks
 from sqlalchemy.orm import Session
 from typing import List
-from ..db import database, models_crm, schemas
+from ..db import session, models_crm, schemas
 from ..services.cart_service import CartService
 
 router = APIRouter()
@@ -9,7 +9,7 @@ router = APIRouter()
 @router.post("/preview", response_model=schemas.CartSummary)
 def preview_order(
     items: List[schemas.CartItemInput],
-    db: Session = Depends(database.get_crm_db)
+    db: Session = Depends(session.get_crm_db)
 ):
     """
     Simula o cálculo do carrinho (Preços, Descontos, Total) sem salvar.
@@ -24,7 +24,7 @@ def create_order(
     order: schemas.OrderCreate,
     request: Request,
     background_tasks: BackgroundTasks,
-    db: Session = Depends(database.get_crm_db)
+    db: Session = Depends(session.get_crm_db)
 ):
     # 1. Setup Context
     # tenant_id já está no schema path, user_id precisamos pegar do token
@@ -88,7 +88,7 @@ def create_order(
 @router.get("", response_model=List[schemas.Order])
 def list_orders(
     request: Request, 
-    db: Session = Depends(database.get_crm_db)
+    db: Session = Depends(session.get_crm_db)
 ):
     # TODO: Implementar paginação e filtros
     user_id = request.state.user_id
@@ -100,7 +100,7 @@ def list_orders(
 def get_order_details(
     order_id: int,
     request: Request,
-    db: Session = Depends(database.get_crm_db)
+    db: Session = Depends(session.get_crm_db)
 ):
     order = db.query(models_crm.Order).options(
         joinedload(models_crm.Order.items).joinedload(models_crm.OrderItem.product),
@@ -116,7 +116,7 @@ def update_order(
     order_id: int,
     request: Request,
     order_in: schemas.OrderUpdate,
-    db: Session = Depends(database.get_crm_db)
+    db: Session = Depends(session.get_crm_db)
 ):
     order = db.query(models_crm.Order).filter(models_crm.Order.id == order_id).first()
     if not order:
