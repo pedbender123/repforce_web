@@ -45,7 +45,7 @@ def create_tenant_user( # Renomeado para clareza
     # Note: 'profile' field removed from User model, handling roles instead.
     
     # Verificação de unicidade
-    db_user = db.query(models.User).filter(models.User.username == user.username).first()
+    db_user = db.query(models_system.GlobalUser).filter(models_system.GlobalUser.username == user.username).first()
     if db_user:
         raise HTTPException(status_code=400, detail="Username já cadastrado")
 
@@ -54,11 +54,11 @@ def create_tenant_user( # Renomeado para clareza
     # Se um role_id foi passado, verifica se pertence ao tenant
     role_id = user.role_id
     if role_id:
-        role = db.query(models.Role).filter(models.Role.id == role_id, models.Role.tenant_id == tenant_id).first()
+        role = db.query(models_system.Role).filter(models_system.Role.id == role_id, models_system.Role.tenant_id == tenant_id).first()
         if not role:
             raise HTTPException(status_code=400, detail="Cargo inválido para este tenant")
     
-    db_new_user = models.User(
+    db_new_user = models_system.GlobalUser(
         username=user.username,
         email=user.email,
         name=user.name,
@@ -84,7 +84,7 @@ def get_users_in_tenant(
     (Admin de Tenant) Lista todos os usuários do SEU PRÓPRIO tenant.
     """
     tenant_id = request.state.tenant_id
-    users = db.query(models.User).filter(models.User.tenant_id == tenant_id).all()
+    users = db.query(models_system.GlobalUser).filter(models_system.GlobalUser.tenant_id == tenant_id).all()
     return users
 
 # --- PASSO 2: API DE GESTÃO DE CARGOS (ROLES) ---
@@ -93,7 +93,7 @@ def get_users_in_tenant(
 def get_tenant_roles(request: Request, db: Session = Depends(session.get_db)):
     """Lista todos os cargos do tenant atual."""
     tenant_id = request.state.tenant_id
-    return db.query(models.Role).filter(models.Role.tenant_id == tenant_id).all()
+    return db.query(models_system.Role).filter(models_system.Role.tenant_id == tenant_id).all()
 
 @router.post("/roles", response_model=schemas.Role, status_code=201, dependencies=[Depends(check_tenant_admin_profile)])
 def create_tenant_role(
@@ -105,11 +105,11 @@ def create_tenant_role(
     tenant_id = request.state.tenant_id
     
     # Verifica duplicidade de nome
-    existing = db.query(models.Role).filter(models.Role.name == role_in.name, models.Role.tenant_id == tenant_id).first()
+    existing = db.query(models_system.Role).filter(models_system.Role.name == role_in.name, models_system.Role.tenant_id == tenant_id).first()
     if existing:
         raise HTTPException(status_code=400, detail="Já existe um cargo com este nome.")
 
-    new_role = models.Role(
+    new_role = models_system.Role(
         name=role_in.name,
         description=role_in.description,
         tenant_id=tenant_id
@@ -120,9 +120,9 @@ def create_tenant_role(
     
     # Vincula áreas se fornecidas
     if role_in.area_ids:
-        areas = db.query(models.Area).filter(
-            models.Area.id.in_(role_in.area_ids),
-            models.Area.tenant_id == tenant_id
+        areas = db.query(models_system.Area).filter(
+            models_system.Area.id.in_(role_in.area_ids),
+            models_system.Area.tenant_id == tenant_id
         ).all()
         for area in areas:
             new_role.areas.append(area)
@@ -139,7 +139,7 @@ def update_tenant_role(
     db: Session = Depends(session.get_db)
 ):
     tenant_id = request.state.tenant_id
-    role = db.query(models.Role).filter(models.Role.id == role_id, models.Role.tenant_id == tenant_id).first()
+    role = db.query(models_system.Role).filter(models_system.Role.id == role_id, models_system.Role.tenant_id == tenant_id).first()
     
     if not role:
         raise HTTPException(status_code=404, detail="Cargo não encontrado.")
@@ -155,9 +155,9 @@ def update_tenant_role(
         # Limpa lista atual
         role.areas = []
         # Busca novas áreas (garantindo que pertencem ao tenant)
-        areas = db.query(models.Area).filter(
-            models.Area.id.in_(role_in.area_ids),
-            models.Area.tenant_id == tenant_id
+        areas = db.query(models_system.Area).filter(
+            models_system.Area.id.in_(role_in.area_ids),
+            models_system.Area.tenant_id == tenant_id
         ).all()
         for area in areas:
             role.areas.append(area)
@@ -173,7 +173,7 @@ def delete_tenant_role(
     db: Session = Depends(session.get_db)
 ):
     tenant_id = request.state.tenant_id
-    role = db.query(models.Role).filter(models.Role.id == role_id, models.Role.tenant_id == tenant_id).first()
+    role = db.query(models_system.Role).filter(models_system.Role.id == role_id, models_system.Role.tenant_id == tenant_id).first()
     
     if not role:
         raise HTTPException(status_code=404, detail="Cargo não encontrado.")
@@ -190,4 +190,4 @@ def delete_tenant_role(
 def get_tenant_available_areas(request: Request, db: Session = Depends(session.get_db)):
     """Retorna todas as áreas disponíveis para este tenant (para vincular aos cargos)."""
     tenant_id = request.state.tenant_id
-    return db.query(models.Area).filter(models.Area.tenant_id == tenant_id).all()
+    return db.query(models_system.Area).filter(models_system.Area.tenant_id == tenant_id).all()

@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, Request, HTTPException, status, File, Up
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import text
 from pydantic import EmailStr
-from ..db import session, models, schemas
+from ..db import session, models_system, schemas
 from ..core import security
 from typing import List, Optional
 import shutil
@@ -102,7 +102,7 @@ def create_tenant(
 ):
     # 1. Cria o Tenant (Status inicial provisioning)
     initial_status = "provisioning"
-    new_tenant = models.Tenant(
+    new_tenant = models_system.Tenant(
         name=name,
         cnpj=cnpj,
         status=initial_status,
@@ -137,7 +137,7 @@ def create_tenant(
                 # Não falha o provisionamento por causa do logo, apenas loga.
 
         # 3. Criação Automática do Cargo "Admin" (Imediato)
-        admin_role = models.Role(name="Admin", description="Administrador do Tenant", tenant_id=new_tenant.id)
+        admin_role = models_system.Role(name="Admin", description="Administrador do Tenant", tenant_id=new_tenant.id)
         db.add(admin_role)
         db.commit()
 
@@ -161,7 +161,7 @@ def create_tenant(
             response_model=List[schemas.Tenant],
             dependencies=[Depends(check_sysadmin_profile)])
 def get_tenants(db: Session = Depends(session.get_db)):
-    return db.query(models.Tenant).order_by(models.Tenant.id).all()
+    return db.query(models_system.Tenant).order_by(models_system.Tenant.id).all()
 
 @router.put("/tenants/{tenant_id}", 
             response_model=schemas.Tenant,
@@ -171,7 +171,7 @@ def update_tenant(
     tenant_update: schemas.TenantUpdate,
     db: Session = Depends(session.get_db)
 ):
-    db_tenant = db.query(models.Tenant).filter(models.Tenant.id == tenant_id).first()
+    db_tenant = db.query(models_system.Tenant).filter(models_system.Tenant.id == tenant_id).first()
     if not db_tenant:
         raise HTTPException(status_code=404, detail="Tenant não encontrado")
     
@@ -190,7 +190,7 @@ def delete_tenant(
     tenant_id: int,
     db: Session = Depends(session.get_db)
 ):
-    db_tenant = db.query(models.Tenant).filter(models.Tenant.id == tenant_id).first()
+    db_tenant = db.query(models_system.Tenant).filter(models_system.Tenant.id == tenant_id).first()
     if not db_tenant:
         raise HTTPException(status_code=404, detail="Tenant não encontrado")
     
@@ -214,7 +214,7 @@ def create_sysadmin_user_entry(
     """
     Cria usuários no sistema.
     """
-    if db.query(models.User).filter(models.User.username == user.username).first():
+    if db.query(models_system.GlobalUser).filter(models_system.GlobalUser.username == user.username).first():
         raise HTTPException(status_code=400, detail="Username já cadastrado")
 
     tenant_id = user.tenant_id
@@ -222,11 +222,11 @@ def create_sysadmin_user_entry(
 
     # Lógica de Tenant e Cargo
     if user.profile == 'sysadmin':
-        sys_tenant = db.query(models.Tenant).filter(models.Tenant.name == "Systems").first()
+        sys_tenant = db.query(models_system.Tenant).filter(models_system.Tenant.name == "Systems").first()
         if not sys_tenant:
              raise HTTPException(status_code=500, detail="Tenant Systems não encontrado")
         tenant_id = sys_tenant.id
-        role = db.query(models.Role).filter(models.Role.name == "Super Admin", models.Role.tenant_id == tenant_id).first()
+        role = db.query(models_system.Role).filter(models_system.Role.name == "Super Admin", models_system.Role.tenant_id == tenant_id).first()
         if role:
             role_id = role.id
             
@@ -235,9 +235,9 @@ def create_sysadmin_user_entry(
             raise HTTPException(status_code=400, detail="Tenant ID obrigatório para Admin")
         
         # 1. Busca ou Cria o Cargo Admin
-        admin_role = db.query(models.Role).filter(models.Role.name == "Admin", models.Role.tenant_id == tenant_id).first()
+        admin_role = db.query(models_system.Role).filter(models_system.Role.name == "Admin", models_system.Role.tenant_id == tenant_id).first()
         if not admin_role:
-            admin_role = models.Role(name="Admin", tenant_id=tenant_id)
+            admin_role = models_system.Role(name="Admin", tenant_id=tenant_id)
             db.add(admin_role)
             db.commit()
             db.refresh(admin_role)
@@ -246,7 +246,7 @@ def create_sysadmin_user_entry(
 
         # 2. (REMOVIDO) Não atualiza mais o cargo Admin automaticamente com todas as áreas.
         # O Admin deve começar sem áreas, conforme solicitado.
-        # tenant_areas = db.query(models.Area).filter(models.Area.tenant_id == tenant_id).all()
+        # tenant_areas = db.query(models_system.Area).filter(models_system.Area.tenant_id == tenant_id).all()
         # admin_role.areas = tenant_areas
         pass
     
@@ -264,7 +264,7 @@ def create_sysadmin_user_entry(
 
     hashed_password = security.get_password_hash(user.password)
 
-    db_new_user = models.User(
+    db_new_user = models_system.GlobalUser(
         username=user.username,
         email=user.email,
         name=user.name,
@@ -283,16 +283,16 @@ def create_sysadmin_user_entry(
             response_model=List[schemas.User], 
             dependencies=[Depends(check_sysadmin_profile)])
 def get_all_users_in_system(db: Session = Depends(session.get_db)):
-    users = db.query(models.User).options(joinedload(models.User.tenant), joinedload(models.User.role_obj)).order_by(models.User.id).all()
+    users = db.query(models_system.GlobalUser).options(joinedload(models_system.GlobalUser.tenant), joinedload(models_system.GlobalUser.role_obj)).order_by(models_system.GlobalUser.id).all()
     return users
 
 # --- AREAS ---
 
 @router.get("/areas", response_model=List[schemas.Area], dependencies=[Depends(check_sysadmin_profile)])
 def get_all_areas(db: Session = Depends(session.get_db), tenant_id: Optional[int] = None):
-    query = db.query(models.Area)
+    query = db.query(models_system.Area)
     if tenant_id:
-        query = query.filter(models.Area.tenant_id == tenant_id)
+        query = query.filter(models_system.Area.tenant_id == tenant_id)
     return query.all()
 
 @router.post("/areas", response_model=schemas.Area, status_code=201, dependencies=[Depends(check_sysadmin_profile)])
@@ -300,7 +300,7 @@ def create_area(
     area_in: schemas.AreaCreate,
     db: Session = Depends(session.get_db)
 ):
-    db_area = models.Area(
+    db_area = models_system.Area(
         name=area_in.name,
         icon=area_in.icon,
         pages_json=[p.dict() for p in area_in.pages_json],
@@ -313,12 +313,12 @@ def create_area(
     roles_to_add = set(area_in.allowed_role_ids)
     
     # (REMOVIDO) Não adiciona mais a nova área ao cargo Admin automaticamente.
-    # admin_role = db.query(models.Role).filter(models.Role.name == "Admin", models.Role.tenant_id == area_in.tenant_id).first()
+    # admin_role = db.query(models_system.Role).filter(models_system.Role.name == "Admin", models_system.Role.tenant_id == area_in.tenant_id).first()
     # if admin_role:
     #     roles_to_add.add(admin_role.id)
     
     if roles_to_add:
-        roles = db.query(models.Role).filter(models.Role.id.in_(roles_to_add)).all()
+        roles = db.query(models_system.Role).filter(models_system.Role.id.in_(roles_to_add)).all()
         for role in roles:
             role.areas.append(db_area)
         db.commit()
@@ -327,7 +327,7 @@ def create_area(
 
 @router.get("/roles", response_model=List[schemas.Role], dependencies=[Depends(check_sysadmin_profile)])
 def get_roles_by_tenant(tenant_id: int, db: Session = Depends(session.get_db)):
-    return db.query(models.Role).filter(models.Role.tenant_id == tenant_id).all()
+    return db.query(models_system.Role).filter(models_system.Role.tenant_id == tenant_id).all()
 
 @router.post("/fix-tasks-tables")
 def run_fix_tasks_tables_endpoint(
