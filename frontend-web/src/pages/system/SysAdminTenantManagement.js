@@ -9,8 +9,9 @@ const fetchTenants = async () => {
   return data;
 };
 
-const createTenant = async (formData) => {
-  const { data } = await sysAdminApiClient.post('/sysadmin/tenants', formData);
+// Use Manager API for Atomic Provisioning (Tenant + User + Schema)
+const createTenant = async (jsonData) => {
+  const { data } = await sysAdminApiClient.post('/manager/tenants', jsonData);
   return data;
 };
 
@@ -23,85 +24,25 @@ const typeOptions = [
 export default function TenantManagement() {
   const [isCreating, setIsCreating] = useState(false);
   const queryClient = useQueryClient();
-  const { register, handleSubmit, reset, formState: { errors } } = useForm();
+  const { register, handleSubmit, watch, setValue, reset, formState: { errors } } = useForm();
+
+  // Auto-generate slug from name
+  const nameValue = watch("name");
+  React.useEffect(() => {
+    if (nameValue && isCreating) {
+      const slug = nameValue.toLowerCase()
+        .replace(/[^\w\s-]/g, '')
+        .replace(/[\s_-]+/g, '-')
+        .replace(/^-+|-+$/g, '');
+      setValue("slug", slug);
+    }
+  }, [nameValue, setValue, isCreating]);
 
   const { data: tenants, isLoading } = useQuery(['sysAdminTenants'], fetchTenants);
 
   const createMutation = useMutation(createTenant, {
     onSuccess: async (newTenant) => {
-      // Setup Inicial Automático: Criar Área e Cargos Padrão
-      try {
-        const tenantId = newTenant.id;
-
-        // 1. Criar Área de Administração (Padrão)
-        const areaPayload = {
-          name: 'Administração',
-          description: 'Área de gestão do sistema',
-          icon: 'ShieldAlert',
-          tenant_id: tenantId,
-          pages_json: [
-            { label: 'Dashboard', path: '/admin/dashboard' },
-            { label: 'Usuários', path: '/admin/users' },
-            { label: 'Cargos', path: '/admin/roles' },
-            { label: 'Produtos', path: '/admin/products' }
-          ]
-        };
-        const { data: area } = await sysAdminApiClient.post('/sysadmin/areas', areaPayload);
-
-        // 2. Criar Cargo Admin (Vinculado à Área de Administração)
-        const { data: adminRole } = await sysAdminApiClient.post('/sysadmin/roles', {
-          name: 'Admin',
-          description: 'Acesso total ao sistema',
-          tenant_id: tenantId,
-          area_ids: [area.id]
-        });
-
-        // 3. Criar Cargo Representante (Sem área padrão vinculada inicialmente, ou criar área Vendas separada?)
-        // Para simplificar e atender o "MVP Enterprise", vamos criar apenas o Admin agora e deixar o Admin criar a área de vendas.
-        // Ou criar uma segunda área de Vendas? Vamos criar a segunda área para não quebrar a expectativa de "Testar Vendas".
-
-        const salesAreaPayload = {
-          name: 'Vendas',
-          icon: 'Briefcase',
-          tenant_id: tenantId,
-          pages_json: [
-            { label: 'Dashboard', path: '/app/dashboard' },
-            { label: 'Clientes', path: '/app/clients' },
-            { label: 'Pedidos', path: '/app/orders/new' }
-          ]
-        };
-        const { data: salesArea } = await sysAdminApiClient.post('/sysadmin/areas', salesAreaPayload);
-
-        await sysAdminApiClient.post('/sysadmin/roles', {
-          name: 'Representante',
-          description: 'Força de Vendas',
-          tenant_id: tenantId,
-          area_ids: [salesArea.id]
-        });
-
-        // 4. ATRIBUIR CARGO ADMIN AO USUÁRIO PADRÃO
-        // Pequeno delay para garantir que o usuário foi commitado no banco (se houver async no backend)
-        await new Promise(r => setTimeout(r, 1000));
-
-        const { data: tenantUsers } = await sysAdminApiClient.get(`/sysadmin/users?tenant_id=${tenantId}`);
-        if (tenantUsers && tenantUsers.length > 0) {
-          // Assume que o usuário criado junto com o tenant é o primeiro/único
-          const adminUser = tenantUsers.find(u => u.email === newTenant.email) || tenantUsers[0];
-
-          console.log("Atualizando usuário Admin:", adminUser, "para Role:", adminRole);
-
-          await sysAdminApiClient.put(`/sysadmin/users/${adminUser.id}`, {
-            ...adminUser,
-            role_id: adminRole.id
-          });
-        }
-
-        alert(`Tenant "${newTenant.name}" criado com sucesso! Configuração inicial (Área Vendas + Cargos + Usuário Admin) aplicada.`);
-      } catch (setupError) {
-        console.error("Erro no setup inicial:", setupError);
-        alert(`Tenant criado, mas houve erro na configuração inicial: ${setupError.message}`);
-      }
-
+      alert(`Tenant "${newTenant.tenant?.slug}" provisionado com sucesso! Admin: ${newTenant.admin?.email}`);
       queryClient.invalidateQueries(['sysAdminTenants']);
       reset();
       setIsCreating(false);
@@ -139,6 +80,7 @@ export default function TenantManagement() {
 
   const onSubmit = (data) => {
     if (editingTenant) {
+      // Edit logic remains same (just metadata)
       updateMutation.mutate({
         id: editingTenant.id,
         data: {
@@ -150,14 +92,17 @@ export default function TenantManagement() {
       return;
     }
 
-    const formData = new FormData();
-    formData.append('name', data.name);
-    formData.append('cnpj', data.cnpj || '');
-    formData.append('email', data.email || '');
-    formData.append('status', 'active');
-    formData.append('tenant_type', data.tenant_type);
-    if (data.logo?.[0]) formData.append('logo', data.logo[0]);
-    createMutation.mutate(formData);
+    // New Tenant Payload for Manager API
+    const payload = {
+      name: data.name,
+      slug: data.slug,
+      plan_type: 'trial',
+      admin_email: data.admin_email,
+      admin_password: data.admin_password,
+      admin_name: data.admin_name || 'Admin'
+    };
+
+    createMutation.mutate(payload);
   };
 
   const handleEdit = (tenant) => {
@@ -186,27 +131,55 @@ export default function TenantManagement() {
           </button>
         </div>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium dark:text-gray-300">Nome</label>
-            <input {...register("name", { required: true })} className="w-full p-2 border rounded dark:bg-gray-700 dark:text-white" />
-          </div>
+          {/* Tenant Details */}
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium dark:text-gray-300">CNPJ</label>
+              <label className="block text-sm font-medium dark:text-gray-300">Nome da Empresa</label>
+              <input {...register("name", { required: true })} className="w-full p-2 border rounded dark:bg-gray-700 dark:text-white" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium dark:text-gray-300">Slug (URL)</label>
+              <input {...register("slug", { required: true })} className="w-full p-2 border rounded dark:bg-gray-700 dark:text-white bg-gray-100" readOnly={!editingTenant} />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium dark:text-gray-300">CNPJ (Opcional)</label>
               <input {...register("cnpj")} className="w-full p-2 border rounded dark:bg-gray-700 dark:text-white" />
             </div>
             <div>
-              <label className="block text-sm font-medium dark:text-gray-300">Tipo</label>
+              <label className="block text-sm font-medium dark:text-gray-300">Tipo da Operação</label>
               <select {...register("tenant_type")} className="w-full p-2 border rounded dark:bg-gray-700 dark:text-white">
                 {typeOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
               </select>
             </div>
           </div>
-          <div>
-            <label className="block text-sm font-medium dark:text-gray-300">Logo</label>
-            <input type="file" {...register("logo")} className="w-full text-sm dark:text-gray-300" />
-          </div>
-          <button type="submit" className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700">Salvar</button>
+
+          {/* Admin User Provisioning - Only for Create */}
+          {!editingTenant && (
+            <div className="border-t pt-4 mt-4 dark:border-gray-700">
+              <h3 className="text-lg font-semibold mb-3 dark:text-white">Dados do Administrador Inicial</h3>
+              <div className="grid grid-cols-1 gap-4">
+                <div>
+                  <label className="block text-sm font-medium dark:text-gray-300">Nome do Admin</label>
+                  <input {...register("admin_name", { required: true })} className="w-full p-2 border rounded dark:bg-gray-700 dark:text-white" defaultValue="Administrador" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium dark:text-gray-300">Email do Admin (Login)</label>
+                  <input type="email" {...register("admin_email", { required: true })} className="w-full p-2 border rounded dark:bg-gray-700 dark:text-white" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium dark:text-gray-300">Senha Inicial</label>
+                  <input type="password" {...register("admin_password", { required: true })} className="w-full p-2 border rounded dark:bg-gray-700 dark:text-white" />
+                </div>
+              </div>
+            </div>
+          )}
+
+          <button type="submit" className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700">
+            {editingTenant ? 'Salvar Alterações' : 'Provisionar Tenant'}
+          </button>
         </form>
       </div>
     );
