@@ -196,7 +196,7 @@ class MicroTestRunner:
         def action_create_user():
             u = models_system.GlobalUser(
                 username=f"cmdr_{self.run_id}",
-                name="Commander Shepard",
+                full_name="Commander Shepard",
                 email=f"cmdr_{self.run_id}@alliance.net",
                 hashed_password=security.get_password_hash("n7"),
                 tenant_id=self.tenant_id,

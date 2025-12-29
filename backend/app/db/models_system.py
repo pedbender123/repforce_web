@@ -20,6 +20,7 @@ class GlobalUser(Base):
     # Relationships
     memberships = relationship("Membership", back_populates="user")
     
+    tenant_id = Column(Integer, ForeignKey("public.tenants.id"), nullable=True) # Legacy/Primary Tenant Link
     role_id = Column(Integer, ForeignKey("public.roles.id"), nullable=True) # Linked to Role 
     role_obj = relationship("Role", foreign_keys=[role_id])
 
