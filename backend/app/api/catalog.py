@@ -19,10 +19,10 @@ def get_products(
     search: str = ""
 ):
     tenant_id = request.state.tenant_id
-    query = db.query(models_crm.Product).options(joinedload(models_crm.Product.supplier))
+    query = db.query(models_tenant.Product).options(joinedload(models_tenant.Product.supplier))
     
     if search:
-        query = query.filter(models_crm.Product.name.ilike(f"%{search}%"))
+        query = query.filter(models_tenant.Product.name.ilike(f"%{search}%"))
         
     return query.all()
 
@@ -32,12 +32,12 @@ def get_product_details(
     request: Request,
     db: Session = Depends(session.get_crm_db)
 ):
-    product = db.query(models_crm.Product).options(
-        joinedload(models_crm.Product.supplier),
-        joinedload(models_crm.Product.brand),
-        joinedload(models_crm.Product.family),
-        joinedload(models_crm.Product.type)
-    ).filter(models_crm.Product.id == product_id).first()
+    product = db.query(models_tenant.Product).options(
+        joinedload(models_tenant.Product.supplier),
+        joinedload(models_tenant.Product.brand),
+        joinedload(models_tenant.Product.family),
+        joinedload(models_tenant.Product.type)
+    ).filter(models_tenant.Product.id == product_id).first()
 
     if not product:
         raise HTTPException(status_code=404, detail="Produto não encontrado")
@@ -71,8 +71,8 @@ def create_product(
         attributes_data = {}
 
     # Busca configurações para validação
-    configs = db.query(models_crm.CustomFieldConfig).filter(
-        models_crm.CustomFieldConfig.entity == "product"
+    configs = db.query(models_tenant.CustomFieldConfig).filter(
+        models_tenant.CustomFieldConfig.entity == "product"
     ).all()
 
     for config in configs:
@@ -105,7 +105,7 @@ def create_product(
         # Se STATIC_URL_PRODUCTS = "/uploads/products", então:
         image_url = f"{STATIC_URL_PRODUCTS}/{tenant_id}/{image.filename}"
 
-    db_product = models_crm.Product(
+    db_product = models_tenant.Product(
         name=name,
         price=price,
         sku=sku,
@@ -137,7 +137,7 @@ def update_product(
     if request.state.profile not in ['admin', 'sysadmin']:
         raise HTTPException(status_code=403, detail="Apenas admins podem editar produtos")
 
-    product = db.query(models_crm.Product).filter(models_crm.Product.id == product_id).first()
+    product = db.query(models_tenant.Product).filter(models_tenant.Product.id == product_id).first()
     if not product:
         raise HTTPException(status_code=404, detail="Produto não encontrado")
 
@@ -178,7 +178,7 @@ def get_suppliers(
     db: Session = Depends(session.get_db)
 ):
     tenant_id = request.state.tenant_id
-    suppliers = db.query(models_crm.Supplier).all()
+    suppliers = db.query(models_tenant.Supplier).all()
     return suppliers
 
 @router.post("/suppliers", response_model=schemas.Supplier, status_code=201)
@@ -192,7 +192,7 @@ def create_supplier(
 
     tenant_id = request.state.tenant_id
     
-    db_supplier = models_crm.Supplier(**supplier.dict())
+    db_supplier = models_tenant.Supplier(**supplier.dict())
     db.add(db_supplier)
     db.commit()
     db.refresh(db_supplier)

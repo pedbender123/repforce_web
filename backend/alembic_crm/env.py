@@ -10,7 +10,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from app.core.config import settings
 from app.db.database import BaseCrm
-from app.db import models_crm # Ensure CRM models are known
+from app.db import models_tenant # Ensure CRM models are known
 
 config = context.config
 

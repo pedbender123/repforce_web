@@ -1,7 +1,7 @@
 from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey, JSON
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
-from .models_crm import BaseCrm
+from .models_tenant import BaseCrm
 
 class ApiKey(BaseCrm):
     """

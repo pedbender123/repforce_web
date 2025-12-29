@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from ..db import session
-from ..db import models_crm as models
+from ..db import models_tenant as models
 from pydantic import BaseModel
 from typing import List, Optional
 from datetime import datetime

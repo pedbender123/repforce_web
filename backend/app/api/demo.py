@@ -6,7 +6,7 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status, Body
 from sqlalchemy.orm import Session
 from sqlalchemy import text
-from ..db import session, models, models_crm, schemas
+from ..db import session, models, models_tenant, schemas
 from ..core import permissions, security
 
 router = APIRouter()
@@ -58,9 +58,9 @@ class DemoService:
             db_brands = []
             for name in BRANDS:
                 # Check if exists
-                existing = crm_db.query(models_crm.Brand).filter(models_crm.Brand.name == name).first()
+                existing = crm_db.query(models_tenant.Brand).filter(models_tenant.Brand.name == name).first()
                 if not existing:
-                    b = models_crm.Brand(name=name)
+                    b = models_tenant.Brand(name=name)
                     crm_db.add(b)
                     db_brands.append(b)
                 else:
@@ -72,9 +72,9 @@ class DemoService:
                 crm_db.refresh(b)
             
             # 2. Suppliers
-            db_supplier = crm_db.query(models_crm.Supplier).filter(models_crm.Supplier.name == SUPPLIER["name"]).first()
+            db_supplier = crm_db.query(models_tenant.Supplier).filter(models_tenant.Supplier.name == SUPPLIER["name"]).first()
             if not db_supplier:
-                db_supplier = models_crm.Supplier(name=SUPPLIER["name"], email=SUPPLIER["email"])
+                db_supplier = models_tenant.Supplier(name=SUPPLIER["name"], email=SUPPLIER["email"])
                 crm_db.add(db_supplier)
                 crm_db.commit()
                 crm_db.refresh(db_supplier)
@@ -82,9 +82,9 @@ class DemoService:
             # 3. Products
             db_products = []
             for prod_data in PRODUCTS:
-                existing = crm_db.query(models_crm.Product).filter(models_crm.Product.sku == prod_data["sku"]).first()
+                existing = crm_db.query(models_tenant.Product).filter(models_tenant.Product.sku == prod_data["sku"]).first()
                 if not existing:
-                    p = models_crm.Product(
+                    p = models_tenant.Product(
                         name=prod_data["name"],
                         sku=prod_data["sku"],
                         price=prod_data["price"],
@@ -104,9 +104,9 @@ class DemoService:
             # 4. Clients
             db_clients = []
             for client_data in CLIENTS:
-                existing = crm_db.query(models_crm.Client).filter(models_crm.Client.cnpj == client_data["cnpj"]).first()
+                existing = crm_db.query(models_tenant.Client).filter(models_tenant.Client.cnpj == client_data["cnpj"]).first()
                 if not existing:
-                    c = models_crm.Client(
+                    c = models_tenant.Client(
                         name=client_data["name"],
                         fantasy_name=client_data["fantasy_name"],
                         cnpj=client_data["cnpj"],
@@ -135,7 +135,7 @@ class DemoService:
                     client = random.choice(db_clients)
                     
                     # Create Order
-                    o = models_crm.Order(
+                    o = models_tenant.Order(
                         client_id=client.id,
                         representative_id=rp_id,
                         status="draft",
@@ -154,7 +154,7 @@ class DemoService:
                         qty = random.randint(1, 3)
                         item_total = prod.price * qty
                         
-                        item = models_crm.OrderItem(
+                        item = models_tenant.OrderItem(
                             order_id=o.id,
                             product_id=prod.id,
                             quantity=qty,
@@ -179,9 +179,9 @@ class DemoService:
                 })
             
             route_name = f"Rota Demonstração - {today_str}"
-            existing_route = crm_db.query(models_crm.VisitRoute).filter(models_crm.VisitRoute.name == route_name).first()
+            existing_route = crm_db.query(models_tenant.VisitRoute).filter(models_tenant.VisitRoute.name == route_name).first()
             if not existing_route:
-                route = models_crm.VisitRoute(
+                route = models_tenant.VisitRoute(
                     name=route_name,
                     date=today_str,
                     stops=stops_data,

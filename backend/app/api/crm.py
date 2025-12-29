@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, Request, HTTPException
 from sqlalchemy.orm import Session, joinedload
-from ..db import session, models, models_crm, schemas
+from ..db import session, models, models_tenant, schemas
 from ..core.permissions import get_user_scope
 from typing import List
 
@@ -20,12 +20,12 @@ def get_clients(
     scope = get_user_scope(request)
     
     # 2. Query Base
-    query = db.query(models_crm.Client)
+    query = db.query(models_tenant.Client)
     
     # 3. Filtro Antigravity
     if scope == "OWN":
         # Mágica: Filtra apenas clientes onde o representante é o usuário atual
-        query = query.filter(models_crm.Client.representative_id == user_id)
+        query = query.filter(models_tenant.Client.representative_id == user_id)
         
     return query.all()
 
@@ -36,8 +36,8 @@ def get_client_details(
     db: Session = Depends(session.get_crm_db)
 ):
     tenant_id = request.state.tenant_id
-    client = db.query(models_crm.Client).options(joinedload(models_crm.Client.contacts)).filter(
-        models_crm.Client.id == client_id
+    client = db.query(models_tenant.Client).options(joinedload(models_tenant.Client.contacts)).filter(
+        models_tenant.Client.id == client_id
     ).first()
     
     if not client:
@@ -46,7 +46,7 @@ def get_client_details(
 
 @router.post("/products", response_model=schemas.Product)
 def create_product(product: schemas.ProductCreate, db: Session = Depends(session.get_crm_db)):
-    db_product = models_crm.Product(**product.dict())
+    db_product = models_tenant.Product(**product.dict())
     db.add(db_product)
     db.commit()
     db.refresh(db_product)
@@ -55,11 +55,11 @@ def create_product(product: schemas.ProductCreate, db: Session = Depends(session
 # --- CATALOG CONFIGURATION ---
 @router.get("/brands", response_model=List[schemas.Brand])
 def list_brands(db: Session = Depends(session.get_crm_db)):
-    return db.query(models_crm.Brand).all()
+    return db.query(models_tenant.Brand).all()
 
 @router.post("/brands", response_model=schemas.Brand)
 def create_brand(brand: schemas.BrandCreate, db: Session = Depends(session.get_crm_db)):
-    db_brand = models_crm.Brand(**brand.dict())
+    db_brand = models_tenant.Brand(**brand.dict())
     db.add(db_brand)
     db.commit()
     db.refresh(db_brand)
@@ -67,11 +67,11 @@ def create_brand(brand: schemas.BrandCreate, db: Session = Depends(session.get_c
 
 @router.get("/families", response_model=List[schemas.ProductFamily])
 def list_families(db: Session = Depends(session.get_crm_db)):
-    return db.query(models_crm.ProductFamily).all()
+    return db.query(models_tenant.ProductFamily).all()
 
 @router.post("/families", response_model=schemas.ProductFamily)
 def create_family(family: schemas.FamilyCreate, db: Session = Depends(session.get_crm_db)):
-    db_item = models_crm.ProductFamily(**family.dict())
+    db_item = models_tenant.ProductFamily(**family.dict())
     db.add(db_item)
     db.commit()
     db.refresh(db_item)
@@ -79,11 +79,11 @@ def create_family(family: schemas.FamilyCreate, db: Session = Depends(session.ge
 
 @router.get("/types", response_model=List[schemas.ProductType])
 def list_types(db: Session = Depends(session.get_crm_db)):
-    return db.query(models_crm.ProductType).all()
+    return db.query(models_tenant.ProductType).all()
 
 @router.post("/types", response_model=schemas.ProductType)
 def create_type(item: schemas.TypeCreate, db: Session = Depends(session.get_crm_db)):
-    db_item = models_crm.ProductType(**item.dict())
+    db_item = models_tenant.ProductType(**item.dict())
     db.add(db_item)
     db.commit()
     db.refresh(db_item)
@@ -92,12 +92,12 @@ def create_type(item: schemas.TypeCreate, db: Session = Depends(session.get_crm_
 # --- PRICING RULES ---
 @router.get("/config/rules", response_model=List[schemas.DiscountRule])
 def list_rules(db: Session = Depends(session.get_crm_db)):
-    return db.query(models_crm.DiscountRule).order_by(models_crm.DiscountRule.priority.desc()).all()
+    return db.query(models_tenant.DiscountRule).order_by(models_tenant.DiscountRule.priority.desc()).all()
 
 @router.post("/config/rules", response_model=schemas.DiscountRule)
 def create_rule(rule: schemas.DiscountRuleCreate, db: Session = Depends(session.get_crm_db)):
     try:
-        db_rule = models_crm.DiscountRule(**rule.dict())
+        db_rule = models_tenant.DiscountRule(**rule.dict())
         db.add(db_rule)
         db.commit()
         db.refresh(db_rule)
@@ -109,7 +109,7 @@ def create_rule(rule: schemas.DiscountRuleCreate, db: Session = Depends(session.
 
 @router.delete("/config/rules/{rule_id}")
 def delete_rule(rule_id: int, db: Session = Depends(session.get_crm_db)):
-    rule = db.query(models_crm.DiscountRule).filter(models_crm.DiscountRule.id == rule_id).first()
+    rule = db.query(models_tenant.DiscountRule).filter(models_tenant.DiscountRule.id == rule_id).first()
     if not rule:
         raise HTTPException(status_code=404, detail="Rule not found")
     db.delete(rule)
@@ -127,7 +127,7 @@ def create_client(
     # Processa address_data se existir
     addr_data = client_in.address_data or {}
     
-    db_client = models_crm.Client(
+    db_client = models_tenant.Client(
         name=client_in.name,
         fantasy_name=client_in.fantasy_name,
         trade_name=client_in.trade_name,
@@ -160,11 +160,11 @@ def create_contact(
 ):
     tenant_id = request.state.tenant_id
     # Verifica se cliente existe e pertence ao tenant
-    client = db.query(models_crm.Client).filter(models_crm.Client.id == client_id).first()
+    client = db.query(models_tenant.Client).filter(models_tenant.Client.id == client_id).first()
     if not client:
         raise HTTPException(status_code=404, detail="Cliente não encontrado")
 
-    db_contact = models_crm.Contact(
+    db_contact = models_tenant.Contact(
         **contact_in.dict(),
         client_id=client_id
     )
@@ -179,7 +179,7 @@ def delete_contact(
     request: Request,
     db: Session = Depends(session.get_crm_db)
 ):
-    contact = db.query(models_crm.Contact).filter(models_crm.Contact.id == contact_id).first()
+    contact = db.query(models_tenant.Contact).filter(models_tenant.Contact.id == contact_id).first()
     if not contact:
         raise HTTPException(status_code=404, detail="Contato não encontrado")
     

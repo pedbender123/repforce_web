@@ -1,7 +1,7 @@
 
 from typing import List, Dict, Optional
 from sqlalchemy.orm import Session
-from app.db import models_crm, schemas
+from app.db import models_tenant, schemas
 from app.services.pricing_service import PricingService
 
 class CartService:
@@ -21,7 +21,7 @@ class CartService:
 
         # Carregar produtos (Batch load)
         p_ids = [i.product_id for i in items]
-        products = self.db.query(models_crm.Product).filter(models_crm.Product.id.in_(p_ids)).all()
+        products = self.db.query(models_tenant.Product).filter(models_tenant.Product.id.in_(p_ids)).all()
         product_map = {p.id: p for p in products}
         
         cart_items = []

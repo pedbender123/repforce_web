@@ -9,7 +9,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status, Backgrou
 from fastapi.responses import FileResponse, JSONResponse
 from sqlalchemy.orm import Session
 from sqlalchemy import text
-from ..db import session, models, models_crm, schemas
+from ..db import session, models, models_tenant, schemas
 from ..core import permissions, security
 
 router = APIRouter()
@@ -162,7 +162,7 @@ class MicroTestRunner:
                 conn.commit()
                 conn.execute(text(f"SET search_path TO {self.schema_name}"))
                 conn.commit()
-                models_crm.BaseCrm.metadata.create_all(bind=conn)
+                models_tenant.BaseCrm.metadata.create_all(bind=conn)
                 conn.commit()
             return "Schema Created & Migrated"
         
@@ -222,7 +222,7 @@ class MicroTestRunner:
         try:
             # 1. Brand
             def action_brand():
-                b = models_crm.Brand(name="MassEffectArts")
+                b = models_tenant.Brand(name="MassEffectArts")
                 crm_session.add(b)
                 crm_session.commit()
                 crm_session.refresh(b)
@@ -231,7 +231,7 @@ class MicroTestRunner:
 
             # 2. Supplier
             def action_supplier():
-                s = models_crm.Supplier(name="Citadel Supplies", email="shop@citadel.space")
+                s = models_tenant.Supplier(name="Citadel Supplies", email="shop@citadel.space")
                 crm_session.add(s)
                 crm_session.commit()
                 crm_session.refresh(s)
@@ -240,7 +240,7 @@ class MicroTestRunner:
 
             # 3. Product
             def action_product():
-                p = models_crm.Product(
+                p = models_tenant.Product(
                     name="Omni-Tool v1",
                     sku=f"OMNI-{self.run_id}",
                     price=5000.00,
@@ -271,7 +271,7 @@ class MicroTestRunner:
         try:
             # 1. Discount Rule
             def action_rule():
-                r = models_crm.DiscountRule(name="Spectre Discount", type="value", discount_percent=20.0, active=True)
+                r = models_tenant.DiscountRule(name="Spectre Discount", type="value", discount_percent=20.0, active=True)
                 crm_session.add(r)
                 crm_session.commit()
                 return "20% Rule Created"
@@ -284,7 +284,7 @@ class MicroTestRunner:
                 expected_unit = base_price * 0.8
                 expected_total = expected_unit * qty
                 
-                o = models_crm.Order(
+                o = models_tenant.Order(
                     client_id=client_id, 
                     representative_id=self.user_id, 
                     total_value=expected_total,
@@ -293,7 +293,7 @@ class MicroTestRunner:
                 crm_session.add(o)
                 crm_session.commit()
                 
-                item = models_crm.OrderItem(
+                item = models_tenant.OrderItem(
                     order_id=o.id,
                     product_id=product_id,
                     quantity=qty,
@@ -324,7 +324,7 @@ class MicroTestRunner:
             def action_bulk_products():
                 data = [{"name": f"P-{i}", "sku": f"SKU-{i}", "price": 10.0} for i in range(10000)]
                 conn = crm_session.connection()
-                conn.execute(models_crm.Product.__table__.insert(), data)
+                conn.execute(models_tenant.Product.__table__.insert(), data)
                 crm_session.commit()
                 return "10,000 Rows Inserted"
             
@@ -334,7 +334,7 @@ class MicroTestRunner:
             def action_bulk_clients():
                 data = [{"name": f"C-{i}", "cnpj": f"{i}", "representative_id": self.user_id} for i in range(300)]
                 conn = crm_session.connection()
-                conn.execute(models_crm.Client.__table__.insert(), data)
+                conn.execute(models_tenant.Client.__table__.insert(), data)
                 crm_session.commit()
                 return "300 Rows Inserted"
                 

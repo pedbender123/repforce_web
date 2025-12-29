@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, Request, HTTPException, BackgroundTasks
 from sqlalchemy.orm import Session
 from typing import List
-from ..db import session, models_crm, schemas
+from ..db import session, models_tenant, schemas
 from ..services.cart_service import CartService
 
 router = APIRouter()
@@ -42,7 +42,7 @@ def create_order(
     # 3. Criar Order Items (DB Models)
     db_items = []
     for item in summary.items:
-        db_items.append(models_crm.OrderItem(
+        db_items.append(models_tenant.OrderItem(
             product_id=item.product_id,
             quantity=item.quantity,
             unit_price=item.unit_price,       # Snapshot preço cheio
@@ -53,7 +53,7 @@ def create_order(
         ))
 
     # 4. Criar Pedido
-    db_order = models_crm.Order(
+    db_order = models_tenant.Order(
         client_id=order.client_id,
         items=db_items,
         total_value=summary.total_net, # Valor final cobrado
@@ -94,7 +94,7 @@ def list_orders(
     user_id = request.state.user_id
     # Por enquanto retorna tudo (Scope deve ser aplicado aqui se tiver regra de "Só vejo meus pedidos")
     
-    return db.query(models_crm.Order).order_by(models_crm.Order.created_at.desc()).all()
+    return db.query(models_tenant.Order).order_by(models_tenant.Order.created_at.desc()).all()
 
 @router.get("/{order_id}", response_model=schemas.Order)
 def get_order_details(
@@ -102,10 +102,10 @@ def get_order_details(
     request: Request,
     db: Session = Depends(session.get_crm_db)
 ):
-    order = db.query(models_crm.Order).options(
-        joinedload(models_crm.Order.items).joinedload(models_crm.OrderItem.product),
-        joinedload(models_crm.Order.client)
-    ).filter(models_crm.Order.id == order_id).first()
+    order = db.query(models_tenant.Order).options(
+        joinedload(models_tenant.Order.items).joinedload(models_tenant.OrderItem.product),
+        joinedload(models_tenant.Order.client)
+    ).filter(models_tenant.Order.id == order_id).first()
 
     if not order:
         raise HTTPException(status_code=404, detail="Pedido não encontrado")
@@ -118,7 +118,7 @@ def update_order(
     order_in: schemas.OrderUpdate,
     db: Session = Depends(session.get_crm_db)
 ):
-    order = db.query(models_crm.Order).filter(models_crm.Order.id == order_id).first()
+    order = db.query(models_tenant.Order).filter(models_tenant.Order.id == order_id).first()
     if not order:
         raise HTTPException(status_code=404, detail="Pedido não encontrado")
         
