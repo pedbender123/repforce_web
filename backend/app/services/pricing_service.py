@@ -1,18 +1,18 @@
 from datetime import datetime
 from typing import List, Dict, Optional
 from sqlalchemy.orm import Session
-from app.db import models_crm
+from app.db import models_tenant
 
 class PricingService:
     def __init__(self, db: Session):
         self.db = db
         # Carrega regras ativas
-        self.rules = self.db.query(models_crm.DiscountRule)\
-            .filter(models_crm.DiscountRule.active == True)\
-            .order_by(models_crm.DiscountRule.priority.desc())\
+        self.rules = self.db.query(models_tenant.DiscountRule)\
+            .filter(models_tenant.DiscountRule.active == True)\
+            .order_by(models_tenant.DiscountRule.priority.desc())\
             .all()
 
-    def _is_rule_applicable(self, rule: models_crm.DiscountRule, item_context: Dict) -> bool:
+    def _is_rule_applicable(self, rule: models_tenant.DiscountRule, item_context: Dict) -> bool:
         """
         Verifica se a regra se aplica ao contexto do item/pedido.
         item_context: {
@@ -32,11 +32,11 @@ class PricingService:
             return False
 
         # 2. Validação de Escopo (Target)
-        if rule.target_type == models_crm.DiscountTargetType.PRODUCT:
+        if rule.target_type == models_tenant.DiscountTargetType.PRODUCT:
             if rule.target_id != item_context.get('product_id'): return False
-        elif rule.target_type == models_crm.DiscountTargetType.FAMILY:
+        elif rule.target_type == models_tenant.DiscountTargetType.FAMILY:
             if rule.target_id != item_context.get('family_id'): return False
-        elif rule.target_type == models_crm.DiscountTargetType.BRAND:
+        elif rule.target_type == models_tenant.DiscountTargetType.BRAND:
             if rule.target_id != item_context.get('brand_id'): return False
         
         # 3. Validação de Gatilhos (Quantity/Value)
@@ -47,7 +47,7 @@ class PricingService:
         
         return True
 
-    def calculate_item_discount(self, product: models_crm.Product, quantity: int) -> Dict:
+    def calculate_item_discount(self, product: models_tenant.Product, quantity: int) -> Dict:
         """
         Retorna o desconto aplicável para um item específico.
         Retorno: { 'discount_value': float, 'rule_applied': str }
@@ -94,7 +94,7 @@ class PricingService:
         total = 0.0
         # TODO: Otimização (carregar produtos em batch)
         for item in items:
-            product = self.db.query(models_crm.Product).get(item['product_id'])
+            product = self.db.query(models_tenant.Product).get(item['product_id'])
             if not product: continue
             
             result = self.calculate_item_discount(product, item['quantity'])

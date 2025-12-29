@@ -1,7 +1,7 @@
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
-from app.db import models_crm, schemas, database
+from app.db import models_tenant, schemas, database
 
 router = APIRouter()
 
@@ -13,9 +13,9 @@ def list_custom_fields(
     """
     Lista campos customizados para uma entidade (product, client, order).
     """
-    fields = db.query(models_crm.CustomFieldConfig)\
-               .filter(models_crm.CustomFieldConfig.entity == entity)\
-               .order_by(models_crm.CustomFieldConfig.order_index)\
+    fields = db.query(models_tenant.CustomFieldConfig)\
+               .filter(models_tenant.CustomFieldConfig.entity == entity)\
+               .order_by(models_tenant.CustomFieldConfig.order_index)\
                .all()
     return fields
 
@@ -29,14 +29,14 @@ def create_custom_field(
     """
     try:
         # Verifica duplicidade de chave na mesma entidade
-        existing = db.query(models_crm.CustomFieldConfig)\
-                     .filter(models_crm.CustomFieldConfig.entity == field.entity)\
-                     .filter(models_crm.CustomFieldConfig.key == field.key)\
+        existing = db.query(models_tenant.CustomFieldConfig)\
+                     .filter(models_tenant.CustomFieldConfig.entity == field.entity)\
+                     .filter(models_tenant.CustomFieldConfig.key == field.key)\
                      .first()
         if existing:
             raise HTTPException(status_code=400, detail="Já existe um campo com este ID para esta entidade.")
             
-        db_field = models_crm.CustomFieldConfig(**field.dict())
+        db_field = models_tenant.CustomFieldConfig(**field.dict())
         db.add(db_field)
         db.commit()
         db.refresh(db_field)
@@ -55,7 +55,7 @@ def delete_custom_field(
     Remove um campo customizado.
     Nota: Isso não remove os dados já salvos nos JSONs dos registros, apenas a definição.
     """
-    field = db.query(models_crm.CustomFieldConfig).filter(models_crm.CustomFieldConfig.id == field_id).first()
+    field = db.query(models_tenant.CustomFieldConfig).filter(models_tenant.CustomFieldConfig.id == field_id).first()
     if not field:
         raise HTTPException(status_code=404, detail="Campo não encontrado")
         

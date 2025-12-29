@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func
 from typing import List, Dict, Any
 from datetime import datetime, timedelta
-from ..db import session, models_crm
+from ..db import session, models_tenant
 
 router = APIRouter()
 
@@ -30,16 +30,16 @@ def get_dashboard_kpis(
         start_date = now - timedelta(days=30)
  
     # Base Query (User Scope + Time Range + Status != Canceled)
-    query = db.query(models_crm.Order).filter(
-        models_crm.Order.representative_id == user_id,
-        models_crm.Order.created_at >= start_date,
-        models_crm.Order.status != "canceled"
+    query = db.query(models_tenant.Order).filter(
+        models_tenant.Order.representative_id == user_id,
+        models_tenant.Order.created_at >= start_date,
+        models_tenant.Order.status != "canceled"
     )
     
     # 1. Total Vendido & Contagem
     totals = query.with_entities(
-        func.sum(models_crm.Order.total_value).label("total"),
-        func.count(models_crm.Order.id).label("count")
+        func.sum(models_tenant.Order.total_value).label("total"),
+        func.count(models_tenant.Order.id).label("count")
     ).first()
     
     total_sales = totals.total or 0.0
@@ -47,7 +47,7 @@ def get_dashboard_kpis(
     avg_ticket = (total_sales / order_count) if order_count > 0 else 0.0
     
     # 2. Clientes Ativos (com pedido no periodo)
-    active_clients = query.with_entities(func.count(func.distinct(models_crm.Order.client_id))).scalar() or 0
+    active_clients = query.with_entities(func.count(func.distinct(models_tenant.Order.client_id))).scalar() or 0
     
     return {
         "total_sales": total_sales,
@@ -68,12 +68,12 @@ def get_sales_history(
     
     # Group by Date (Postgres date_trunc)
     results = db.query(
-        func.to_char(models_crm.Order.created_at, 'YYYY-MM-DD').label('date'),
-        func.sum(models_crm.Order.total_value).label('total')
+        func.to_char(models_tenant.Order.created_at, 'YYYY-MM-DD').label('date'),
+        func.sum(models_tenant.Order.total_value).label('total')
     ).filter(
-        models_crm.Order.representative_id == user_id,
-        models_crm.Order.created_at >= start_date,
-        models_crm.Order.status != "canceled"
+        models_tenant.Order.representative_id == user_id,
+        models_tenant.Order.created_at >= start_date,
+        models_tenant.Order.status != "canceled"
     ).group_by('date').order_by('date').all()
     
     return [{"date": r.date, "total": r.total} for r in results]
@@ -88,21 +88,21 @@ def get_top_products(
     # Geralmente top products pode ser global ou do user. Vamos fazer do user.
     
     results = db.query(
-        models_crm.OrderItem.product_id,
-        func.sum(models_crm.OrderItem.quantity).label('qty'),
-        func.sum(models_crm.OrderItem.total).label('total')
-    ).join(models_crm.Order).filter(
-        models_crm.Order.representative_id == user_id,
-        models_crm.Order.status != "canceled"
-    ).group_by(models_crm.OrderItem.product_id)\
-    .order_by(func.sum(models_crm.OrderItem.total).desc())\
+        models_tenant.OrderItem.product_id,
+        func.sum(models_tenant.OrderItem.quantity).label('qty'),
+        func.sum(models_tenant.OrderItem.total).label('total')
+    ).join(models_tenant.Order).filter(
+        models_tenant.Order.representative_id == user_id,
+        models_tenant.Order.status != "canceled"
+    ).group_by(models_tenant.OrderItem.product_id)\
+    .order_by(func.sum(models_tenant.OrderItem.total).desc())\
     .limit(limit).all()
     
     # Enriquecer com nomes (N+1 simples ou join explicito)
     # Join explicito é melhor mas para MVP vou fazer fetch simples
     data = []
     for r in results:
-        prod = db.query(models_crm.Product).get(r.product_id)
+        prod = db.query(models_tenant.Product).get(r.product_id)
         if prod:
             data.append({
                 "name": prod.name,

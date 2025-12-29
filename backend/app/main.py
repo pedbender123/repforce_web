@@ -29,7 +29,7 @@ def startup_event():
     # 1. Initialize Global Tables (Public Schema)
     print("Initializing Global Tables (Public Schema)...")
     try:
-        models_global.Base.metadata.create_all(bind=session.engine)
+        models_system.Base.metadata.create_all(bind=session.engine)
     except Exception as e:
         print(f"Schema Init Error (Ensure Postgres is up): {e}")
     
@@ -38,11 +38,11 @@ def startup_event():
     try:
         # Check if user exists
         # Note: SessionSys is bound to engine, default search_path=public usually
-        sysadmin_user = db.query(models_global.GlobalUser).filter(models_global.GlobalUser.username == "sysadmin").first()
+        sysadmin_user = db.query(models_system.GlobalUser).filter(models_system.GlobalUser.username == "sysadmin").first()
         if not sysadmin_user:
             print("Seeding SysAdmin...")
             hashed_pw = security.get_password_hash("12345678")
-            sysadmin_user = models_global.GlobalUser(
+            sysadmin_user = models_system.GlobalUser(
                 username="sysadmin",
                 email="sysadmin@repforce.com",
                 hashed_password=hashed_pw,

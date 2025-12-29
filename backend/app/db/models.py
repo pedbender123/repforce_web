@@ -30,7 +30,7 @@ role_area_association = Table(
 )
 
 # --- CORE ---
-# Tenant is imported from models_global
+# Tenant is imported from models_system
 
 class Area(Base):
     """
@@ -75,9 +75,9 @@ class Role(Base):
     # We must remove the User relationship or accept it breaks.
     # users = relationship("User", back_populates="role_obj") # DELETED
 
-# User is imported from models_global
+# User is imported from models_system
 
-# ApiKey is imported from models_global
+# ApiKey is imported from models_system
 
 class UserGridPreference(Base):
     __tablename__ = "user_grid_preferences"
