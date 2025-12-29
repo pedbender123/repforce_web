@@ -1,8 +1,8 @@
 from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, Float, DateTime, Text, Enum, JSON, Table
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
-from app.db.database import Base
-from .models_global import Tenant, GlobalUser, ApiKey
+from app.db.session import Base
+from .models_system import Tenant, GlobalUser, ApiKey
 import enum
 
 # Backwards compatibility alias
