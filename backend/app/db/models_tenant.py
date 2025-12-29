@@ -40,6 +40,42 @@ class Order(BaseCrm):
 
     client = relationship("Client", back_populates="orders")
 
+    client = relationship("Client", back_populates="orders")
+
+class ProductCategory(BaseCrm):
+    __tablename__ = "products_categories"
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    name = Column(String)
+    
+class Product(BaseCrm):
+    __tablename__ = "products"
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    name = Column(String, index=True)
+    sku = Column(String)
+    price = Column(Float)
+    specs = Column(JSONB, default={}) # Flexible specs
+    category_id = Column(UUID(as_uuid=True), ForeignKey("products_categories.id"))
+
+class DiscountRule(BaseCrm):
+    __tablename__ = "discount_rules"
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    name = Column(String)
+    conditions = Column(JSONB, default={}) # Logic for discount
+    effect = Column(JSONB, default={}) # What happens
+
+class CustomFieldConfig(BaseCrm):
+    __tablename__ = "custom_fields_config"
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    entity_type = Column(String) # client, order, product
+    field_name = Column(String)
+    field_type = Column(String)
+    
+class Task(BaseCrm):
+    __tablename__ = "tasks"
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    title = Column(String)
+    status = Column(String)
+    
 class WebhookSubscription(BaseCrm):
     __tablename__ = "webhook_subscriptions"
     
