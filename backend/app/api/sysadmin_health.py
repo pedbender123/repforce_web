@@ -157,7 +157,7 @@ class MicroTestRunner:
 
         # 2. Schema
         def action_create_schema():
-            with session.engine_crm.connect() as conn:
+            with session.engine.connect() as conn:
                 conn.execute(text(f"CREATE SCHEMA IF NOT EXISTS {self.schema_name}"))
                 conn.commit()
                 conn.execute(text(f"SET search_path TO {self.schema_name}"))
@@ -350,8 +350,8 @@ class MicroTestRunner:
         log_raw("--- CLEANUP ---")
         if self.tenant_id:
             try:
-                # 1. Drop CRM Schema (Cascades to all data in schema)
-                with session.engine_crm.connect() as conn:
+        # 1. Drop CRM Schema (Cascades to all data in schema)
+                with session.engine.connect() as conn:
                     conn.execute(text(f"DROP SCHEMA IF EXISTS {self.schema_name} CASCADE"))
                     conn.commit()
                 
