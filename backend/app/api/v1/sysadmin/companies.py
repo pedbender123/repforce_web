@@ -49,7 +49,7 @@ def create_company(
         new_tenant = models_system.Tenant(
             name=payload.name, 
             slug=payload.slug, 
-            status="active" 
+            status="setup_pending" 
         )
         db.add(new_tenant)
         db.flush() # Get ID
