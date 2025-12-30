@@ -99,6 +99,10 @@ class DiagnosticEngine:
         files = glob.glob(search_path, recursive=True)
         
         for file_path in files:
+            # Skip self to avoid detecting the search patterns
+            if "diagnostic_engine.py" in file_path:
+                continue
+                
             try:
                 with open(file_path, "r") as f:
                     lines = f.readlines()
