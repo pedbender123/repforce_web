@@ -2,12 +2,10 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from app.db import session, models_system
 from app.core import security
-
 from pydantic import BaseModel
 from typing import List, Optional
 from datetime import datetime
 import uuid
-
 from fastapi.security import OAuth2PasswordBearer
 
 router = APIRouter()
@@ -34,14 +32,6 @@ class TaskOut(TaskBase):
 
 # Dependency for SysAdmin
 def get_sysadmin_user(token: str = Depends(oauth2_scheme), db: Session = Depends(session.get_db)):
-    # Simple check, real implementation should reuse logic from auth (decode token)
-    # But SysAdminAuthContext sends custom 'Authorization: Bearer <sysadmin_token>'
-    # We'll rely on our auth system or implement quickly here:
-    # ideally we import logic from v1/auth.py or use a shared dependency.
-    # For now, let's assume security.get_current_user works if we pass the right key?
-    # Actually, v1/auth.py issues tokens with is_superuser=True.
-    
-    # Implementing minimal decoding here as we don't have a shared 'get_current_sysadmin' readily available in deps
     try:
         payload = security.decode_access_token(token)
         user = db.query(models_system.GlobalUser).filter(models_system.GlobalUser.username == payload.get("sub")).first()
@@ -55,7 +45,7 @@ def get_sysadmin_user(token: str = Depends(oauth2_scheme), db: Session = Depends
 @router.get("/", response_model=List[TaskOut])
 def list_tasks(
     completed: bool = False,
-    db: Session = Depends(session.get_db_sys), 
+    db: Session = Depends(session.get_db), 
     current_user: models_system.GlobalUser = Depends(get_sysadmin_user)
 ):
     """
@@ -71,7 +61,7 @@ def list_tasks(
 @router.post("/", response_model=TaskOut)
 def create_task(
     task_in: TaskCreate,
-    db: Session = Depends(session.get_db_sys),
+    db: Session = Depends(session.get_db),
     current_user: models_system.GlobalUser = Depends(get_sysadmin_user)
 ):
     task = models_system.GlobalTask(
@@ -88,7 +78,7 @@ def create_task(
 def update_task(
     task_id: uuid.UUID,
     task_update: TaskUpdate,
-    db: Session = Depends(session.get_db_sys),
+    db: Session = Depends(session.get_db),
     current_user: models_system.GlobalUser = Depends(get_sysadmin_user)
 ):
     task = db.query(models_system.GlobalTask).filter(models_system.GlobalTask.id == task_id).first()
