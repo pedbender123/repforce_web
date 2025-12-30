@@ -55,14 +55,18 @@ export default function Webhooks() {
                 <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-6">
                     <div className="sm:col-span-2">
                         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Evento</label>
-                        <input
-                            type="text"
-                            placeholder="ex: order.created"
-                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                        <select
                             value={formData.event_type}
                             onChange={e => setFormData({ ...formData, event_type: e.target.value })}
-                            required
-                        />
+                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                        >
+                            <option value="">Selecione um evento...</option>
+                            <option value="client.created">Cliente Criado (client.created)</option>
+                            <option value="client.updated">Cliente Atualizado (client.updated)</option>
+                            <option value="order.created">Pedido Criado (order.created)</option>
+                            <option value="order.updated">Pedido Atualizado (order.updated)</option>
+                            <option value="order.status_changed">Status do Pedido Alterado</option>
+                        </select>
                     </div>
                     <div className="sm:col-span-4">
                         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">URL de Destino (n8n)</label>

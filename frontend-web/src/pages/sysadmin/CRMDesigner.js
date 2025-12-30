@@ -8,6 +8,7 @@ import { useSysAdminAuth } from '../../context/SysAdminAuthContext';
 // Reuse existing components (Context Switched)
 import AdminCustomFields from '../system/AdminCustomFields';
 import Webhooks from '../system/Webhooks';
+import AdminAreaManagement from '../system/AdminAreaManagement';
 // Future: Area Management
 
 const CRMDesigner = () => {
@@ -19,17 +20,19 @@ const CRMDesigner = () => {
 
     // Auth Bridges
     const { login: userLogin, selectTenant } = useAuth();
-    const { token: sysAdminToken } = useSysAdminAuth();
+    const { token: sysAdminToken, isLoadingAuth: isSysAdminLoading } = useSysAdminAuth();
 
     const tabs = [
         { id: 'fields', label: 'Campos Personalizados', icon: <Table2 size={20} /> },
         { id: 'webhooks', label: 'Webhooks & Eventos', icon: <Network size={20} /> },
-        // { id: 'areas', label: 'Áreas & Menus', icon: <Layout size={20} /> }, // Future
+        { id: 'areas', label: 'Áreas & Menus', icon: <Layout size={20} /> },
     ];
 
     useEffect(() => {
-        initializeDesigner();
-    }, [id]);
+        if (!isSysAdminLoading) {
+            initializeDesigner();
+        }
+    }, [id, isSysAdminLoading]);
 
     const initializeDesigner = async () => {
         try {
@@ -62,7 +65,7 @@ const CRMDesigner = () => {
         }
     };
 
-    if (loading) {
+    if (loading || isSysAdminLoading) {
         return <div className="p-8 text-center text-gray-500">Carregando ambiente do cliente...</div>;
     }
 
@@ -109,6 +112,7 @@ const CRMDesigner = () => {
                 <div className="max-w-7xl mx-auto">
                     {activeTab === 'fields' && <AdminCustomFields />}
                     {activeTab === 'webhooks' && <Webhooks />}
+                    {activeTab === 'areas' && <AdminAreaManagement />}
                 </div>
             </div>
         </div>
