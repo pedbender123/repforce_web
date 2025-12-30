@@ -48,7 +48,7 @@ def create_custom_field(
 
 @router.delete("/config/fields/{field_id}")
 def delete_custom_field(
-    field_id: int,
+    field_id: str,
     db: Session = Depends(session.get_crm_db)
 ):
     """

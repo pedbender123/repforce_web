@@ -106,10 +106,15 @@ class DiscountRule(BaseCrm):
 
 class CustomFieldConfig(BaseCrm):
     __tablename__ = "custom_fields_config"
+    
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    entity_type = Column(String) # client, order, product
-    field_name = Column(String)
-    field_type = Column(String)
+    entity = Column(String, index=True) # client, order, product
+    key = Column(String, index=True)
+    label = Column(String)
+    type = Column(String) # text, number, select, etc.
+    options = Column(JSONB, default=[]) # For select fields
+    required = Column(Boolean, default=False)
+    order_index = Column(Integer, default=0)
     
 class Task(BaseCrm):
     __tablename__ = "tasks"
