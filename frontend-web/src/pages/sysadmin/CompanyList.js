@@ -39,7 +39,7 @@ export default function CompanyList() {
         <div className="space-y-6">
             <div className="flex justify-between items-center">
                 <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Gestão de Empresas</h1>
-                <button className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg flex items-center gap-2">
+                <button className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2">
                     <PlusIcon className="w-5 h-5" />
                     Nova Empresa
                 </button>
