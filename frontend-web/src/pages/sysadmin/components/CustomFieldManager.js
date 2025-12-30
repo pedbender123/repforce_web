@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import apiClient from '../../api/apiClient';
+import apiClient from '../../../api/apiClient';
 import { PlusIcon, TrashIcon } from '@heroicons/react/24/outline';
 
 const ENTITIES = [
