@@ -98,6 +98,7 @@ class AreaBase(BaseModel):
     icon: Optional[str] = "LayoutDashboard"
     order: int = 0
     is_active: bool = True
+    pages_json: List[Any] = []
 
 class AreaCreate(AreaBase):
     pass

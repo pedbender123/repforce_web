@@ -60,7 +60,9 @@ class TenantMiddleware(BaseHTTPMiddleware):
                     request.state.user_id = user_id
                     
                     # SysAdmin Global Flag
+                    print(f"DEBUG MIDDLEWARE: Payload={payload}", flush=True)
                     if payload.get("is_sysadmin"):
+                         print("DEBUG MIDDLEWARE: User is SysAdmin", flush=True)
                          request.state.is_sysadmin = True
                          request.state.role_name = "sysadmin"
             except Exception as e:
