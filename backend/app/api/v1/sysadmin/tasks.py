@@ -33,7 +33,7 @@ class TaskOut(TaskBase):
         orm_mode = True
 
 # Dependency for SysAdmin
-def get_sysadmin_user(token: str = Depends(oauth2_scheme), db: Session = Depends(session.get_db_sys)):
+def get_sysadmin_user(token: str = Depends(oauth2_scheme), db: Session = Depends(session.get_db)):
     # Simple check, real implementation should reuse logic from auth (decode token)
     # But SysAdminAuthContext sends custom 'Authorization: Bearer <sysadmin_token>'
     # We'll rely on our auth system or implement quickly here:
