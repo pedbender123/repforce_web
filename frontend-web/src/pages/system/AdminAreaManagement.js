@@ -5,8 +5,30 @@ import { PlusIcon, TrashIcon, PencilIcon } from '@heroicons/react/24/outline';
 
 export default function AdminAreaManagement() {
     const [isCreating, setIsCreating] = useState(false);
-    const [newArea, setNewArea] = useState({ name: '', slug: '', icon: '', order: 0 });
+    const [newArea, setNewArea] = useState({ name: '', slug: '', icon: '', order: 0, pages_json: [] });
     const queryClient = useQueryClient();
+
+    const AVAILABLE_PAGES = [
+        { label: 'Clientes', path: '/crm/clients' },
+        { label: 'Pedidos', path: '/crm/orders' },
+        { label: 'Produtos', path: '/crm/products' },
+        { label: 'Catálogo', path: '/crm/catalog' },
+        { label: 'Visitas', path: '/crm/visits' },
+        { label: 'Relatórios', path: '/crm/reports' }
+    ];
+
+    const togglePage = (page) => {
+        setNewArea(prev => {
+            const exists = prev.pages_json.find(p => p.path === page.path);
+            let updated;
+            if (exists) {
+                updated = prev.pages_json.filter(p => p.path !== page.path);
+            } else {
+                updated = [...prev.pages_json, page];
+            }
+            return { ...prev, pages_json: updated };
+        });
+    };
 
     // Fetch Areas
     const { data: areas, isLoading } = useQuery(['areas'], async () => {
@@ -21,11 +43,12 @@ export default function AdminAreaManagement() {
             onSuccess: () => {
                 queryClient.invalidateQueries(['areas']);
                 setIsCreating(false);
-                setNewArea({ name: '', slug: '', icon: '', order: 0 });
+                setNewArea({ name: '', slug: '', icon: '', order: 0, pages_json: [] });
             },
             onError: (err) => alert("Erro ao criar área: " + (err.response?.data?.detail || err.message))
         }
     );
+
 
     // Delete Mutation
     const deleteMutation = useMutation(
@@ -98,6 +121,24 @@ export default function AdminAreaManagement() {
                                 onChange={e => setNewArea({ ...newArea, order: parseInt(e.target.value) })}
                             />
                         </div>
+
+                        <div className="col-span-1 md:col-span-2">
+                            <label className="block text-sm mb-2 dark:text-gray-300">Páginas Disponíveis</label>
+                            <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                                {AVAILABLE_PAGES.map(page => (
+                                    <label key={page.path} className="flex items-center space-x-2 p-2 border rounded hover:bg-gray-100 dark:hover:bg-gray-700">
+                                        <input
+                                            type="checkbox"
+                                            checked={newArea.pages_json.some(p => p.path === page.path)}
+                                            onChange={() => togglePage(page)}
+                                            className="rounded text-blue-600"
+                                        />
+                                        <span className="text-sm dark:text-gray-300">{page.label}</span>
+                                    </label>
+                                ))}
+                            </div>
+                        </div>
+
                         <div className="col-span-2 flex justify-end gap-2 mt-2">
                             <button
                                 type="button"
