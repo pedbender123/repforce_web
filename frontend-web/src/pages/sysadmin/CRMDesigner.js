@@ -6,9 +6,9 @@ import { useAuth } from '../../context/AuthContext';
 import { useSysAdminAuth } from '../../context/SysAdminAuthContext';
 
 // Reuse existing components (Context Switched)
-import AdminCustomFields from '../system/AdminCustomFields';
-import Webhooks from '../system/Webhooks';
-import AdminAreaManagement from '../system/AdminAreaManagement';
+import CustomFieldManager from './components/CustomFieldManager';
+import Webhooks from '../system/Webhooks'; // Keep Webhooks shared for now or move? User said clean up.
+import AreaManager from './components/AreaManager';
 // Future: Area Management
 
 const CRMDesigner = () => {
@@ -110,9 +110,9 @@ const CRMDesigner = () => {
             {/* Content Area */}
             <div className="flex-1 overflow-y-auto p-6">
                 <div className="max-w-7xl mx-auto">
-                    {activeTab === 'fields' && <AdminCustomFields />}
+                    {activeTab === 'fields' && <CustomFieldManager />}
                     {activeTab === 'webhooks' && <Webhooks />}
-                    {activeTab === 'areas' && <AdminAreaManagement />}
+                    {activeTab === 'areas' && <AreaManager />}
                 </div>
             </div>
         </div>
