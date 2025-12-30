@@ -36,10 +36,10 @@ apiClient.interceptors.request.use((config) => {
 });
 
 export const login = async (email, password) => {
-  const formData = new FormData();
-  formData.append('username', email);
-  formData.append('password', password);
-  const response = await apiClient.post('/auth/token', formData);
+  const response = await apiClient.post('/v1/auth/login', {
+    username: email,
+    password: password
+  });
   return response.data;
 };
 
