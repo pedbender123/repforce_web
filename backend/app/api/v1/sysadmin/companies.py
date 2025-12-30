@@ -97,7 +97,7 @@ def create_company(
             
             # Use BaseCrm from session (populated by models_tenant import)
             # Create all tables in the new schema
-            models_tenant.Base.metadata.create_all(bind=conn)
+            models_tenant.BaseCrm.metadata.create_all(bind=conn)
             conn.commit()
             
     except Exception as e:
