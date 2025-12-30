@@ -20,13 +20,14 @@ export default function PrivateRoute({ children, requiredProfile }) {
   }
 
   // 2. Está logado, mas não tem o perfil correto?
-  if (requiredProfile && userProfile !== requiredProfile) {
+  // EXCEÇÃO: SysAdmin pode acessar qualquer rota (Super User)
+  if (requiredProfile && userProfile !== requiredProfile && userProfile !== 'sysadmin') {
     // Redireciona para a "home" correta do perfil do usuário
     let redirectTo = '/login';
     if (userProfile === 'sysadmin') redirectTo = '/sysadmin';
     if (userProfile === 'admin') redirectTo = '/admin';
     if (userProfile === 'representante') redirectTo = '/app';
-    
+
     return <Navigate to={redirectTo} replace />;
   }
 
