@@ -116,3 +116,28 @@ def create_company(
         raise HTTPException(status_code=500, detail=f"Created record but failed to provision schema: {str(e)}")
 
     return new_tenant
+
+class CompanyUpdate(BaseModel):
+    name: Optional[str] = None
+    status: Optional[str] = None
+    # Slug usually not editable easily due to schema sync
+
+@router.patch("/{company_id}")
+def update_company(
+    company_id: str,
+    payload: CompanyUpdate,
+    db: Session = Depends(session.get_db),
+    user=Depends(get_current_superuser)
+):
+    tenant = db.query(models_system.Tenant).filter(models_system.Tenant.id == company_id).first()
+    if not tenant:
+        raise HTTPException(status_code=404, detail="Company not found")
+    
+    if payload.name:
+        tenant.name = payload.name
+    if payload.status:
+        tenant.status = payload.status
+        
+    db.commit()
+    db.refresh(tenant)
+    return tenant
