@@ -17,7 +17,7 @@ const FIELD_TYPES = [
     { value: 'select', label: 'Seleção (Lista)' }
 ];
 
-export default function AdminCustomFields() {
+export default function CustomFieldManager() {
     const [selectedEntity, setSelectedEntity] = useState('client');
     const [isCreating, setIsCreating] = useState(false);
     const [newField, setNewField] = useState({
@@ -82,8 +82,8 @@ export default function AdminCustomFields() {
                         key={ent.value}
                         onClick={() => setSelectedEntity(ent.value)}
                         className={`py-2 px-4 border-b-2 font-medium transition-colors ${selectedEntity === ent.value
-                                ? 'border-blue-600 text-blue-600 dark:text-blue-400'
-                                : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400'
+                            ? 'border-blue-600 text-blue-600 dark:text-blue-400'
+                            : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400'
                             }`}
                     >
                         {ent.label}

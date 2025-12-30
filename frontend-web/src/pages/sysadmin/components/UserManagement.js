@@ -19,7 +19,7 @@ const createUser = async (userData) => {
   return data;
 };
 
-export default function TenantUserManagement() {
+export default function UserManagement() {
   const queryClient = useQueryClient();
   const { register, handleSubmit, reset, formState: { errors } } = useForm();
 

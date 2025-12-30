@@ -81,8 +81,8 @@ const SysAdminDemoManager = () => {
 
             {feedback && (
                 <div className={`p-4 rounded-md border flex items-center gap-2 ${feedback.type === 'success' ? 'bg-green-50 border-green-200 text-green-700' :
-                        feedback.type === 'error' ? 'bg-red-50 border-red-200 text-red-700' :
-                            'bg-blue-50 border-blue-200 text-blue-700'
+                    feedback.type === 'error' ? 'bg-red-50 border-red-200 text-red-700' :
+                        'bg-blue-50 border-blue-200 text-blue-700'
                     }`}>
                     {feedback.type === 'success' ? <CheckCircle size={20} /> : <Info size={20} />}
                     {feedback.message}
@@ -152,6 +152,4 @@ const SysAdminDemoManager = () => {
             </div>
         </div>
     );
-};
-
-export default SysAdminDemoManager;
+}

@@ -4,7 +4,7 @@ import { useForm, useFieldArray } from 'react-hook-form';
 import sysAdminApiClient from '../../api/sysAdminApiClient';
 import { XMarkIcon, PlusIcon, PencilIcon, TrashIcon } from '@heroicons/react/24/outline';
 // CORREÇÃO: Importando do mesmo diretório (já que o arquivo está em pages/sysadmin)
-import { SYSTEM_PAGES } from './SysAdminPageCatalog';
+import { SYSTEM_PAGES } from './PageCatalog';
 
 // API Calls
 const fetchAreas = async () => {
@@ -39,7 +39,7 @@ const iconOptions = ['LayoutDashboard', 'ShoppingCart', 'Users', 'Map', 'Package
 // Classe padrão para inputs para garantir visibilidade no Dark Mode
 const inputClass = "w-full p-2 border border-gray-300 rounded bg-white text-gray-900 dark:bg-gray-700 dark:text-white dark:border-gray-600 focus:ring-blue-500 focus:border-blue-500";
 
-export default function AreaManagement() {
+export default function AreaManager() {
     const [isCreating, setIsCreating] = useState(false);
     const [editingId, setEditingId] = useState(null);
     const [selectedTenant, setSelectedTenant] = useState(null);

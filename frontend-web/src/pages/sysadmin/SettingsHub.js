@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { User, Activity, CheckSquare, Server } from 'lucide-react';
 import { BuildingOfficeIcon } from '@heroicons/react/24/outline';
 import sysAdminApiClient from '../../api/sysAdminApiClient';
+import UserManagement from './components/UserManagement';
+import RoleManagement from './components/RoleManagement';
 
 // Sub-components (could be separate files, consolidated here for now)
 const GeneralSettings = () => (
@@ -167,9 +169,11 @@ const CompletedTasks = () => {
 };
 
 export default function SettingsHub() {
-    const [activeTab, setActiveTab] = useState('general');
+    const [activeTab, setActiveTab] = useState('users');
 
     const tabs = [
+        { id: 'users', name: 'Usuários Globais', icon: User },
+        { id: 'roles', name: 'Controle de Acesso', icon: CheckSquare },
         { id: 'general', name: 'Geral', icon: BuildingOfficeIcon },
         { id: 'profile', name: 'Meu Perfil', icon: User },
         { id: 'diagnostics', name: 'Diagnóstico', icon: Activity },
@@ -215,6 +219,8 @@ export default function SettingsHub() {
 
                 <div className="space-y-6 sm:px-6 lg:col-span-9 lg:px-0">
                     <div className="bg-white dark:bg-gray-800 shadow sm:rounded-md p-6 min-h-[500px]">
+                        {activeTab === 'users' && <UserManagement />}
+                        {activeTab === 'roles' && <RoleManagement />}
                         {activeTab === 'general' && <GeneralSettings />}
                         {activeTab === 'profile' && <ProfileSettings />}
                         {activeTab === 'diagnostics' && <SystemDiagnostics />}

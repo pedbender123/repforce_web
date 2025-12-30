@@ -31,7 +31,7 @@ const deleteRole = async (id) => {
     await sysAdminApiClient.delete(`/admin/roles/${id}`);
 };
 
-export default function SysAdminRoleManagement() {
+export default function RoleManagement() {
     const [isFormOpen, setIsFormOpen] = useState(false);
     const [editingId, setEditingId] = useState(null);
     const queryClient = useQueryClient();

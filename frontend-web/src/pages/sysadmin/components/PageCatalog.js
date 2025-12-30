@@ -25,10 +25,10 @@ export const CRM_TEMPLATES = [
 // Mantém compatibilidade com código legacy que importa SYSTEM_PAGES
 export const SYSTEM_PAGES = [...CORE_PAGES, ...CRM_TEMPLATES];
 
-export const getPagesByCategory = () => {
+export default function PageCatalog() {
   return SYSTEM_PAGES.reduce((acc, page) => {
     if (!acc[page.category]) acc[page.category] = [];
     acc[page.category].push(page);
     return acc;
   }, {});
-};
+}
