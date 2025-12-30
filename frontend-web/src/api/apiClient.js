@@ -13,10 +13,19 @@ const apiClient = axios.create({
 // Interceptor to add Token and Tenant Slug
 apiClient.interceptors.request.use((config) => {
   const token = localStorage.getItem('token');
+  const sysAdminToken = localStorage.getItem('sysadmin_token');
   const tenantSlug = localStorage.getItem('tenantSlug');
 
-  if (token) {
+  // Logic: If in SysAdmin area, prefer SysAdmin token. Otherwise prefer User token.
+  const isSysAdminRoute = window.location.pathname.startsWith('/sysadmin');
+
+  if (isSysAdminRoute && sysAdminToken) {
+    config.headers.Authorization = `Bearer ${sysAdminToken}`;
+  } else if (token) {
     config.headers.Authorization = `Bearer ${token}`;
+  } else if (sysAdminToken) {
+    // Fallback for mixed states
+    config.headers.Authorization = `Bearer ${sysAdminToken}`;
   }
 
   if (tenantSlug) {

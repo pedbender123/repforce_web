@@ -49,7 +49,7 @@ def startup_event():
                 email="sysadmin@repforce.com",
                 hashed_password=hashed_pw,
                 full_name="System Administrator",
-                is_sysadmin=True,
+                is_superuser=True,
                 is_active=True
             )
             db.add(sysadmin_user)
