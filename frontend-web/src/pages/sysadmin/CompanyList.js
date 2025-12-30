@@ -2,10 +2,17 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import sysAdminApiClient from '../../api/sysAdminApiClient';
 import { PlusIcon } from '@heroicons/react/24/solid';
+import { useAuth } from '../../context/AuthContext';
+import { useSysAdminAuth } from '../../context/SysAdminAuthContext';
 
 export default function CompanyList() {
     const [companies, setCompanies] = useState([]);
     const [loading, setLoading] = useState(true);
+    const navigate = useNavigate();
+
+    // Auth Hooks for Bridge
+    const { login: userLogin, selectTenant } = useAuth();
+    const { token: sysAdminToken } = useSysAdminAuth();
 
     useEffect(() => {
         fetchCompanies();
@@ -22,21 +29,48 @@ export default function CompanyList() {
         }
     };
 
+    const handleAccessCrm = async (company) => {
+        try {
+            // 1. Bridge Session: Use SysAdmin Token as Main Token
+            // The backend allows SysAdmin to access tenant routes if is_sysadmin is true in token
+            await userLogin(sysAdminToken);
+
+            // 2. Set Context
+            selectTenant(company.slug);
+
+            // 3. Navigate to Tenant Admin
+            // If setup_pending -> Config (Create CRM)
+            // If active -> Dashboard (Edit CRM / Manage)
+            if (company.status === 'setup_pending') {
+                navigate('/admin/config');
+            } else {
+                navigate('/admin/dashboard');
+            }
+        } catch (error) {
+            console.error("Failed to access CRM", error);
+            alert("Erro ao acessar ambiente da empresa.");
+        }
+    };
+
     const statusBadge = (status) => {
         const colors = {
             active: 'bg-green-100 text-green-800',
             setup_pending: 'bg-yellow-100 text-yellow-800',
             suspended: 'bg-red-100 text-red-800'
         };
+        const labels = {
+            active: 'Ativo',
+            setup_pending: 'Pendente',
+            suspended: 'Suspenso'
+        };
+
         const colorClass = colors[status] || 'bg-gray-100 text-gray-800';
         return (
             <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${colorClass}`}>
-                {status}
+                {labels[status] || status}
             </span>
         );
     };
-
-    const navigate = useNavigate();
 
     return (
         <div className="space-y-6">
@@ -75,12 +109,21 @@ export default function CompanyList() {
                                 <td className="px-6 py-4 whitespace-nowrap">
                                     {statusBadge(company.status)}
                                 </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
+                                    {/* Action Button: Edit/Create CRM (Enters Tenant) */}
+                                    <button
+                                        onClick={() => handleAccessCrm(company)}
+                                        className="text-white bg-indigo-600 hover:bg-indigo-700 px-3 py-1 rounded transition-colors text-xs uppercase font-bold"
+                                    >
+                                        {company.status === 'setup_pending' ? 'Criar CRM' : 'Acessar CRM'}
+                                    </button>
+
+                                    {/* Edit Global Settings (SysAdmin View) */}
                                     <button
                                         onClick={() => navigate(`/sysadmin/companies/${company.id}`)}
-                                        className="text-indigo-600 hover:text-indigo-900 border border-indigo-600 px-3 py-1 rounded hover:bg-indigo-50 transition-colors"
+                                        className="text-gray-600 hover:text-gray-900 px-3 py-1 rounded hover:bg-gray-100 transition-colors text-xs"
                                     >
-                                        Editar CRM
+                                        Configs
                                     </button>
                                 </td>
                             </tr>
