@@ -90,16 +90,18 @@ export default function CompanyForm() {
                                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                                     Slug (URL do Ambiente)
                                 </label>
-                                <span className="inline-flex items-center px-3 rounded-l-md border border-r-0 border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-500 dark:text-gray-400 sm:text-sm">
-                                    {window.location.origin}/app/
-                                </span>
-                                <input
-                                    type="text"
-                                    required
-                                    value={formData.slug}
-                                    onChange={e => setFormData({ ...formData, slug: e.target.value })}
-                                    className="flex-1 min-w-0 block w-full px-3 py-2 rounded-none rounded-r-md focus:ring-blue-500 focus:border-blue-500 sm:text-sm border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white border"
-                                />
+                                <div className="mt-1 flex rounded-md shadow-sm">
+                                    <span className="inline-flex items-center px-3 rounded-l-md border border-r-0 border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-500 dark:text-gray-400 sm:text-sm">
+                                        {window.location.origin}/app/
+                                    </span>
+                                    <input
+                                        type="text"
+                                        required
+                                        value={formData.slug}
+                                        onChange={e => setFormData({ ...formData, slug: e.target.value })}
+                                        className="flex-1 min-w-0 block w-full px-3 py-2 rounded-none rounded-r-md focus:ring-blue-500 focus:border-blue-500 sm:text-sm border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white border"
+                                    />
+                                </div>
                             </div>
                             <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
                                 Endereço final: {window.location.origin}/app/{formData.slug || 'slug'}
