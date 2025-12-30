@@ -48,14 +48,9 @@ export const SysAdminAuthProvider = ({ children }) => {
 
   const login = async (username, password) => {
     try {
-      const formData = new URLSearchParams();
-      formData.append('username', username);
-      formData.append('password', password);
-
-      const response = await sysAdminApiClient.post('/auth/sysadmin/token', formData, {
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
+      const response = await sysAdminApiClient.post('/v1/auth/sysadmin/login', {
+        username,
+        password
       });
 
       const { access_token } = response.data;

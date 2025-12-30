@@ -52,7 +52,7 @@ class DemoService:
             target_rep = self.sys_db.query(models_system.GlobalUser).filter(models_system.GlobalUser.tenant_id == tenant_id).first()
             rp_id = target_rep.id if target_rep else (user_id if user_id else 1)
 
-            from ..furniture_data import BRANDS, SUPPLIER, PRODUCTS, CLIENTS
+            from ..core.demo_data import BRANDS, SUPPLIER, PRODUCTS, CLIENTS
 
             # 1. Brands
             db_brands = []

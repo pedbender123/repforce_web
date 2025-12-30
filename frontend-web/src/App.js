@@ -47,7 +47,7 @@ import CRMDesigner from './pages/sysadmin/CRMDesigner';
 import SettingsHub from './pages/sysadmin/SettingsHub';
 import Billing from './pages/sysadmin/Billing';
 import SysAdminDiagnostics from './pages/sysadmin/SysAdminDiagnostics';
-import SysAdminDashboard from './pages/system/SysAdminDashboard'; // Legacy? Or keep?
+
 // "Área SysAdmin (Gestão de Empresas) -> Rota: /sysadmin/companies"
 // User implies SysAdmin Dashboard might be just redirects to Companies?
 // Or I keep SysAdminDashboard at /sysadmin/dashboard if user wants.

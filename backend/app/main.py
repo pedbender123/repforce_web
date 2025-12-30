@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import create_engine
 
 # Importa as rotas
-from .api import auth, catalog, orders, admin, sysadmin, sysadmin_health, webhooks, crm, routes, analytics, custom_fields, tasks, demo, manager, diagnostics
+from .api import catalog, orders, admin, webhooks, crm, routes, analytics, custom_fields, tasks, demo, manager, diagnostics
 from .api.v1 import auth as v1_auth
 from app.api.v1.sysadmin import companies, tasks as v1_sysadmin_tasks
 
@@ -75,7 +75,7 @@ def read_root():
     return {"message": "Repforce API Online (SaaS Lite)"}
 
 # Definição das Rotas
-app.include_router(auth.router, prefix="/auth", tags=["Autenticação"])
+# app.include_router(auth.router, prefix="/auth", tags=["Autenticação"]) # DEPRECATED
 app.include_router(manager.router, prefix="/manager", tags=["Manager (Provisioning)"])
 app.include_router(crm.router, prefix="/crm", tags=["CRM (Clientes)"])
 app.include_router(tasks.router, prefix="/crm", tags=["Tarefas & Notificações"])
@@ -84,8 +84,8 @@ app.include_router(catalog.router, prefix="/catalog", tags=["Catálogo"])
 app.include_router(orders.router, prefix="/crm/orders", tags=["Pedidos"])
 app.include_router(routes.router, prefix="/routes", tags=["Rotas de Visita"])
 app.include_router(admin.router, prefix="/admin", tags=["Admin Tenant"])
-app.include_router(sysadmin.router, prefix="/sysadmin", tags=["SysAdmin"])
-app.include_router(sysadmin_health.router, prefix="/sysadmin/health", tags=["SysAdmin Health"])
+# app.include_router(sysadmin.router, prefix="/sysadmin", tags=["SysAdmin"]) # REMOVED LEGACY
+# app.include_router(sysadmin_health.router, prefix="/sysadmin/health", tags=["SysAdmin Health"]) # REMOVED LEGACY
 app.include_router(demo.router, prefix="/sysadmin/demo", tags=["System Demo"])
 app.include_router(webhooks.router, prefix="/webhooks", tags=["Webhooks"])
 app.include_router(analytics.router, prefix="/crm/analytics", tags=["Analytics"])
