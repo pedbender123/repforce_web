@@ -43,6 +43,7 @@ import Webhooks from './pages/system/Webhooks';
 // SysAdmin Pages (Global Admin)
 import CompanyList from './pages/sysadmin/CompanyList';
 import SettingsHub from './pages/sysadmin/SettingsHub';
+import Billing from './pages/sysadmin/Billing';
 import SysAdminDashboard from './pages/system/SysAdminDashboard'; // Legacy? Or keep?
 // "Área SysAdmin (Gestão de Empresas) -> Rota: /sysadmin/companies"
 // User implies SysAdmin Dashboard might be just redirects to Companies?
@@ -104,6 +105,7 @@ function App() {
               {/* SYSADMIN ROUTES (Platform Owner) */}
               <Route path="/sysadmin" element={<SystemLayout />}>
                 <Route path="companies" element={<CompanyList />} />
+                <Route path="billing" element={<Billing />} />
                 <Route path="config" element={<SettingsHub />} />
                 <Route path="settings" element={<Navigate to="config" replace />} />
                 {/* Fallback to companies */}
