@@ -54,7 +54,6 @@ class TenantMiddleware(BaseHTTPMiddleware):
         if auth_header and auth_header.startswith("Bearer "):
             token = auth_header.split(" ")[1]
             try:
-            try:
                 payload = decode_access_token(token)
                 if payload:
                     # FIX: sub is UUID string, do not cast to int
