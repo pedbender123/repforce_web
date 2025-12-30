@@ -3,7 +3,7 @@ import { Outlet, Link, useLocation } from 'react-router-dom';
 import {
     BuildingOfficeIcon,
     CurrencyDollarIcon,
-    // ArrowRightOnRectangleIcon // Removed as per request (moved to top header)
+    ClipboardDocumentCheckIcon
 } from '@heroicons/react/24/outline';
 import SysAdminTopHeaderActions from '../components/SysAdminTopHeaderActions';
 import { Menu, X } from 'lucide-react'; // For mobile interaction if needed
@@ -16,6 +16,7 @@ export default function SystemLayout() {
     const navigation = [
         { name: 'Empresas', href: '/sysadmin/companies', icon: BuildingOfficeIcon },
         { name: 'Faturamento', href: '/sysadmin/billing', icon: CurrencyDollarIcon },
+        { name: 'Diagnósticos', href: '/sysadmin/diagnostics', icon: ClipboardDocumentCheckIcon },
     ];
 
     return (

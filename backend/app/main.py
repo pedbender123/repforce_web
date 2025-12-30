@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import create_engine
 
 # Importa as rotas
-from .api import auth, catalog, orders, admin, sysadmin, sysadmin_health, webhooks, crm, routes, analytics, custom_fields, tasks, demo, manager
+from .api import auth, catalog, orders, admin, sysadmin, sysadmin_health, webhooks, crm, routes, analytics, custom_fields, tasks, demo, manager, diagnostics
 from .api.v1 import auth as v1_auth
 from app.api.v1.sysadmin import companies, tasks as v1_sysadmin_tasks
 
@@ -92,3 +92,4 @@ app.include_router(analytics.router, prefix="/crm/analytics", tags=["Analytics"]
 app.include_router(v1_auth.router, prefix="/v1", tags=["V1 Auth"])
 app.include_router(companies.router, prefix="/v1/sysadmin/companies", tags=["SysAdmin Companies"])
 app.include_router(v1_sysadmin_tasks.router, prefix="/v1/sysadmin/tasks", tags=["SysAdmin Tasks"])
+app.include_router(diagnostics.router, prefix="/sysadmin/diagnostics", tags=["SysAdmin Diagnostics"])

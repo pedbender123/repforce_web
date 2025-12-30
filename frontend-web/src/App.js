@@ -46,6 +46,7 @@ import CompanyForm from './pages/sysadmin/CompanyForm';
 import CRMDesigner from './pages/sysadmin/CRMDesigner';
 import SettingsHub from './pages/sysadmin/SettingsHub';
 import Billing from './pages/sysadmin/Billing';
+import SysAdminDiagnostics from './pages/sysadmin/SysAdminDiagnostics';
 import SysAdminDashboard from './pages/system/SysAdminDashboard'; // Legacy? Or keep?
 // "Área SysAdmin (Gestão de Empresas) -> Rota: /sysadmin/companies"
 // User implies SysAdmin Dashboard might be just redirects to Companies?
@@ -112,6 +113,7 @@ function App() {
                 <Route path="companies/:id/design" element={<CRMDesigner />} />
                 <Route path="billing" element={<Billing />} />
                 <Route path="config" element={<SettingsHub />} />
+                <Route path="diagnostics" element={<SysAdminDiagnostics />} />
                 <Route path="settings" element={<Navigate to="config" replace />} />
                 {/* Fallback to companies */}
                 <Route index element={<Navigate to="companies" replace />} />
