@@ -43,6 +43,7 @@ import Webhooks from './pages/system/Webhooks';
 // SysAdmin Pages (Global Admin)
 import CompanyList from './pages/sysadmin/CompanyList';
 import CompanyForm from './pages/sysadmin/CompanyForm';
+import CRMDesigner from './pages/sysadmin/CRMDesigner';
 import SettingsHub from './pages/sysadmin/SettingsHub';
 import Billing from './pages/sysadmin/Billing';
 import SysAdminDashboard from './pages/system/SysAdminDashboard'; // Legacy? Or keep?
@@ -108,6 +109,7 @@ function App() {
                 <Route path="companies" element={<CompanyList />} />
                 <Route path="companies/new" element={<CompanyForm />} />
                 <Route path="companies/:id" element={<CompanyForm />} />
+                <Route path="companies/:id/design" element={<CRMDesigner />} />
                 <Route path="billing" element={<Billing />} />
                 <Route path="config" element={<SettingsHub />} />
                 <Route path="settings" element={<Navigate to="config" replace />} />
