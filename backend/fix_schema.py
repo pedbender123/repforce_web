@@ -1,6 +1,9 @@
+import os
 from sqlalchemy import create_engine, text
-from app.db.session import DATABASE_URL, BaseCrm
+from app.db.session import BaseCrm
 from app.db import models_tenant
+
+DATABASE_URL = os.getenv("DATABASE_URL")
 
 # Connect
 engine = create_engine(DATABASE_URL)
