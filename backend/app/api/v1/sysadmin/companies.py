@@ -101,9 +101,18 @@ def create_company(
             conn.commit()
             
     except Exception as e:
-        # Cleanup if schema fails (optional but recommended)
-        # For simplicity, we just log and raise
+        # Cleanup if schema fails
         print(f"Provisioning Error: {e}")
+        
+        # ROLLBACK: Delete the tenant we just created to prevent "Slug already exists" on retry
+        try:
+            print(f"Rolling back tenant {new_tenant.slug} due to schema failure...")
+            db.delete(new_tenant)
+            db.commit()
+            print("Rollback successful.")
+        except Exception as cleanup_error:
+            print(f"Critical: Failed to rollback tenant {new_tenant.slug}: {cleanup_error}")
+            
         raise HTTPException(status_code=500, detail=f"Created record but failed to provision schema: {str(e)}")
 
     return new_tenant
