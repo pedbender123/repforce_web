@@ -107,6 +107,7 @@ function App() {
               <Route path="/sysadmin" element={<SystemLayout />}>
                 <Route path="companies" element={<CompanyList />} />
                 <Route path="companies/new" element={<CompanyForm />} />
+                <Route path="companies/:id" element={<CompanyForm />} />
                 <Route path="billing" element={<Billing />} />
                 <Route path="config" element={<SettingsHub />} />
                 <Route path="settings" element={<Navigate to="config" replace />} />
