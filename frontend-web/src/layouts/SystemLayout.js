@@ -24,8 +24,8 @@ export default function SystemLayout() {
         <div className="min-h-screen bg-gray-100 dark:bg-gray-900 flex">
             {/* Sidebar */}
             <div className="fixed inset-y-0 flex z-30 flex-col w-64 bg-gray-900 border-r border-gray-800">
-                <div className="flex items-center justify-center h-16 shrink-0 px-4 bg-gray-900 text-white font-bold text-xl">
-                    RepForce System
+                <div className="flex items-center justify-center h-16 shrink-0 px-4 bg-gray-900 border-b border-gray-800">
+                    <img src="/logo_clara.png" alt="RepForce" className="h-8 w-auto object-contain" />
                 </div>
                 <div className="flex-1 flex flex-col overflow-y-auto">
                     <nav className="flex-1 px-2 py-4 space-y-1">
