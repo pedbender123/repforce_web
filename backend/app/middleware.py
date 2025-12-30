@@ -54,9 +54,11 @@ class TenantMiddleware(BaseHTTPMiddleware):
         if auth_header and auth_header.startswith("Bearer "):
             token = auth_header.split(" ")[1]
             try:
+            try:
                 payload = decode_access_token(token)
                 if payload:
-                    user_id = int(payload.get("sub"))
+                    # FIX: sub is UUID string, do not cast to int
+                    user_id = payload.get("sub")
                     request.state.user_id = user_id
                     
                     # SysAdmin Global Flag (SysAdmin / Superuser)
@@ -80,7 +82,8 @@ class TenantMiddleware(BaseHTTPMiddleware):
                 
                 # Verify Membership
                 # SysAdmin bypass?
-                is_sysadmin = payload.get("is_sysadmin", False)
+                # FIX: Check payload for is_superuser OR check request.state
+                is_sysadmin = payload.get("is_superuser") or payload.get("is_sysadmin")
                 if is_sysadmin:
                     request.state.role_name = "sysadmin" # Explicitly set for check_sysadmin dependency
                     pass # Allow
@@ -93,7 +96,7 @@ class TenantMiddleware(BaseHTTPMiddleware):
                     if not membership:
                         # DEBUG: Return payload in error to diagnose
                         return JSONResponse(status_code=403, content={
-                            "detail": f"Access to this tenant denied. ID={user_id}, SysAdmin={payload.get('is_sysadmin')}, Payload={payload}"
+                            "detail": f"Access to this tenant denied. ID={user_id}, SysAdmin={is_sysadmin}, Payload={payload}"
                         })
                 
                 request.state.tenant_slug = slug
