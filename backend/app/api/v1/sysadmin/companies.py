@@ -28,12 +28,12 @@ class CompanyCreate(BaseModel):
     admin_email: EmailStr
     admin_password: str
 
-@router.get("/")
+@router.get("")
 def list_companies(db: Session = Depends(session.get_db), user=Depends(get_current_superuser)):
     tenants = db.query(models_system.Tenant).all()
     return tenants
 
-@router.post("/")
+@router.post("")
 def create_company(
     payload: CompanyCreate,
     db: Session = Depends(session.get_db), 
