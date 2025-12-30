@@ -1,6 +1,7 @@
 from pydantic import BaseModel, EmailStr
 from typing import List, Optional, Any, Dict
 from datetime import datetime
+import uuid
 
 # --- TOKEN (SaaS Lite) ---
 class Token(BaseModel):
@@ -93,16 +94,17 @@ class PageItem(BaseModel):
 
 class AreaBase(BaseModel):
     name: str
+    slug: str
     icon: Optional[str] = "LayoutDashboard"
-    pages_json: List[PageItem] = []
+    order: int = 0
+    is_active: bool = True
 
 class AreaCreate(AreaBase):
-    tenant_id: int
-    allowed_role_ids: List[int] = []
+    pass
 
 class Area(AreaBase):
-    id: int
-    tenant_id: Optional[int] = None
+    id: uuid.UUID
+    
     class Config:
         from_attributes = True
 

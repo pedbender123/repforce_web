@@ -190,3 +190,44 @@ def delete_contact(
     db.delete(contact)
     db.commit()
     return {"ok": True}
+
+# --- AREAS (MENUS) ---
+@router.get("/config/areas", response_model=List[schemas.Area])
+def list_areas(db: Session = Depends(session.get_crm_db)):
+    """
+    List configured areas (menus) for the tenant.
+    Sorting by 'order' by default.
+    """
+    return db.query(models_tenant.Area).order_by(models_tenant.Area.order).all()
+
+@router.post("/config/areas", response_model=schemas.Area)
+def create_area(area: schemas.AreaCreate, db: Session = Depends(session.get_crm_db)):
+    """
+    Create a new area.
+    """
+    # Check duplicate slug
+    existing = db.query(models_tenant.Area).filter(models_tenant.Area.slug == area.slug).first()
+    if existing:
+         raise HTTPException(status_code=400, detail="Slug already in use")
+         
+    db_area = models_tenant.Area(**area.dict())
+    db.add(db_area)
+    db.commit()
+    db.refresh(db_area)
+    return db_area
+
+@router.delete("/config/areas/{area_id}")
+def delete_area(area_id: str, db: Session = Depends(session.get_crm_db)):
+    try:
+        # Pydantic/FastAPI might pass str, but DB expects UUID.
+        # SQLAlchemy usually handles coercion if it's a valid uuid string.
+        area = db.query(models_tenant.Area).filter(models_tenant.Area.id == area_id).first()
+        if not area:
+            raise HTTPException(status_code=404, detail="Area not found")
+            
+        db.delete(area)
+        db.commit()
+        return {"ok": True}
+    except Exception as e:
+         db.rollback()
+         raise HTTPException(status_code=500, detail=str(e))
