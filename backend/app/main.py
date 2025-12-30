@@ -11,7 +11,7 @@ from sqlalchemy import create_engine
 # Importa as rotas
 from .api import auth, catalog, orders, admin, sysadmin, sysadmin_health, webhooks, crm, routes, analytics, custom_fields, tasks, demo, manager
 from .api.v1 import auth as v1_auth
-from .api.v1.sysadmin import companies as v1_companies
+from app.api.v1.sysadmin import companies, tasks as v1_companies
 
 app = FastAPI(title="Repforce API", version="0.4.0 (SaaS Lite)")
 
@@ -90,4 +90,5 @@ app.include_router(demo.router, prefix="/sysadmin/demo", tags=["System Demo"])
 app.include_router(webhooks.router, prefix="/webhooks", tags=["Webhooks"])
 app.include_router(analytics.router, prefix="/crm/analytics", tags=["Analytics"])
 app.include_router(v1_auth.router, prefix="/v1", tags=["V1 Auth"])
-app.include_router(v1_companies.router, prefix="/v1/sysadmin", tags=["SysAdmin V1 Companies"])
+app.include_router(companies.router, prefix="/v1/sysadmin/companies", tags=["SysAdmin Companies"])
+app.include_router(v1_sysadmin_tasks.router, prefix="/v1/sysadmin/tasks", tags=["SysAdmin Tasks"])

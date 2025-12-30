@@ -39,9 +39,23 @@ class GlobalUser(Base):
     memberships = relationship("Membership", back_populates="user")
     
     # Legacy/Direct Links (Optional but useful for simple setups)
-    tenant_id = Column(UUID(as_uuid=True), ForeignKey("public.tenants.id"), nullable=True) 
     role_id = Column(UUID(as_uuid=True), ForeignKey("public.roles.id"), nullable=True)
     role_obj = relationship("Role", foreign_keys=[role_id])
+    
+    tasks = relationship("GlobalTask", back_populates="assignee")
+
+class GlobalTask(Base):
+    __tablename__ = "global_tasks"
+    __table_args__ = {"schema": "public"}
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    title = Column(String, index=True)
+    description = Column(String, nullable=True)
+    is_completed = Column(Boolean, default=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    
+    assignee_id = Column(UUID(as_uuid=True), ForeignKey("public.global_users.id"), nullable=True)
+    assignee = relationship("GlobalUser", back_populates="tasks")
 
 # 2. Tenants (SaaS Units)
 class Tenant(Base):

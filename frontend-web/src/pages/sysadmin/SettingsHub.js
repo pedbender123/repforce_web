@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
-import { User, Activity, Bell, Server } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { User, Activity, CheckSquare } from 'lucide-react';
 import { BuildingOfficeIcon } from '@heroicons/react/24/outline';
+import sysAdminApiClient from '../../api/sysAdminApiClient';
 
 // Sub-components (could be separate files, consolidated here for now)
 const GeneralSettings = () => (
@@ -101,6 +102,70 @@ const SystemDiagnostics = () => (
     </div>
 );
 
+const CompletedTasks = () => {
+    const [tasks, setTasks] = useState([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const fetchCompleted = async () => {
+            try {
+                const { data } = await sysAdminApiClient.get('/v1/sysadmin/tasks?completed=true');
+                setTasks(data);
+            } catch (error) {
+                console.error(error);
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchCompleted();
+    }, []);
+
+    if (loading) return <div className="text-center">Carregando histórico...</div>;
+
+    return (
+        <div className="space-y-6">
+            <div>
+                <h3 className="text-lg font-medium leading-6 text-gray-900 dark:text-white">Histórico de Tarefas</h3>
+                <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                    Tarefas marcadas como concluídas.
+                </p>
+            </div>
+            <div className="bg-white dark:bg-gray-800 overflow-hidden sm:rounded-md border border-gray-200 dark:border-gray-700">
+                <ul className="divide-y divide-gray-200 dark:divide-gray-700">
+                    {tasks.length === 0 ? (
+                        <li className="p-4 text-center text-gray-500 text-sm">Nenhuma tarefa concluída encontrada.</li>
+                    ) : (
+                        tasks.map((task) => (
+                            <li key={task.id} className="px-4 py-4 sm:px-6">
+                                <div className="flex items-center justify-between">
+                                    <p className="text-sm font-medium text-blue-600 truncate">{task.title}</p>
+                                    <div className="ml-2 flex-shrink-0 flex">
+                                        <p className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                                            Concluída
+                                        </p>
+                                    </div>
+                                </div>
+                                <div className="mt-2 sm:flex sm:justify-between">
+                                    <div className="sm:flex">
+                                        <p className="flex items-center text-sm text-gray-500 dark:text-gray-400">
+                                            {task.description}
+                                        </p>
+                                    </div>
+                                    <div className="mt-2 flex items-center text-sm text-gray-500 sm:mt-0">
+                                        <p>
+                                            Em {new Date(task.created_at).toLocaleDateString()}
+                                        </p>
+                                    </div>
+                                </div>
+                            </li>
+                        ))
+                    )}
+                </ul>
+            </div>
+        </div>
+    );
+};
+
 export default function SettingsHub() {
     const [activeTab, setActiveTab] = useState('general');
 
@@ -108,7 +173,7 @@ export default function SettingsHub() {
         { id: 'general', name: 'Geral', icon: BuildingOfficeIcon },
         { id: 'profile', name: 'Meu Perfil', icon: User },
         { id: 'diagnostics', name: 'Diagnóstico', icon: Activity },
-        // { id: 'notifications', name: 'Notificações', icon: Bell },
+        { id: 'tasks', name: 'Histórico de Tarefas', icon: CheckSquare },
     ];
 
     return (
@@ -153,6 +218,7 @@ export default function SettingsHub() {
                         {activeTab === 'general' && <GeneralSettings />}
                         {activeTab === 'profile' && <ProfileSettings />}
                         {activeTab === 'diagnostics' && <SystemDiagnostics />}
+                        {activeTab === 'tasks' && <CompletedTasks />}
                     </div>
                 </div>
             </div>
