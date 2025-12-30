@@ -124,3 +124,16 @@ class WebhookSubscription(BaseCrm):
     event_type = Column(String, primary_key=True) 
     target_url = Column(String)
     active = Column(Boolean, default=True)
+
+class Area(BaseCrm):
+    __tablename__ = "areas"
+    
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    name = Column(String, index=True)
+    slug = Column(String, unique=True, index=True)
+    icon = Column(String, nullable=True)
+    order = Column(Integer, default=0)
+    is_active = Column(Boolean, default=True)
+    
+    # Permissions? Roles? 
+    # For now simple areas.
