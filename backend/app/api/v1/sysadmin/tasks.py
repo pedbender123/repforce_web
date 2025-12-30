@@ -8,7 +8,11 @@ from typing import List, Optional
 from datetime import datetime
 import uuid
 
+from fastapi.security import OAuth2PasswordBearer
+
 router = APIRouter()
+
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/v1/auth/login")
 
 class TaskBase(BaseModel):
     title: str
@@ -29,7 +33,7 @@ class TaskOut(TaskBase):
         orm_mode = True
 
 # Dependency for SysAdmin
-def get_sysadmin_user(token: str = Depends(security.oauth2_scheme), db: Session = Depends(session.get_db_sys)):
+def get_sysadmin_user(token: str = Depends(oauth2_scheme), db: Session = Depends(session.get_db_sys)):
     # Simple check, real implementation should reuse logic from auth (decode token)
     # But SysAdminAuthContext sends custom 'Authorization: Bearer <sysadmin_token>'
     # We'll rely on our auth system or implement quickly here:
