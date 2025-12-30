@@ -135,5 +135,5 @@ class Area(BaseCrm):
     order = Column(Integer, default=0)
     is_active = Column(Boolean, default=True)
     
-    # Permissions? Roles? 
-    # For now simple areas.
+    # Store list of allowed paths/labels: [{"label": "Clientes", "path": "/crm/clients"}, ...]
+    pages_json = Column(JSONB, default=[])
