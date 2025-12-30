@@ -26,7 +26,8 @@ export const SysAdminAuthProvider = ({ children }) => {
           }
 
           setToken(storedToken);
-          const isSysAdmin = decodedToken.is_sysadmin;
+          setToken(storedToken);
+          const isSysAdmin = decodedToken.is_superuser || decodedToken.is_sysadmin;
           setUserProfile(isSysAdmin ? 'sysadmin' : null);
         } else {
           setToken(null);
@@ -60,8 +61,8 @@ export const SysAdminAuthProvider = ({ children }) => {
       const { access_token } = response.data;
       const decodedToken = jwtDecode(access_token);
 
-      // FIX: Backend 'SaaS Lite' manda is_sysadmin: true, não profile
-      const isSysAdmin = decodedToken.is_sysadmin;
+      // FIX: Backend 'SaaS Lite' manda is_superuser: true
+      const isSysAdmin = decodedToken.is_superuser || decodedToken.is_sysadmin;
       const profile = isSysAdmin ? 'sysadmin' : null;
 
       if (!isSysAdmin) {
