@@ -76,7 +76,10 @@ export default function CompanyList() {
                                     {statusBadge(company.status)}
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                    <button className="text-indigo-600 hover:text-indigo-900 border border-indigo-600 px-3 py-1 rounded hover:bg-indigo-50 transition-colors">
+                                    <button
+                                        onClick={() => navigate(`/sysadmin/companies/${company.id}`)}
+                                        className="text-indigo-600 hover:text-indigo-900 border border-indigo-600 px-3 py-1 rounded hover:bg-indigo-50 transition-colors"
+                                    >
                                         Editar CRM
                                     </button>
                                 </td>
