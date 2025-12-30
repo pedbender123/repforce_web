@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from app.db import session, models_system
 from app.core import security
-from app.api import deps
+
 from pydantic import BaseModel
 from typing import List, Optional
 from datetime import datetime
@@ -39,7 +39,7 @@ def get_sysadmin_user(token: str = Depends(security.oauth2_scheme), db: Session 
     
     # Implementing minimal decoding here as we don't have a shared 'get_current_sysadmin' readily available in deps
     try:
-        payload = security.decode_token(token)
+        payload = security.decode_access_token(token)
         user = db.query(models_system.GlobalUser).filter(models_system.GlobalUser.username == payload.get("sub")).first()
         if not user or not user.is_superuser:
             raise HTTPException(status_code=403, detail="Not authorized")
