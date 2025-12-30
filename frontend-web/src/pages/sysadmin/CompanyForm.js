@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import sysAdminApiClient from '../../api/sysAdminApiClient';
 import { ArrowLeftIcon } from '@heroicons/react/24/outline';
 
 // Helper to generate slug
 const generateSlug = (text) => {
+    if (!text) return '';
     return text
         .toString()
         .toLowerCase()
@@ -28,10 +29,19 @@ export default function CompanyForm() {
         admin_password: ''
     });
 
-    const handleNameChange = (e) => {
-        const name = e.target.value;
-        const slug = generateSlug(name);
-        setFormData(prev => ({ ...prev, name, slug }));
+    // Generic Change Handler
+    const handleChange = (e) => {
+        const { name, value } = e.target;
+        setFormData(prev => {
+            const newData = { ...prev, [name]: value };
+
+            // Auto-generate slug if editing Name
+            if (name === 'name') {
+                newData.slug = generateSlug(value);
+            }
+
+            return newData;
+        });
     };
 
     const handleSubmit = async (e) => {
@@ -54,6 +64,7 @@ export default function CompanyForm() {
                 <button
                     onClick={() => navigate('/sysadmin/companies')}
                     className="mr-4 p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 transition-colors"
+                    type="button"
                 >
                     <ArrowLeftIcon className="h-6 w-6" />
                 </button>
@@ -75,9 +86,10 @@ export default function CompanyForm() {
                                 <div className="mt-1">
                                     <input
                                         type="text"
+                                        name="name"
                                         required
                                         value={formData.name}
-                                        onChange={handleNameChange}
+                                        onChange={handleChange}
                                         className="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md p-2.5 border"
                                         placeholder="Ex: Comercial Solar Ltda"
                                     />
@@ -88,16 +100,16 @@ export default function CompanyForm() {
                                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                                     Slug (URL do Ambiente)
                                 </label>
-                                {/* Wrapper restored for flex layout and valid nesting */}
                                 <div className="mt-1 flex rounded-md shadow-sm">
                                     <span className="inline-flex items-center px-3 rounded-l-md border border-r-0 border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-500 dark:text-gray-400 sm:text-sm">
                                         {window.location.origin}/app/
                                     </span>
                                     <input
                                         type="text"
+                                        name="slug"
                                         required
                                         value={formData.slug}
-                                        onChange={e => setFormData({ ...formData, slug: e.target.value })}
+                                        onChange={handleChange}
                                         className="flex-1 min-w-0 block w-full px-3 py-2 rounded-none rounded-r-md focus:ring-blue-500 focus:border-blue-500 sm:text-sm border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white border"
                                     />
                                 </div>
@@ -123,9 +135,10 @@ export default function CompanyForm() {
                                 <div className="mt-1">
                                     <input
                                         type="text"
+                                        name="admin_name"
                                         required
                                         value={formData.admin_name}
-                                        onChange={e => setFormData({ ...formData, admin_name: e.target.value })}
+                                        onChange={handleChange}
                                         className="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md p-2.5 border"
                                     />
                                 </div>
@@ -138,9 +151,10 @@ export default function CompanyForm() {
                                 <div className="mt-1">
                                     <input
                                         type="email"
+                                        name="admin_email"
                                         required
                                         value={formData.admin_email}
-                                        onChange={e => setFormData({ ...formData, admin_email: e.target.value })}
+                                        onChange={handleChange}
                                         className="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md p-2.5 border"
                                         placeholder="admin@empresa.com"
                                     />
@@ -154,9 +168,10 @@ export default function CompanyForm() {
                                 <div className="mt-1">
                                     <input
                                         type="password"
+                                        name="admin_password"
                                         required
                                         value={formData.admin_password}
-                                        onChange={e => setFormData({ ...formData, admin_password: e.target.value })}
+                                        onChange={handleChange}
                                         className="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md p-2.5 border"
                                     />
                                 </div>
