@@ -55,13 +55,14 @@ def create_company(
         db.flush() # Get ID
         
         # B. Check/Create Admin User
-        admin_user = db.query(models_system.GlobalUser).filter(models_system.GlobalUser.email == payload.admin_email).first()
+        # FIX: GlobalUser uses 'username' for login email, not 'email' column
+        admin_user = db.query(models_system.GlobalUser).filter(models_system.GlobalUser.username == payload.admin_email).first()
         if not admin_user:
             hashed_pw = security.get_password_hash(payload.admin_password)
             admin_user = models_system.GlobalUser(
                 username=payload.admin_email, # User email as login
-                email=payload.admin_email,
-                password_hash=hashed_pw, # Ensure models_system uses 'password_hash' column
+                recovery_email=payload.admin_email, # Optional recovery field
+                password_hash=hashed_pw, 
                 full_name=payload.admin_name,
                 is_active=True
             )
