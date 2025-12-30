@@ -5,7 +5,7 @@ import { Link } from 'react-router-dom';
 // Tabs
 import AdminUserManagement from '../system/AdminUserManagement';
 import AdminRoleManagement from '../system/AdminRoleManagement';
-import AdminCustomFields from '../system/AdminCustomFields';
+// import AdminCustomFields from '../system/AdminCustomFields'; // Moved
 import AdminPricingRules from '../system/AdminPricingRules';
 
 const AdminConfigPage = () => {
@@ -14,7 +14,7 @@ const AdminConfigPage = () => {
     const tabs = [
         { id: 'users', label: 'Usuários', icon: <Users size={20} /> },
         { id: 'roles', label: 'Cargos', icon: <Shield size={20} /> },
-        { id: 'fields', label: 'Campos Custom', icon: <Table2 size={20} /> },
+        // Custom Fields moved to SysAdmin CRM Designer
         { id: 'rules', label: 'Regras de Preço', icon: <Ruler size={20} /> },
     ];
 
@@ -52,7 +52,6 @@ const AdminConfigPage = () => {
             <div className="flex-1 overflow-y-auto p-6">
                 {activeTab === 'users' && <AdminUserManagement />}
                 {activeTab === 'roles' && <AdminRoleManagement />}
-                {activeTab === 'fields' && <AdminCustomFields />}
                 {activeTab === 'rules' && <AdminPricingRules />}
             </div>
         </div>
