@@ -91,7 +91,10 @@ class TenantMiddleware(BaseHTTPMiddleware):
                     ).first()
                     
                     if not membership:
-                        return JSONResponse(status_code=403, content={"detail": "Access to this tenant denied"})
+                        # DEBUG: Return payload in error to diagnose
+                        return JSONResponse(status_code=403, content={
+                            "detail": f"Access to this tenant denied. ID={user_id}, SysAdmin={payload.get('is_sysadmin')}, Payload={payload}"
+                        })
                 
                 request.state.tenant_slug = slug
                 request.state.tenant_id = tenant.id
