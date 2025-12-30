@@ -219,7 +219,7 @@ class CustomFieldConfigCreate(CustomFieldConfigBase):
     pass
 
 class CustomFieldConfig(CustomFieldConfigBase):
-    id: int
+    id: uuid.UUID
     class Config:
         from_attributes = True
 
