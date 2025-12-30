@@ -31,21 +31,17 @@ export default function CompanyList() {
 
     const handleAccessCrm = async (company) => {
         try {
-            // 1. Bridge Session: Use SysAdmin Token as Main Token
-            // The backend allows SysAdmin to access tenant routes if is_sysadmin is true in token
-            await userLogin(sysAdminToken);
-
-            // 2. Set Context
-            selectTenant(company.slug);
-
-            // 3. Navigate to Tenant Admin
-            // If setup_pending -> Config (Create CRM)
-            // If active -> Dashboard (Edit CRM / Manage)
+            // 1. Setup Pending -> Go to Designer (SysAdmin Area)
             if (company.status === 'setup_pending') {
-                navigate('/admin/config');
-            } else {
-                navigate('/admin/dashboard');
+                navigate(`/sysadmin/companies/${company.id}/design`);
+                return;
             }
+
+            // 2. Active -> Go to Tenant Dashboard (Impersonation Bridge)
+            await userLogin(sysAdminToken);
+            selectTenant(company.slug);
+            navigate('/admin/dashboard');
+
         } catch (error) {
             console.error("Failed to access CRM", error);
             alert("Erro ao acessar ambiente da empresa.");
@@ -115,7 +111,7 @@ export default function CompanyList() {
                                         onClick={() => handleAccessCrm(company)}
                                         className="text-white bg-indigo-600 hover:bg-indigo-700 px-3 py-1 rounded transition-colors text-xs uppercase font-bold"
                                     >
-                                        {company.status === 'setup_pending' ? 'Criar CRM' : 'Acessar CRM'}
+                                        {company.status === 'setup_pending' ? 'Setup CRM' : 'Acessar CRM'}
                                     </button>
 
                                     {/* Edit Global Settings (SysAdmin View) */}
