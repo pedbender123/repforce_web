@@ -16,7 +16,6 @@ export default function Login() {
         setError('');
 
         try {
-            // New V1 Endpoint
             const response = await sysAdminApiClient.post('/v1/auth/login', {
                 username,
                 password
@@ -36,87 +35,75 @@ export default function Login() {
     };
 
     return (
-        <div className="flex min-h-screen bg-gray-100 dark:bg-gray-900 transition-colors duration-300 justify-center items-center p-4 relative">
-            <div className="absolute top-4 right-4">
+        <div className="flex min-h-screen transition-colors duration-300 relative">
+            <div className="absolute top-4 right-4 z-50">
                 <ThemeToggle />
             </div>
 
-            <div className="w-full max-w-md bg-white dark:bg-gray-800 p-8 md:p-12 rounded-lg shadow-xl border-t-4 border-red-600 dark:border-red-500 transition-colors">
-                <div className="mb-8 text-center">
-                    {/* Container escuro para a logo aparecer bem em ambos os modos */}
-                    <div className="bg-gray-900 p-4 rounded-lg inline-block mb-4">
-                        <img
-                            src="/logo_clara.png"
-                            alt="Repforce SysAdmin"
-                            className="h-10 w-auto object-contain" // Height 10 as per original
-                        />
-                    </div>
-                    <h2 className="text-2xl font-bold text-gray-800 dark:text-white">
-                        Área Restrita - SysAdmin
-                    </h2>
-                    <p className="text-gray-500 dark:text-gray-400 text-sm mt-2">
-                        Acesso exclusivo para gestão do sistema.
-                    </p>
+            {/* Left Side - Banner (Identical to CRM) */}
+            <div className="hidden lg:flex lg:w-1/2 bg-gray-900 border-r border-gray-800 items-center justify-center p-12">
+                <div className="text-white max-w-md text-center">
+                    {/* Dark Container for Logo matching CRM style if needed, or just logo on dark bg */}
+                    <img
+                        src="/logo_clara.png"
+                        alt="Repforce"
+                        className="mb-8 w-48 mx-auto object-contain"
+                    />
+                    <h1 className="text-4xl font-bold mb-4">Gestão Global.</h1>
+                    <p className="text-gray-400">Acesso exclusivo para administradores da plataforma.</p>
                 </div>
+            </div>
 
-                <form className="space-y-6" onSubmit={handleLogin}>
-                    <div>
-                        <label htmlFor="username" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                            Usuário
-                        </label>
-                        <div className="mt-1">
+            {/* Right Side - Form */}
+            <div className="flex-1 flex flex-col justify-center items-center bg-gray-50 dark:bg-gray-900 p-8">
+                <div className="w-full max-w-md bg-white dark:bg-gray-800 p-8 rounded-lg shadow-lg">
+                    <h2 className="text-2xl font-bold text-gray-800 dark:text-white text-center mb-6">
+                        SysAdmin Login
+                    </h2>
+
+                    <form onSubmit={handleLogin} className="space-y-6">
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                Usuário
+                            </label>
                             <input
-                                id="username"
-                                name="username"
                                 type="text"
                                 required
                                 value={username}
-                                onChange={(e) => setUsername(e.target.value)}
-                                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-red-500 focus:border-red-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white transition-colors"
+                                onChange={e => setUsername(e.target.value)}
+                                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white px-3 py-2"
                                 placeholder="Ex: admin"
                             />
                         </div>
-                    </div>
 
-                    <div>
-                        <label htmlFor="password" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                            Senha
-                        </label>
-                        <div className="mt-1">
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                Senha
+                            </label>
                             <input
-                                id="password"
-                                name="password"
                                 type="password"
-                                autoComplete="current-password"
                                 required
                                 value={password}
-                                onChange={(e) => setPassword(e.target.value)}
-                                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-red-500 focus:border-red-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white transition-colors"
+                                onChange={e => setPassword(e.target.value)}
+                                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white px-3 py-2"
                             />
                         </div>
-                    </div>
 
-                    {error && (
-                        <div className="text-center text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 p-2 rounded">
-                            {error}
-                        </div>
-                    )}
+                        {error && (
+                            <div className="text-center text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 p-2 rounded">
+                                {error}
+                            </div>
+                        )}
 
-                    <div>
                         <button
                             type="submit"
                             disabled={isLoading}
-                            className="w-full flex justify-center py-3 px-4 border border-transparent rounded-md shadow-sm text-lg font-medium text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:bg-gray-400 transition-colors"
+                            className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
                         >
-                            {isLoading ? (
-                                <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                </svg>
-                            ) : 'Entrar'}
+                            {isLoading ? 'Entrando...' : 'Entrar'}
                         </button>
-                    </div>
-                </form>
+                    </form>
+                </div>
             </div>
         </div>
     );
