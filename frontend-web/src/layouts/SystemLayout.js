@@ -1,73 +1,75 @@
-import React from 'react';
-import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
+import React, { useState } from 'react';
+import { Outlet, Link, useLocation } from 'react-router-dom';
 import {
     BuildingOfficeIcon,
     CurrencyDollarIcon,
-    ArrowRightOnRectangleIcon
+    // ArrowRightOnRectangleIcon // Removed as per request (moved to top header)
 } from '@heroicons/react/24/outline';
+import SysAdminTopHeaderActions from '../components/SysAdminTopHeaderActions';
+import { Menu, X } from 'lucide-react'; // For mobile interaction if needed
 
 export default function SystemLayout() {
     const location = useLocation();
-    const navigate = useNavigate();
+    const [isCollapsed, setIsCollapsed] = useState(false);
 
+    // Blue Theme for sidebar active state
     const navigation = [
         { name: 'Empresas', href: '/sysadmin/companies', icon: BuildingOfficeIcon },
         { name: 'Faturamento', href: '/sysadmin/billing', icon: CurrencyDollarIcon },
     ];
 
-    const handleLogout = () => {
-        localStorage.removeItem('sysadmin_token');
-        navigate('/sysadmin/login');
-    };
-
     return (
-        <div className="min-h-screen bg-gray-100 dark:bg-gray-900 flex">
-            {/* Sidebar */}
-            <div className="fixed inset-y-0 flex z-30 flex-col w-64 bg-gray-900 border-r border-gray-800">
-                <div className="flex items-center justify-center h-16 shrink-0 px-4 bg-gray-900 border-b border-gray-800">
+        <div className="flex h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-200">
+
+            {/* Sidebar - Matching CrmLayout Style */}
+            <aside className={`hidden md:flex flex-col bg-gray-900 dark:bg-black border-r border-gray-800 transition-all duration-300 ease-in-out ${isCollapsed ? 'w-20' : 'w-64'}`}>
+                <div className="flex items-center justify-center h-16 shrink-0 px-4 bg-gray-900 border-b border-gray-800 cursor-pointer" onClick={() => setIsCollapsed(!isCollapsed)}>
                     <img src="/logo_clara.png" alt="RepForce" className="h-8 w-auto object-contain" />
                 </div>
-                <div className="flex-1 flex flex-col overflow-y-auto">
-                    <nav className="flex-1 px-2 py-4 space-y-1">
-                        {navigation.map((item) => {
-                            const isActive = location.pathname.startsWith(item.href);
-                            return (
-                                <Link
-                                    key={item.name}
-                                    to={item.href}
-                                    className={`
-                    group flex items-center px-2 py-2 text-sm font-medium rounded-md
-                    ${isActive
-                                            ? 'bg-gray-800 text-white'
-                                            : 'text-gray-300 hover:bg-gray-700 hover:text-white'}
-                  `}
-                                >
-                                    <item.icon
-                                        className={`mr-3 flex-shrink-0 h-6 w-6 ${isActive ? 'text-purple-500' : 'text-gray-400 group-hover:text-gray-300'}`}
-                                        aria-hidden="true"
-                                    />
-                                    {item.name}
-                                </Link>
-                            );
-                        })}
-                    </nav>
-                </div>
 
-                {/* User / Logout */}
-                <div className="shrink-0 flex items-center p-4 bg-gray-900 border-t border-gray-800">
-                    <button
-                        onClick={handleLogout}
-                        className="flex items-center w-full text-sm font-medium text-gray-300 hover:text-white"
-                    >
-                        <ArrowRightOnRectangleIcon className="mr-3 h-6 w-6 text-gray-400" />
-                        <span>Sair</span>
-                    </button>
-                </div>
-            </div>
+                <nav className="flex-1 px-2 py-4 space-y-1">
+                    {navigation.map((item) => {
+                        const isActive = location.pathname.startsWith(item.href);
+                        return (
+                            <Link
+                                key={item.name}
+                                to={item.href}
+                                className={`
+                  group flex items-center px-2 py-3 text-sm font-medium rounded-lg transition-colors duration-150
+                  ${isActive
+                                        ? 'bg-blue-600 text-white shadow-md'
+                                        : 'text-gray-400 hover:bg-gray-800 hover:text-white'}
+                  ${isCollapsed ? 'justify-center' : ''}
+                `}
+                                title={isCollapsed ? item.name : ''}
+                            >
+                                <item.icon
+                                    className={`flex-shrink-0 h-6 w-6 ${isActive ? 'text-white' : 'text-gray-400 group-hover:text-gray-300'} ${isCollapsed ? '' : 'mr-3'}`}
+                                    aria-hidden="true"
+                                />
+                                {!isCollapsed && <span>{item.name}</span>}
+                            </Link>
+                        );
+                    })}
+                </nav>
 
-            {/* Main content */}
-            <div className="flex-1 flex flex-col pl-64">
-                <main className="flex-1 py-6 px-8">
+                <div className="p-4 border-t border-gray-800 flex justify-center">
+                    <span className="text-xs text-gray-600">v2.1</span>
+                </div>
+            </aside>
+
+            {/* Main Content Area */}
+            <div className="flex-1 flex flex-col overflow-hidden">
+
+                {/* Top Header - White/Dark bar with Right Actions ONLY */}
+                <header className="flex items-center justify-end px-6 py-0 h-16 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 shadow-sm z-10">
+                    {/* No central tabs/pages as requested ("menu superior que não precisa ter nada de paginas") */}
+                    <div className="flex items-center">
+                        <SysAdminTopHeaderActions />
+                    </div>
+                </header>
+
+                <main className="flex-1 overflow-y-auto p-6">
                     <Outlet />
                 </main>
             </div>
