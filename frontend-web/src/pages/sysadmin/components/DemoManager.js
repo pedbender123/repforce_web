@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import sysAdminApiClient from '../../api/sysAdminApiClient';
+import sysAdminApiClient from '../../../api/sysAdminApiClient';
 import { Play, StopCircle, RefreshCw, AlertTriangle, CheckCircle, Info } from 'lucide-react';
 
 const SysAdminDemoManager = () => {
