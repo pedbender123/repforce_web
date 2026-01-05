@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import sysAdminApiClient from '../../api/sysAdminApiClient';
+import apiClient from '../../api/apiClient';
 import { ArrowLeftIcon } from '@heroicons/react/24/outline';
 
 // Helper to generate slug
@@ -48,7 +48,7 @@ export default function CompanyForm() {
             // Let's filter on the client side since list is small? 
             // Better: List endpoint returns all. We filter here.
 
-            const { data } = await sysAdminApiClient.get('/v1/sysadmin/companies');
+            const { data } = await apiClient.get('/v1/sysadmin/companies');
             const found = data.find(c => c.id === id);
 
             if (found) {
@@ -92,13 +92,13 @@ export default function CompanyForm() {
         try {
             if (isEditMode) {
                 // UPDATE
-                await sysAdminApiClient.patch(`/v1/sysadmin/companies/${id}`, {
+                await apiClient.patch(`/v1/sysadmin/companies/${id}`, {
                     name: formData.name,
                     status: formData.status
                 });
             } else {
                 // CREATE
-                await sysAdminApiClient.post('/v1/sysadmin/companies', formData);
+                await apiClient.post('/v1/sysadmin/companies', formData);
             }
             navigate('/sysadmin/companies');
         } catch (error) {

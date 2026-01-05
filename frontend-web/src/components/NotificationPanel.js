@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Bell, CheckCircle } from 'lucide-react';
-import sysAdminApiClient from '../api/sysAdminApiClient';
+import apiClient from '../api/apiClient';
 
 const NotificationPanel = () => {
     const [isOpen, setIsOpen] = useState(false);
@@ -13,7 +13,7 @@ const NotificationPanel = () => {
         setLoading(true);
         try {
             // Lists pending tasks by default
-            const { data } = await sysAdminApiClient.get('/v1/sysadmin/tasks');
+            const { data } = await apiClient.get('/v1/sysadmin/tasks');
             setTasks(data);
         } catch (error) {
             console.error("Failed to fetch tasks", error);
@@ -31,7 +31,7 @@ const NotificationPanel = () => {
 
     const markAsCompleted = async (taskId) => {
         try {
-            await sysAdminApiClient.patch(`/v1/sysadmin/tasks/${taskId}`, { is_completed: true });
+            await apiClient.patch(`/v1/sysadmin/tasks/${taskId}`, { is_completed: true });
             // Remove from list
             setTasks(tasks.filter(t => t.id !== taskId));
         } catch (error) {

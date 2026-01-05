@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import sysAdminApiClient from '../../../api/sysAdminApiClient';
+import apiClient from '../../../api/apiClient';
 import { Play, StopCircle, RefreshCw, AlertTriangle, CheckCircle, Info } from 'lucide-react';
 
 const SysAdminDemoManager = () => {
@@ -12,7 +12,7 @@ const SysAdminDemoManager = () => {
     const { data: tenants, isLoading } = useQuery({
         queryKey: ['sysadmin-tenants'],
         queryFn: async () => {
-            const res = await sysAdminApiClient.get('/sysadmin/tenants');
+            const res = await apiClient.get('/sysadmin/tenants');
             return res.data;
         }
     });
@@ -20,7 +20,7 @@ const SysAdminDemoManager = () => {
     // Start Demo Mutation
     const startDemoMutation = useMutation({
         mutationFn: async (tenantId) => {
-            const res = await sysAdminApiClient.post(`/sysadmin/demo/${tenantId}/start`);
+            const res = await apiClient.post(`/sysadmin/demo/${tenantId}/start`);
             return res.data;
         },
         onSuccess: (data) => {
@@ -35,7 +35,7 @@ const SysAdminDemoManager = () => {
     // Stop Demo Mutation
     const stopDemoMutation = useMutation({
         mutationFn: async (tenantId) => {
-            const res = await sysAdminApiClient.post(`/sysadmin/demo/${tenantId}/stop`);
+            const res = await apiClient.post(`/sysadmin/demo/${tenantId}/stop`);
             return res.data;
         },
         onSuccess: (data) => {

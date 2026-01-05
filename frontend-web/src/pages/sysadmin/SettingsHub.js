@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { User, Activity, CheckSquare, Server } from 'lucide-react';
 import { BuildingOfficeIcon } from '@heroicons/react/24/outline';
-import sysAdminApiClient from '../../api/sysAdminApiClient';
+import apiClient from '../../api/apiClient';
 import UserManagement from './components/UserManagement';
 import RoleManagement from './components/RoleManagement';
 
@@ -111,7 +111,7 @@ const CompletedTasks = () => {
     useEffect(() => {
         const fetchCompleted = async () => {
             try {
-                const { data } = await sysAdminApiClient.get('/v1/sysadmin/tasks?completed=true');
+                const { data } = await apiClient.get('/v1/sysadmin/tasks?completed=true');
                 setTasks(data);
             } catch (error) {
                 console.error(error);

@@ -8,7 +8,7 @@ import {
     Database,
     Code
 } from 'lucide-react';
-import sysAdminApiClient from '../../api/sysAdminApiClient';
+import apiClient from '../../api/apiClient';
 
 export default function SysAdminDiagnostics() {
     const [logs, setLogs] = useState([]);
@@ -22,7 +22,7 @@ export default function SysAdminDiagnostics() {
 
         try {
             // Call the API
-            const response = await sysAdminApiClient.post('/sysadmin/diagnostics/run', {});
+            const response = await apiClient.post('/sysadmin/diagnostics/run', {});
             const results = response.data;
 
             setLogs(results);

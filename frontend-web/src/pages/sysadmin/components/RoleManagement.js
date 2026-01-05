@@ -1,34 +1,34 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
-import sysAdminApiClient from '../../../api/sysAdminApiClient';
+import apiClient from '../../../api/apiClient';
 import { XMarkIcon, PlusIcon, TrashIcon, PencilIcon } from '@heroicons/react/24/outline';
 
-// API Functions using sysAdminApiClient
+// API Functions using apiClient
 const fetchRoles = async () => {
     // SysAdmin context (Token) implies tenant_id (likely 1 for Systems)
     // /admin/roles uses request.state.tenant_id
-    const { data } = await sysAdminApiClient.get('/admin/roles');
+    const { data } = await apiClient.get('/admin/roles');
     return data;
 };
 
 const fetchAreas = async () => {
-    const { data } = await sysAdminApiClient.get('/admin/areas');
+    const { data } = await apiClient.get('/admin/areas');
     return data;
 };
 
 const createRole = async (data) => {
-    const { data: res } = await sysAdminApiClient.post('/admin/roles', data);
+    const { data: res } = await apiClient.post('/admin/roles', data);
     return res;
 };
 
 const updateRole = async ({ id, data }) => {
-    const { data: res } = await sysAdminApiClient.put(`/admin/roles/${id}`, data);
+    const { data: res } = await apiClient.put(`/admin/roles/${id}`, data);
     return res;
 };
 
 const deleteRole = async (id) => {
-    await sysAdminApiClient.delete(`/admin/roles/${id}`);
+    await apiClient.delete(`/admin/roles/${id}`);
 };
 
 export default function RoleManagement() {

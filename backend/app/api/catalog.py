@@ -7,7 +7,7 @@ import shutil
 
 router = APIRouter()
 
-UPLOAD_DIR_PRODUCTS = "/app/uploads/products"
+UPLOAD_DIR_PRODUCTS = os.path.abspath("uploads/products")
 STATIC_URL_PRODUCTS = "/uploads/products"
 
 # --- PRODUTOS ---

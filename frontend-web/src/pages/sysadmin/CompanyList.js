@@ -1,9 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import sysAdminApiClient from '../../api/sysAdminApiClient';
+import apiClient from '../../api/apiClient';
 import { PlusIcon } from '@heroicons/react/24/solid';
 import { useAuth } from '../../context/AuthContext';
-import { useSysAdminAuth } from '../../context/SysAdminAuthContext';
 
 export default function CompanyList() {
     const [companies, setCompanies] = useState([]);
@@ -12,7 +11,7 @@ export default function CompanyList() {
 
     // Auth Hooks for Bridge
     const { login: userLogin, selectTenant } = useAuth();
-    const { token: sysAdminToken } = useSysAdminAuth();
+    const { token: sysAdminToken } = useAuth();
 
     useEffect(() => {
         fetchCompanies();
@@ -20,7 +19,7 @@ export default function CompanyList() {
 
     const fetchCompanies = async () => {
         try {
-            const { data } = await sysAdminApiClient.get('/v1/sysadmin/companies');
+            const { data } = await apiClient.get('/v1/sysadmin/companies');
             setCompanies(data);
         } catch (error) {
             console.error("Failed to fetch companies", error);

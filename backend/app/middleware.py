@@ -1,12 +1,13 @@
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import JSONResponse
-from .core.security import decode_access_token
-from .db.session import SessionSys
-from .db import models_system
+from app.shared.security import decode_access_token
+from app.shared.database import SessionSys
+from app.system.models import models as models_system
 import os
 
 PUBLIC_ROUTES = [
+    "/auth/login",
     "/auth/token",
     "/auth/sysadmin/token",
     "/docs",
@@ -17,6 +18,11 @@ STATIC_PATH = "/uploads/"
 
 class TenantMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
+        # Initialize state to avoid AttributeError
+        request.state.tenant_id = None
+        request.state.tenant_slug = None
+        request.state.role_name = None
+
         if any(request.url.path.endswith(route) for route in PUBLIC_ROUTES) or \
            request.url.path.startswith(STATIC_PATH):
             return await call_next(request)
@@ -26,20 +32,20 @@ class TenantMiddleware(BaseHTTPMiddleware):
         if api_key:
             db = SessionSys()
             try:
+                # Ensure we are in public schema for global keys
                 key_record = db.query(models_system.ApiKey).filter(
                     models_system.ApiKey.key == api_key,
                     models_system.ApiKey.is_active == True
                 ).first()
                 
                 if key_record:
-                    # Resolve Slug
                     tenant = db.query(models_system.Tenant).filter(models_system.Tenant.id == key_record.tenant_id).first()
                     if not tenant:
                          return JSONResponse(status_code=404, content={"detail": "Tenant not found for this API Key"})
                     
-                    # Inject State
                     request.state.tenant_slug = tenant.slug
-                    request.state.user_id = 0 # System
+                    request.state.tenant_id = tenant.id
+                    request.state.user_id = 0 # System/Service
                     request.state.is_sysadmin = True
                     return await call_next(request)
                 else:
@@ -56,48 +62,48 @@ class TenantMiddleware(BaseHTTPMiddleware):
             try:
                 payload = decode_access_token(token)
                 if payload:
-                    # FIX: sub is UUID string, do not cast to int
                     user_id = payload.get("sub")
                     request.state.user_id = user_id
-                    
-                    # SysAdmin Global Flag (SysAdmin / Superuser)
-                    print(f"DEBUG MIDDLEWARE: Payload={payload}", flush=True)
-                    if payload.get("is_superuser") or payload.get("is_sysadmin"):
-                         print("DEBUG MIDDLEWARE: User is SysAdmin", flush=True)
-                         request.state.is_sysadmin = True
-                         request.state.role_name = "sysadmin"
+                    request.state.is_sysadmin = bool(payload.get("is_superuser") or payload.get("is_sysadmin"))
+                    if request.state.is_sysadmin:
+                        request.state.role_name = "sysadmin"
             except Exception as e:
                 print(f"JWT Error: {e}")
 
-        # 3. Tenant Context Validation
-        # Check if X-Tenant-Slug header is present
+        # 3. Tenant Context Identification
         slug = request.headers.get("X-Tenant-Slug")
+        
+        # If no slug header but authenticated user, try to auto-resolve their only tenant
+        if not slug and user_id and not getattr(request.state, "is_sysadmin", False):
+            db = SessionSys()
+            try:
+                # Get the only membership
+                membership = db.query(models_system.Membership).filter(
+                    models_system.Membership.user_id == user_id
+                ).first()
+                if membership:
+                    slug = membership.tenant.slug
+            finally:
+                db.close()
+
         if slug:
             db = SessionSys()
             try:
                 tenant = db.query(models_system.Tenant).filter(models_system.Tenant.slug == slug).first()
                 if not tenant:
-                    return JSONResponse(status_code=404, content={"detail": "Tenant Not Found"})
+                    return JSONResponse(status_code=404, content={"detail": f"Tenant '{slug}' Not Found"})
                 
-                # Verify Membership
-                # SysAdmin bypass?
-                # FIX: Check payload for is_superuser OR check request.state
-                is_sysadmin = payload.get("is_superuser") or payload.get("is_sysadmin")
-                if is_sysadmin:
-                    request.state.role_name = "sysadmin" # Explicitly set for check_sysadmin dependency
-                    pass # Allow
-                else:
+                # Check Membership if not sysadmin
+                if not getattr(request.state, "is_sysadmin", False):
                     membership = db.query(models_system.Membership).filter(
                         models_system.Membership.user_id == user_id,
                         models_system.Membership.tenant_id == tenant.id
                     ).first()
                     
                     if not membership:
-                        # DEBUG: Return payload in error to diagnose
-                        return JSONResponse(status_code=403, content={
-                            "detail": f"Access to this tenant denied. ID={user_id}, SysAdmin={is_sysadmin}, Payload={payload}"
-                        })
-                
+                        return JSONResponse(status_code=403, content={"detail": "Access to this tenant denied."})
+                    request.state.role_name = membership.role
+
                 request.state.tenant_slug = slug
                 request.state.tenant_id = tenant.id
                 

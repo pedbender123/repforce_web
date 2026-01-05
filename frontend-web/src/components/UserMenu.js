@@ -25,7 +25,7 @@ const UserMenu = ({ isSysAdmin = false }) => {
     const handleLogout = () => {
         if (isSysAdmin) {
             localStorage.removeItem('sysadmin_token');
-            navigate('/sysadmin/login');
+            navigate('/login');
         } else {
             logout();
             navigate('/login');

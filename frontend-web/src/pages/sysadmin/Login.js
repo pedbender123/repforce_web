@@ -1,107 +1,112 @@
-import React, { useState } from 'react';
+import React, { useState, useContext, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import sysAdminApiClient from '../../api/sysAdminApiClient';
+import { AuthContext } from '../../context/AuthContext';
+import apiClient from '../../api/apiClient';
 import ThemeToggle from '../../components/ThemeToggle';
 
-export default function Login() {
+export default function SysAdminLogin() {
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
-    const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState('');
+    const [isLoading, setIsLoading] = useState(false);
+
+    const { status, login, isSysAdmin } = useContext(AuthContext);
     const navigate = useNavigate();
 
-    const handleLogin = async (e) => {
+    // Redirection Logic
+    useEffect(() => {
+        if (status === 'authenticated') {
+            if (isSysAdmin) navigate('/lobby', { replace: true });
+            else navigate('/login', { replace: true }); // Not a sysadmin? Go to regular login.
+        }
+    }, [status, isSysAdmin, navigate]);
+
+    const handleSubmit = async (e) => {
         e.preventDefault();
-        setIsLoading(true);
         setError('');
+        setIsLoading(true);
 
         try {
-            const response = await sysAdminApiClient.post('/v1/auth/login', {
+            const response = await apiClient.post('/v1/auth/login', {
                 username,
                 password
             });
-
             const { access_token } = response.data;
-            if (access_token) {
-                localStorage.setItem('sysadmin_token', access_token);
-                navigate('/sysadmin/companies');
-            }
+            await login(access_token);
         } catch (err) {
-            console.error(err);
-            setError(err.response?.data?.detail || 'Erro ao conectar ao servidor.');
+            setError(err.response?.data?.detail || 'Erro ao realizar login administrativo');
         } finally {
             setIsLoading(false);
         }
     };
 
+    if (status === 'loading') return null;
+
     return (
-        <div className="flex min-h-screen transition-colors duration-300 relative">
-            <div className="absolute top-4 right-4 z-50">
-                <ThemeToggle />
-            </div>
+        <div className="min-h-screen bg-gray-900 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
+            <div className="absolute top-4 right-4"><ThemeToggle /></div>
 
-            {/* Left Side - Banner (Identical to CRM) */}
-            <div className="hidden lg:flex lg:w-1/2 bg-gray-900 border-r border-gray-800 items-center justify-center p-12">
-                <div className="text-white max-w-md text-center">
-                    {/* Dark Container for Logo matching CRM style if needed, or just logo on dark bg */}
-                    <img
-                        src="/logo_clara.png"
-                        alt="Repforce"
-                        className="mb-8 w-48 mx-auto object-contain"
-                    />
-                    <h1 className="text-4xl font-bold mb-4">Gestão Global.</h1>
-                    <p className="text-gray-400">Acesso exclusivo para administradores da plataforma.</p>
+            <div className="sm:mx-auto sm:w-full sm:max-w-md">
+                <div className="flex justify-center">
+                    <div className="bg-blue-600 p-3 rounded-xl shadow-lg shadow-blue-500/20">
+                        <img className="h-12 w-auto" src="/logo_clara.png" alt="Repforce SysAdmin" />
+                    </div>
                 </div>
+                <h2 className="mt-6 text-center text-3xl font-extrabold text-white">
+                    Painel da Plataforma
+                </h2>
+                <p className="mt-2 text-center text-sm text-gray-400">
+                    Acesso restrito a administradores globais
+                </p>
             </div>
 
-            {/* Right Side - Form */}
-            <div className="flex-1 flex flex-col justify-center items-center bg-gray-50 dark:bg-gray-900 p-8">
-                <div className="w-full max-w-md bg-white dark:bg-gray-800 p-8 rounded-lg shadow-lg">
-                    <h2 className="text-2xl font-bold text-gray-800 dark:text-white text-center mb-6">
-                        SysAdmin Login
-                    </h2>
-
-                    <form onSubmit={handleLogin} className="space-y-6">
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                Usuário
-                            </label>
-                            <input
-                                type="text"
-                                required
-                                value={username}
-                                onChange={e => setUsername(e.target.value)}
-                                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white px-3 py-2"
-                                placeholder="Ex: admin"
-                            />
-                        </div>
-
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                Senha
-                            </label>
-                            <input
-                                type="password"
-                                required
-                                value={password}
-                                onChange={e => setPassword(e.target.value)}
-                                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white px-3 py-2"
-                            />
-                        </div>
-
+            <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
+                <div className="bg-gray-800 py-8 px-4 shadow-2xl sm:rounded-xl sm:px-10 border border-gray-700">
+                    <form className="space-y-6" onSubmit={handleSubmit}>
                         {error && (
-                            <div className="text-center text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 p-2 rounded">
+                            <div className="bg-red-900/50 border border-red-500 text-red-200 px-4 py-3 rounded relative text-sm">
                                 {error}
                             </div>
                         )}
+                        <div>
+                            <label className="block text-sm font-medium text-gray-300">
+                                Username
+                            </label>
+                            <div className="mt-1">
+                                <input
+                                    type="text"
+                                    required
+                                    value={username}
+                                    onChange={(e) => setUsername(e.target.value)}
+                                    className="appearance-none block w-full px-3 py-2 border border-gray-600 rounded-md shadow-sm placeholder-gray-500 focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-gray-700 text-white sm:text-sm"
+                                />
+                            </div>
+                        </div>
 
-                        <button
-                            type="submit"
-                            disabled={isLoading}
-                            className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                        >
-                            {isLoading ? 'Entrando...' : 'Entrar'}
-                        </button>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-300">
+                                Senha
+                            </label>
+                            <div className="mt-1">
+                                <input
+                                    type="password"
+                                    required
+                                    value={password}
+                                    onChange={(e) => setPassword(e.target.value)}
+                                    className="appearance-none block w-full px-3 py-2 border border-gray-600 rounded-md shadow-sm placeholder-gray-500 focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-gray-700 text-white sm:text-sm"
+                                />
+                            </div>
+                        </div>
+
+                        <div>
+                            <button
+                                type="submit"
+                                disabled={isLoading}
+                                className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 transition-all font-bold"
+                            >
+                                {isLoading ? 'Autenticando...' : 'Acessar Infraestrutura'}
+                            </button>
+                        </div>
                     </form>
                 </div>
             </div>

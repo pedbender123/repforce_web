@@ -4,20 +4,16 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import apiClient from '../api/apiClient';
 import { XMarkIcon, PlusIcon } from '@heroicons/react/24/outline';
-// CORRIGIDO: Deve usar o sysAdminApiClient, pois são rotas de sysadmin
-import sysAdminApiClient from '../api/sysAdminApiClient';
 
 // --- Busca de Tenants ---
 const fetchTenants = async () => {
-  // CORRIGIDO: /api/ removido
-  const { data } = await sysAdminApiClient.get('/sysadmin/tenants');
+  const { data } = await apiClient.get('/sysadmin/tenants');
   return data;
 };
 
 // --- Criação de Tenant ---
 const createTenant = async (tenantData) => {
-  // CORRIGIDO: /api/ removido
-  const { data } = await sysAdminApiClient.post('/sysadmin/tenants', tenantData);
+  const { data } = await apiClient.post('/sysadmin/tenants', tenantData);
   return data;
 };
 
@@ -37,7 +33,7 @@ export default function TenantManagement() {
 
   // Query para buscar tenants existentes
   const { data: tenants, isLoading: isLoadingTenants } = useQuery(
-    ['adminTenants'], // Deixei a chave original, mas idealmente seria a mesma do sysadmin
+    ['adminTenants'],
     fetchTenants
   );
 
@@ -54,9 +50,6 @@ export default function TenantManagement() {
   });
 
   const onSubmit = (data) => {
-    // Este arquivo não foi atualizado para FormData,
-    // então a criação de tenant por aqui falhará se o backend esperar um arquivo.
-    // Apenas as rotas foram corrigidas.
     mutation.mutate(data);
   };
 
@@ -193,7 +186,7 @@ export default function TenantManagement() {
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{tenant.cnpj || 'N/A'}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{tenant.email || 'N/A'}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        <span className={`px - 2 inline - flex text - xs leading - 5 font - semibold rounded - full ${tenant.status === 'active' ? 'bg-green-100 text-green-800' :
+                        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${tenant.status === 'active' ? 'bg-green-100 text-green-800' :
                           tenant.status === 'inactive' ? 'bg-red-100 text-red-800' :
                             'bg-yellow-100 text-yellow-800'
                           } `}>

@@ -2,10 +2,10 @@ import sys
 import os
 import glob
 from sqlalchemy import text, inspect as sa_inspect
-from app.db.session import SessionSys
+from app.shared.database import SessionSys
 from app.db import models_system, models_tenant
 # Import BaseCrm to check tenant models
-from app.db.session import BaseCrm
+from app.shared.database import BaseCrm
 
 class DiagnosticEngine:
     def __init__(self, db_session=None):

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import apiClient from '../../api/apiClient';
-import { XMarkIcon, PlusIcon, TrashIcon, PencilIcon } from '@heroicons/react/24/outline';
+import { XMarkIcon, PlusIcon, TrashIcon, PencilIcon, ArrowLeftIcon } from '@heroicons/react/24/outline';
 
 const fetchUsers = async () => {
   const { data } = await apiClient.get('/admin/users');
@@ -87,10 +87,18 @@ export default function TenantUserManagement() {
     return (
       <div className="max-w-2xl mx-auto bg-white dark:bg-gray-800 p-8 rounded-lg shadow transition-colors">
         <div className="flex justify-between items-center mb-6">
-          <h2 className="text-2xl font-bold dark:text-white">
-            {editingId ? 'Editar Usuário' : 'Novo Usuário'}
-          </h2>
-          <button onClick={() => setIsCreating(false)}><XMarkIcon className="w-6 h-6 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300" /></button>
+          <div className="flex items-center gap-4">
+            <button
+              onClick={() => setIsCreating(false)}
+              className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
+              title="Voltar para a lista"
+            >
+              <ArrowLeftIcon className="w-5 h-5" />
+            </button>
+            <h2 className="text-2xl font-bold dark:text-white">
+              {editingId ? 'Editar Usuário' : 'Novo Usuário'}
+            </h2>
+          </div>
         </div>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <div>

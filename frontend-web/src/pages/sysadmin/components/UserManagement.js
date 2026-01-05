@@ -1,21 +1,21 @@
 import React from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
-import sysAdminApiClient from '../../../api/sysAdminApiClient';
+import apiClient from '../../../api/apiClient';
 
 const fetchUsers = async () => {
-  const { data } = await sysAdminApiClient.get('/admin/users');
+  const { data } = await apiClient.get('/admin/users');
   return data;
 };
 
 const fetchRoles = async () => {
-  const { data } = await sysAdminApiClient.get('/admin/roles');
+  const { data } = await apiClient.get('/admin/roles');
   return data;
 };
 
 const createUser = async (userData) => {
   // Nota: O backend espera apenas campos que existam no UserCreate schema
-  const { data } = await sysAdminApiClient.post('/admin/users', userData);
+  const { data } = await apiClient.post('/admin/users', userData);
   return data;
 };
 
