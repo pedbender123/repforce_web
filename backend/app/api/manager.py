@@ -1,9 +1,11 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from sqlalchemy import text
-from app.db import session, models_system, models_tenant
+from app.shared import database as session
+from app.system.models import models as models_system
+from app.engine import models_tenant
 from app.core import security
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel
 
 router = APIRouter()
 
@@ -11,7 +13,7 @@ class TenantCreateRequest(BaseModel):
     name: str
     slug: str
     plan_type: str = "trial"
-    admin_email: EmailStr
+    admin_email: str
     admin_password: str
     admin_name: str = "Administrator"
 

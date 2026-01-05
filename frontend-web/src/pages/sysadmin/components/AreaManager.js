@@ -1,36 +1,36 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm, useFieldArray } from 'react-hook-form';
-import sysAdminApiClient from '../../../api/sysAdminApiClient';
+import apiClient from '../../../api/apiClient';
 import { XMarkIcon, PlusIcon, PencilIcon, TrashIcon } from '@heroicons/react/24/outline';
 // CORREÇÃO: Importando do mesmo diretório (já que o arquivo está em pages/sysadmin)
 import { SYSTEM_PAGES } from './PageCatalog';
 
 // API Calls
 const fetchAreas = async () => {
-    const { data } = await sysAdminApiClient.get('/sysadmin/areas');
+    const { data } = await apiClient.get('/sysadmin/areas');
     return data;
 };
 const fetchTenants = async () => {
-    const { data } = await sysAdminApiClient.get('/sysadmin/tenants');
+    const { data } = await apiClient.get('/sysadmin/tenants');
     return data;
 };
 const fetchRoles = async (tenantId) => {
     if (!tenantId) return [];
-    const { data } = await sysAdminApiClient.get(`/sysadmin/roles?tenant_id=${tenantId}`);
+    const { data } = await apiClient.get(`/sysadmin/roles?tenant_id=${tenantId}`);
     return data;
 };
 const createArea = async (data) => {
-    const { data: res } = await sysAdminApiClient.post('/sysadmin/areas', data);
+    const { data: res } = await apiClient.post('/sysadmin/areas', data);
     return res;
 };
 
 const deleteArea = async (id) => {
-    await sysAdminApiClient.delete(`/sysadmin/areas/${id}`);
+    await apiClient.delete(`/sysadmin/areas/${id}`);
 };
 
 const updateArea = async ({ id, data }) => {
-    const { data: res } = await sysAdminApiClient.put(`/sysadmin/areas/${id}`, data);
+    const { data: res } = await apiClient.put(`/sysadmin/areas/${id}`, data);
     return res;
 };
 

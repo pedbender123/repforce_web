@@ -1,18 +1,19 @@
 import React, { useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ThemeContext } from '../context/ThemeContext';
-import { SysAdminAuthContext } from '../context/SysAdminAuthContext';
+import { AuthContext } from '../context/AuthContext';
+
 import { Settings, LogOut, Sun, Moon, User } from 'lucide-react';
 import NotificationCenter from './NotificationCenter';
 
 const TopHeaderActions = () => {
     const { theme, toggleTheme } = useContext(ThemeContext);
-    const { logout, user } = useContext(SysAdminAuthContext); // Assuming user object has name/username
+    const { logout, user } = useContext(AuthContext);
     const navigate = useNavigate();
 
     const handleLogout = () => {
         logout();
-        navigate('/sysadmin/login');
+        navigate('/login');
     };
 
     // Helper to get initial

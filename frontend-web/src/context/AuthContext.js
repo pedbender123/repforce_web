@@ -1,51 +1,75 @@
-import { createContext, useState, useEffect, useContext } from 'react';
+import { createContext, useState, useEffect, useContext, useCallback } from 'react';
 import { jwtDecode } from 'jwt-decode';
+import apiClient from '../api/apiClient';
 
-// 1. Exportação do Contexto
 export const AuthContext = createContext({});
 
-// 2. Exportação do Provider
-// 2. Exportação do Provider
+/**
+ * PROTOCOLO ANTI-LOOP V1.0
+ * Status: loading | authenticated | unauthenticated
+ */
 export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null);
     const [token, setToken] = useState(null);
-    const [tenant, setTenant] = useState(null); // Selected Tenant
-    const [loading, setLoading] = useState(true);
+    const [tenant, setTenant] = useState(null);
+    const [status, setStatus] = useState('loading'); // loading, authenticated, unauthenticated
 
-    const hydrateUserData = async (tokenStr) => {
+    const logout = useCallback(() => {
+        localStorage.removeItem('token');
+        localStorage.removeItem('tenantSlug');
+        setToken(null);
+        setUser(null);
+        setTenant(null);
+        setStatus('unauthenticated');
+    }, []);
+
+    const hydrateUserData = useCallback(async (tokenStr) => {
         try {
-            // Use relative URL via fetch or apiClient. Here using fetch relative to origin (via Nginx proxy)
-            const response = await fetch('/api/auth/users/me', {
+            // Using apiClient ensures base URL /api and interceptors are used
+            const response = await apiClient.get('/v1/auth/users/me', {
                 headers: { 'Authorization': `Bearer ${tokenStr}` }
             });
 
-            if (response.ok) {
-                const fullUser = await response.json();
-                setUser(fullUser);
-            } else {
-                console.error("Error hydrating user", response.status);
-                // Don't logout immediately, might be network error. But if 401, yes.
-                if (response.status === 401) logout();
-                else {
-                    const decoded = jwtDecode(tokenStr);
-                    setUser(decoded);
-                }
-            }
-        } catch (err) {
-            console.error("Error fetching /me", err);
-            const decoded = jwtDecode(tokenStr);
-            setUser(decoded);
-        }
-    }
+            const fullUser = response.data;
 
-    const selectTenant = (slug) => {
-        setTenant(slug);
-        localStorage.setItem('tenantSlug', slug);
-        // Optimistically update profile/role if needed, or rely on next API call
-    };
+            // AUTO-SELECT TENANT: If user has exactly 1 membership, select it automatically
+            if (fullUser.memberships && fullUser.memberships.length === 1) {
+                const singleTenant = fullUser.memberships[0].tenant.slug;
+                setTenant(singleTenant);
+                localStorage.setItem('tenantSlug', singleTenant);
+            }
+
+            setUser(fullUser);
+            setToken(tokenStr);
+            setStatus('authenticated');
+            return fullUser;
+        } catch (err) {
+            console.error("Critical Auth Error:", err);
+
+            if (err.response?.status === 401) {
+                logout();
+                return null;
+            }
+
+            // Fallback to token data if token exists and is valid-ish
+            try {
+                const decoded = jwtDecode(tokenStr);
+                if (decoded) {
+                    setUser(decoded);
+                    setToken(tokenStr);
+                    setStatus('authenticated');
+                } else {
+                    setStatus('unauthenticated');
+                }
+            } catch (jwtErr) {
+                console.error("JWT Decode Error during fallback:", jwtErr);
+                logout();
+            }
+        }
+    }, [logout]);
 
     useEffect(() => {
-        const recoverUser = async () => {
+        const recover = async () => {
             const storedToken = localStorage.getItem('token');
             const storedTenant = localStorage.getItem('tenantSlug');
 
@@ -56,47 +80,46 @@ export const AuthProvider = ({ children }) => {
                     if (decoded.exp && decoded.exp < currentTime) {
                         logout();
                     } else {
-                        setToken(storedToken);
                         if (storedTenant) setTenant(storedTenant);
                         await hydrateUserData(storedToken);
                     }
                 } catch (error) {
                     logout();
                 }
+            } else {
+                setStatus('unauthenticated');
             }
-            setLoading(false);
         };
+        recover();
+    }, [hydrateUserData, logout]);
 
-        recoverUser();
-    }, []);
-
-    const login = async (newToken, access_token) => { // Accept object or string? Login page sends string.
-        const t = newToken || access_token;
-        localStorage.setItem('token', t);
-        setToken(t);
-        await hydrateUserData(t);
+    const login = async (newToken) => {
+        localStorage.setItem('token', newToken);
+        await hydrateUserData(newToken);
     };
 
-    const logout = () => {
-        localStorage.removeItem('token');
-        localStorage.removeItem('tenantSlug');
-        setToken(null);
-        setUser(null);
-        setTenant(null);
+    const selectTenant = (slug) => {
+        setTenant(slug);
+        localStorage.setItem('tenantSlug', slug);
     };
+
+    // Deterministic Profile Calculation based on selected tenant
+    const activeMembership = user?.memberships?.find(m => m.tenant.slug === tenant);
+    const profile = user?.is_superuser ? 'sysadmin' : (activeMembership?.role || 'representante');
 
     return (
         <AuthContext.Provider value={{
-            authenticated: !!user,
+            status,
+            authenticated: status === 'authenticated',
             user,
             token,
             tenant,
-            userProfile: user?.profile, // Legacy support if field exists
-            isSysAdmin: user?.is_sysadmin,
+            userProfile: profile,
+            isSysAdmin: !!user?.is_superuser,
+            isLoadingAuth: status === 'loading',
             selectTenant,
             login,
             logout,
-            isLoadingAuth: loading,
             refreshUser: () => hydrateUserData(token)
         }}>
             {children}
@@ -104,11 +127,4 @@ export const AuthProvider = ({ children }) => {
     );
 };
 
-// 3. Exportação do Hook Personalizado
-export const useAuth = () => {
-    const context = useContext(AuthContext);
-    if (!context) {
-        throw new Error('useAuth deve ser usado dentro de um AuthProvider');
-    }
-    return context;
-};
+export const useAuth = () => useContext(AuthContext);

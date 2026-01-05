@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { ArrowLeft, Table2, Network, Layout } from 'lucide-react';
-import sysAdminApiClient from '../../api/sysAdminApiClient';
+import apiClient from '../../api/apiClient';
 import { useAuth } from '../../context/AuthContext';
-import { useSysAdminAuth } from '../../context/SysAdminAuthContext';
 
 // Reuse existing components (Context Switched)
 import CustomFieldManager from './components/CustomFieldManager';
@@ -20,7 +19,7 @@ const CRMDesigner = () => {
 
     // Auth Bridges
     const { login: userLogin, selectTenant } = useAuth();
-    const { token: sysAdminToken, isLoadingAuth: isSysAdminLoading } = useSysAdminAuth();
+    const { token: sysAdminToken, isLoadingAuth: isSysAdminLoading } = useAuth();
 
     const tabs = [
         { id: 'fields', label: 'Campos Personalizados', icon: <Table2 size={20} /> },
@@ -41,7 +40,7 @@ const CRMDesigner = () => {
             // Does get company list support ID? Or we fetch all and find?
             // companies.py: get /v1/sysadmin/companies returns list.
             // Let's optimize later. For now fetch list.
-            const { data } = await sysAdminApiClient.get('/v1/sysadmin/companies');
+            const { data } = await apiClient.get('/v1/sysadmin/companies');
             const found = data.find(c => c.id === id);
 
             if (!found) {

@@ -1,9 +1,10 @@
 import React, { useContext, useState, useEffect } from 'react';
 import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { SysAdminAuthContext } from '../context/SysAdminAuthContext';
+
 import { ThemeContext } from '../context/ThemeContext';
-import sysAdminApiClient from '../api/sysAdminApiClient';
+import { AuthContext } from '../context/AuthContext';
+import apiClient from '../api/apiClient';
 import {
   LogOut,
   Menu,
@@ -19,17 +20,11 @@ import {
 } from 'lucide-react';
 import TopHeaderActions from './TopHeaderActions';
 
-const fetchMyAreas = async () => {
-  try {
-    const { data: allAreas } = await sysAdminApiClient.get('/sysadmin/areas');
-    return allAreas;
-  } catch (e) {
-    return [];
-  }
-};
+// REDACTED: Legacy areas call replaced by static system nav
+const fetchMyAreas = async () => [];
 
 const SysAdminLayout = () => {
-  const { logout } = useContext(SysAdminAuthContext);
+  const { logout } = useContext(AuthContext);
   const { theme, toggleTheme } = useContext(ThemeContext);
   const navigate = useNavigate();
   const location = useLocation();
@@ -93,7 +88,7 @@ const SysAdminLayout = () => {
 
   const handleLogout = () => {
     logout();
-    navigate('/sysadmin/login');
+    navigate('/login'); // Fixed path
   };
 
   // Helper seguro

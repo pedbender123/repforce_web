@@ -27,7 +27,7 @@ import AppTopHeaderActions from '../components/AppTopHeaderActions';
 import DemoModeBanner from '../components/DemoModeBanner';
 
 const CrmLayout = () => {
-    const { user, logout } = useContext(AuthContext);
+    const { user, userProfile, isSysAdmin, logout } = useContext(AuthContext);
     const { theme, toggleTheme } = useContext(ThemeContext);
     const navigate = useNavigate();
     const location = useLocation();
@@ -69,11 +69,7 @@ const CrmLayout = () => {
         icon: 'Shield',
         pages_json: [
             { label: 'Dashboard', path: '/admin/dashboard' },
-            { label: 'Produtos', path: '/admin/products' },
-            { label: 'Pedidos', path: '/admin/orders' },
-            { label: 'Clientes', path: '/admin/clients' },
-            // { label: 'Usuários', path: '/admin/users' },  <-- Moved to Config
-            // { label: 'Cargos', path: '/admin/roles' }      <-- Moved to Config
+            { label: 'Configurações', path: '/admin/config' },
         ]
     };
 
@@ -85,8 +81,8 @@ const CrmLayout = () => {
 
     // 2. Injeção de Áreas Fixas baseada no Perfil/Permissão
     // (Pode ser melhorado futuramente com flags booleanas no backend: user.is_admin)
-    const isAdmin = ['admin', 'manager', 'sysadmin'].includes(user?.profile);
-    const isSales = ['sales_rep', 'representante'].includes(user?.profile);
+    const isAdmin = ['admin', 'manager', 'sysadmin'].includes(userProfile);
+    const isSales = ['sales_rep', 'representante'].includes(userProfile);
 
     if (isAdmin) {
         userAreas.push(adminArea);
@@ -95,11 +91,11 @@ const CrmLayout = () => {
     // Se for vendedor OU se não tiver nenhuma área (fallback), adiciona Vendas
     // (Admins também podem querer ver a área de vendas? Por enquanto vamos separar para clareza)
     if (isSales || (!isAdmin && dynamicAreas.length === 0)) {
-        userAreas.push(salesArea);
+        // userAreas.push(salesArea); // DISABLED SALES AREA
     }
 
     // Adiciona as digitadas no banco
-    userAreas = [...userAreas, ...dynamicAreas];
+    // userAreas = [...userAreas, ...dynamicAreas]; // DISABLED FOR STABILITY
 
     // Remove duplicatas por ID (caso o banco tenha uma área com mesmo ID da hardcoded)
     userAreas = userAreas.filter((area, index, self) =>
@@ -132,7 +128,7 @@ const CrmLayout = () => {
     const renderIcon = (iconName) => iconMap[iconName] || <Briefcase size={20} />;
 
     // VERIFICAÇÃO DE PROVISIONAMENTO
-    if (user?.tenant?.status === 'provisioning' && user?.profile !== 'sysadmin') {
+    if (user?.tenant?.status === 'provisioning' && !isSysAdmin) {
         return <ProvisioningScreen />;
     }
 

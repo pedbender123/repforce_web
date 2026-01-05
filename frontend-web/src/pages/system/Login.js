@@ -1,9 +1,8 @@
-import React, { useState, useContext } from 'react';
+import React, { useState, useContext, useEffect } from 'react';
 import { AuthContext } from '../../context/AuthContext';
-import { Navigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import ThemeToggle from '../../components/ThemeToggle';
 import apiClient from '../../api/apiClient';
-import { jwtDecode } from 'jwt-decode';
 
 export default function Login() {
   const [username, setUsername] = useState('');
@@ -12,20 +11,40 @@ export default function Login() {
   const [error, setError] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
 
-  const { token, userProfile } = useContext(AuthContext);
+  const { user, token, status, login, userProfile, isSysAdmin } = useContext(AuthContext);
+  const navigate = useNavigate();
+  const location = useLocation();
 
-  // Mapeamento de perfis para rotas
-  const getRedirectPath = (profile) => {
-    switch (profile) {
-      case 'admin': return '/admin/dashboard';
-      case 'representante': return '/app/dashboard';
-      case 'sysadmin': return '/sysadmin/dashboard';
-      default: return '/app/dashboard';
+  // Redirection Logic Unified
+  useEffect(() => {
+    if (status === 'authenticated') {
+      const from = location.state?.from?.pathname;
+      if (from && from !== '/login') {
+        navigate(from, { replace: true });
+      } else {
+        // Default redirects
+        if (isSysAdmin) {
+          navigate('/sysadmin', { replace: true });
+        } else if (user?.memberships && user.memberships.length > 0) {
+          // If no tenant selected but has memberships, pick the first one
+          const firstMembership = user.memberships[0];
+          const role = firstMembership.role;
+          const target = (role === 'owner' || role === 'admin') ? '/admin' : '/app';
+
+          // Select tenant if not already selected
+          if (!localStorage.getItem('tenantSlug')) {
+            localStorage.setItem('tenantSlug', firstMembership.tenant.slug);
+          }
+
+          navigate(target, { replace: true });
+        } else {
+          // No memberships and not sysadmin? This shouldn't happen for valid users, 
+          // but we logout to be safe or redirect to login.
+          navigate('/login', { replace: true });
+        }
+      }
     }
-  };
-
-  // Se já estiver logado (e o contexto já tiver carregado), redireciona
-  if (token) return <Navigate to={getRedirectPath(userProfile)} replace />;
+  }, [status, isSysAdmin, userProfile, navigate, location]);
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -33,48 +52,23 @@ export default function Login() {
     setIsLoading(true);
 
     try {
-      const formData = new URLSearchParams();
-      formData.append('username', username);
-      formData.append('password', password);
-      formData.append('remember_me', rememberMe);
-
-      const response = await apiClient.post('/auth/token', formData, {
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      const response = await apiClient.post('/v1/auth/login', {
+        username,
+        password,
+        remember_me: rememberMe
       });
 
       const { access_token } = response.data;
-
-      // --- LÓGICA CRÍTICA DE LOGIN ---
-      // 1. Salva o token diretamente no storage
-      localStorage.setItem('token', access_token);
-
-      // 3. Força o navegador a ir para a nova URL ou usa navigate se possível.
-      // Como o Login é public, e Lobby é private, podemos usar navigate se o estado do AuthContext atualizar rápido.
-      // Mas a lógica antiga usava window.location.href para garantir refresh.
-      // Vamos manter o padrão mas redirecionar para /lobby
-
-      let targetPath = '/lobby';
-
-      try {
-        const decoded = jwtDecode(access_token);
-        // Se for sysadmin, vai direto.
-        if (decoded.is_sysadmin) {
-          targetPath = '/sysadmin/dashboard';
-        }
-      } catch (e) { console.warn(e); }
-
-      window.location.href = targetPath;
-
-      // 3. Força o navegador a ir para a nova URL. 
-      // Isso garante que o App recarregue do zero com o novo token no localStorage.
-      window.location.href = targetPath;
-
+      await login(access_token);
+      // navigation is handled by useEffect above
     } catch (err) {
       console.error("Login Error:", err);
       setError('Login falhou. Verifique usuário e senha.');
       setIsLoading(false);
     }
   };
+
+  if (status === 'loading') return null; // Wait for auth recovery
 
   return (
     <div className="flex min-h-screen transition-colors duration-300">

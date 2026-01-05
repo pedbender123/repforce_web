@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Bell, Check, X, Info, AlertTriangle, Package, Map } from 'lucide-react';
-import sysAdminApiClient from '../api/sysAdminApiClient';
+import apiClient from '../api/apiClient';
 
 const NotificationCenter = () => {
     const [isOpen, setIsOpen] = useState(false);
@@ -11,7 +11,7 @@ const NotificationCenter = () => {
     const fetchTasks = async () => {
         setLoading(true);
         try {
-            const { data } = await sysAdminApiClient.get('/crm/tasks?status=open');
+            const { data } = await apiClient.get('/crm/tasks?status=open');
             setTasks(data);
             setUnreadCount(data.length);
         } catch (error) {
@@ -30,7 +30,7 @@ const NotificationCenter = () => {
 
     const handleComplete = async (taskId) => {
         try {
-            await sysAdminApiClient.patch(`/crm/tasks/${taskId}`, { status: 'completed' });
+            await apiClient.patch(`/crm/tasks/${taskId}`, { status: 'completed' });
             setTasks(tasks.filter(t => t.id !== taskId));
             setUnreadCount(prev => Math.max(0, prev - 1));
         } catch (error) {
@@ -74,7 +74,7 @@ const NotificationCenter = () => {
                         ) : (
                             <ul>
                                 {tasks.map(task => (
-                                    <li key={task.id} className="p-3 border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-750 transition-colors flex items-start gap-3">
+                                    <li key={task.id} className="p-3 border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors flex items-start gap-3">
                                         <div className="mt-1 flex-shrink-0">
                                             {getIcon(task.type)}
                                         </div>
