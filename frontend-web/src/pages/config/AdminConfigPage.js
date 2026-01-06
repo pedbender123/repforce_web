@@ -1,21 +1,22 @@
 import React, { useState } from 'react';
-import { Users, Shield, ArrowLeft, Ruler, Table2 } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Users, Shield, ArrowLeft, Ruler, Table2, Database } from 'lucide-react';
+import { Link, useSearchParams } from 'react-router-dom';
 
 // Tabs
 import AdminUserManagement from '../system/AdminUserManagement';
-import AdminRoleManagement from '../system/AdminRoleManagement';
-// import AdminCustomFields from '../system/AdminCustomFields'; // Moved
-import AdminPricingRules from '../system/AdminPricingRules';
+import DatabaseEditor from '../editor/DatabaseEditor';
 
 const AdminConfigPage = () => {
-    const [activeTab, setActiveTab] = useState('users');
+    const [searchParams, setSearchParams] = useSearchParams();
+    const activeTab = searchParams.get('tab') || 'users';
+
+    const setActiveTab = (tab) => {
+        setSearchParams({ tab });
+    };
 
     const tabs = [
         { id: 'users', label: 'Usuários', icon: <Users size={20} /> },
-        { id: 'roles', label: 'Cargos', icon: <Shield size={20} /> },
-        // Custom Fields moved to SysAdmin CRM Designer
-        { id: 'rules', label: 'Regras de Preço', icon: <Ruler size={20} /> },
+        { id: 'database', label: 'Banco de Dados', icon: <Database size={20} /> },
     ];
 
     return (
@@ -27,7 +28,7 @@ const AdminConfigPage = () => {
                 </Link>
                 <div>
                     <h1 className="text-2xl font-bold text-gray-800 dark:text-white">Configurações da Empresa</h1>
-                    <p className="text-gray-500 dark:text-gray-400 mt-1">Gerencie usuários, permissões, campos e regras de negócio do seu ambiente.</p>
+                    <p className="text-gray-500 dark:text-gray-400 mt-1">Gerencie usuários e estrutura de dados.</p>
                 </div>
             </div>
 
@@ -49,10 +50,17 @@ const AdminConfigPage = () => {
             </div>
 
             {/* Content */}
-            <div className="flex-1 overflow-y-auto p-6">
-                {activeTab === 'users' && <AdminUserManagement />}
-                {activeTab === 'roles' && <AdminRoleManagement />}
-                {activeTab === 'rules' && <AdminPricingRules />}
+            <div className="flex-1 overflow-y-auto bg-gray-50 dark:bg-gray-900">
+                {activeTab === 'users' && (
+                    <div className="p-6">
+                        <AdminUserManagement />
+                    </div>
+                )}
+                {activeTab === 'database' && (
+                    <div className="h-full">
+                        <DatabaseEditor />
+                    </div>
+                )}
             </div>
         </div>
     );

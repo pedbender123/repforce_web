@@ -106,6 +106,8 @@ class TenantMiddleware(BaseHTTPMiddleware):
 
                 request.state.tenant_slug = slug
                 request.state.tenant_id = tenant.id
+                # Fix: Inject Schema Name for SchemaManager (Builder Context)
+                request.state.tenant_schema = f"tenant_{slug.replace('-', '_')}"
                 
             finally:
                 db.close()

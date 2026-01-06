@@ -23,18 +23,24 @@ import {
 } from 'lucide-react';
 // Adjusted Imports for Layouts directory
 import ProvisioningScreen from '../components/ProvisioningScreen';
-import AppTopHeaderActions from '../components/AppTopHeaderActions';
+import TopHeaderActions from '../components/TopHeaderActions'; // FIXED: Unified Header
 import DemoModeBanner from '../components/DemoModeBanner';
+
+import { useBuilder } from '../context/BuilderContext'; // Import Context
+import DynamicSidebar from '../components/navigation/DynamicSidebar'; // NEW: Dynamic Nav
+
+// ... imports ...
 
 const CrmLayout = () => {
     const { user, userProfile, isSysAdmin, logout } = useContext(AuthContext);
     const { theme, toggleTheme } = useContext(ThemeContext);
+    const { isEditMode } = useBuilder(); // Use Builder Context
     const navigate = useNavigate();
     const location = useLocation();
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const [isCollapsed, setIsCollapsed] = useState(false);
 
-    // Mapeamento de Ícones para string (igual ao SysAdmin)
+    // Mapeamento de Ícones
     const iconMap = {
         'LayoutDashboard': <LayoutDashboard size={20} />,
         'Users': <Users size={20} />,
@@ -50,62 +56,38 @@ const CrmLayout = () => {
         'Layout': <Layout size={20} />
     };
 
-    // ÁREAS PADRÃO (HARDCODED)
-    const salesArea = {
-        id: 'default_sales',
-        name: 'Vendas',
-        icon: 'Briefcase',
+    // Áreas de Construção (Builder)
+    const builderArea = {
+        id: 'builder_core',
+        name: 'Construtor',
+        icon: 'Database',
         pages_json: [
-            { label: 'Dashboard', path: '/app/dashboard' },
-            { label: 'Novo Pedido', path: '/app/orders/new' },
-            { label: 'Clientes', path: '/app/clients' },
-            { label: 'Rotas', path: '/app/routes/new' }
-        ]
-    };
-
-    const adminArea = {
-        id: 'default_admin',
-        name: 'Administração',
-        icon: 'Shield',
-        pages_json: [
-            { label: 'Dashboard', path: '/admin/dashboard' },
-            { label: 'Configurações', path: '/admin/config' },
+            { label: 'Base de Dados', path: '/app/editor/database' },
+            { label: 'Automações', path: '/app/editor/workflows' }
         ]
     };
 
     // LÓGICA DE COMPOSIÇÃO DE ÁREAS
     let userAreas = [];
-
-    // 1. Áreas Dinâmicas do Banco (Atribuídas ao Cargo)
     const dynamicAreas = user?.role_obj?.areas || [];
 
-    // 2. Injeção de Áreas Fixas baseada no Perfil/Permissão
-    // (Pode ser melhorado futuramente com flags booleanas no backend: user.is_admin)
-    const isAdmin = ['admin', 'manager', 'sysadmin'].includes(userProfile);
-    const isSales = ['sales_rep', 'representante'].includes(userProfile);
-
-    if (isAdmin) {
-        userAreas.push(adminArea);
+    // Se Modo Edição -> Injeta Builder no topo
+    if (isEditMode) {
+        userAreas.push(builderArea);
     }
 
-    // Se for vendedor OU se não tiver nenhuma área (fallback), adiciona Vendas
-    // (Admins também podem querer ver a área de vendas? Por enquanto vamos separar para clareza)
-    if (isSales || (!isAdmin && dynamicAreas.length === 0)) {
-        // userAreas.push(salesArea); // DISABLED SALES AREA
-    }
+    // Adiciona áreas dinâmicas do usuário
+    userAreas = [...userAreas, ...dynamicAreas];
 
-    // Adiciona as digitadas no banco
-    // userAreas = [...userAreas, ...dynamicAreas]; // DISABLED FOR STABILITY
-
-    // Remove duplicatas por ID (caso o banco tenha uma área com mesmo ID da hardcoded)
+    // Remove duplicatas por ID
     userAreas = userAreas.filter((area, index, self) =>
         index === self.findIndex((t) => (t.id === area.id))
     );
 
-    // Estado da Área Ativa (Selecionada na Sidebar)
-    const [activeArea, setActiveArea] = useState(userAreas[0]);
+    // Estado da Área Ativa
+    const [activeArea, setActiveArea] = useState(userAreas.length > 0 ? userAreas[0] : null);
 
-    // Atualiza a Área Ativa se a URL mudar (Sincronização)
+    // Auto-select area based on URL
     useEffect(() => {
         if (userAreas.length > 0) {
             const foundArea = userAreas.find(area =>
@@ -124,10 +106,8 @@ const CrmLayout = () => {
         navigate('/login');
     };
 
-    // Helper para renderizar ícone com fallback
     const renderIcon = (iconName) => iconMap[iconName] || <Briefcase size={20} />;
 
-    // VERIFICAÇÃO DE PROVISIONAMENTO
     if (user?.tenant?.status === 'provisioning' && !isSysAdmin) {
         return <ProvisioningScreen />;
     }
@@ -147,40 +127,14 @@ const CrmLayout = () => {
                     <img src="/logo_clara.png" alt="RepForce" className="h-8 w-auto object-contain" />
                 </div>
 
-                <nav className="flex-1 overflow-y-auto py-4 overflow-x-hidden">
-                    <p className={`px-4 text-xs font-semibold text-gray-500 uppercase mb-2 ${isCollapsed ? 'text-center' : ''}`}>
-                        {isCollapsed ? 'Apps' : 'Meus Aplicativos'}
-                    </p>
-                    <ul className="space-y-1 px-3">
-                        {userAreas.map((area) => (
-                            <li key={area.id || area.name}>
-                                <button
-                                    onClick={() => {
-                                        setActiveArea(area);
-                                        // Navega para a primeira página da área
-                                        if (area.pages_json && area.pages_json.length > 0) {
-                                            navigate(area.pages_json[0].path);
-                                        }
-                                    }}
-                                    className={`w-full flex items-center py-3 text-sm font-medium rounded-lg transition-colors duration-150 ${isCollapsed ? 'justify-center px-0' : 'px-4'
-                                        } ${activeArea?.id === area.id || activeArea?.name === area.name
-                                            ? 'bg-blue-600 text-white shadow-md'
-                                            : 'text-gray-400 hover:bg-gray-800 hover:text-white'
-                                        }`}
-                                    title={isCollapsed ? area.name : ''}
-                                >
-                                    <span className={`${isCollapsed ? '' : 'mr-3'}`}>
-                                        {renderIcon(area.icon)}
-                                    </span>
-                                    {!isCollapsed && <span className="whitespace-nowrap">{area.name}</span>}
-                                </button>
-                            </li>
-                        ))}
-                    </ul>
-                </nav>
+                {/* DYNAMIC SIDEBAR (Replaces Static Areas) */}
+                <DynamicSidebar isCollapsed={isCollapsed} />
+
+                {/* Footer Fixed: Configurações - MOVIDO PARA HEADER */}
+                {/* <div className="p-2 border-t border-gray-800"> ... </div> */}
 
                 <div className="p-4 border-t border-gray-800 flex justify-center">
-                    <span className="text-xs text-gray-600">v1.0</span>
+                    <span className="text-xs text-gray-600">v2.0 Builder</span>
                 </div>
             </aside>
 
@@ -219,7 +173,7 @@ const CrmLayout = () => {
                     </div>
 
                     {/* Right Actions Section (NEW) */}
-                    <AppTopHeaderActions />
+                    <TopHeaderActions />
                 </div>
 
                 {/* Mobile Menu */}

@@ -5,6 +5,14 @@ import os
 from .middleware import TenantMiddleware
 from app.shared import database, security, schemas
 from app.system.models import models as models_system
+# --- SYSTEM ROUTERS (OS Core) ---
+from app.system.api import auth as v1_auth
+from app.system.api.sysadmin import companies, tasks as v1_sysadmin_tasks
+
+# --- ENGINE ROUTERS (CRM Motor) ---
+from app.engine.metadata import models as models_meta # REFAC: Metadata Engine Models
+
+from app.engine.metadata import models as models_meta # REFAC: Metadata Engine Models
 # Engine Models (Transient/Dynamic)
 from app.engine import models_tenant 
 
@@ -13,10 +21,9 @@ from app.system.api import auth as v1_auth
 from app.system.api.sysadmin import companies, tasks as v1_sysadmin_tasks
 
 # --- ENGINE ROUTERS (CRM Motor) ---
-from app.engine.api import engine
-from app.engine.metadata import meta as v1_meta
+from app.engine.api import builder # REFAC: Builder API
+from app.engine.api import metadata # REFAC: Engine Runtime API
 
-# --- LEGACY / SHARED ROUTERS ---
 # --- LEGACY / SHARED ROUTERS ---
 # Reduced for Stability Protocol
 from .api import admin, manager, diagnostics
@@ -40,6 +47,8 @@ def startup_event():
     print("Initializing Global Tables (Public Schema)...")
     try:
         models_system.Base.metadata.create_all(bind=database.engine)
+        # Ensure Metadata models are also created (since they share Base but are in different file)
+        # SQLAlchemy creates all tables for Base subclass imported.
     except Exception as e:
         print(f"Schema Init Error (Ensure Postgres is up): {e}")
     
@@ -68,6 +77,8 @@ def startup_event():
     finally:
         db.close()
 
+app.add_middleware(TenantMiddleware)
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -75,8 +86,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-app.add_middleware(TenantMiddleware)
 
 @app.get("/")
 def read_root():
@@ -86,21 +95,11 @@ def read_root():
 # Definição das Rotas - ADM CORE ONLY
 # app.include_router(auth.router, prefix="/auth", tags=["Autenticação"]) # DEPRECATED
 app.include_router(manager.router, prefix="/manager", tags=["Manager (Provisioning)"])
-# app.include_router(crm.router, prefix="/crm", tags=["CRM (Clientes)"])
-# app.include_router(tasks.router, prefix="/crm", tags=["Tarefas & Notificações"])
-# app.include_router(custom_fields.router, prefix="/crm", tags=["CRM Config"])
-# app.include_router(catalog.router, prefix="/catalog", tags=["Catálogo"])
-# app.include_router(orders.router, prefix="/crm/orders", tags=["Pedidos"])
-# app.include_router(routes.router, prefix="/routes", tags=["Rotas de Visita"])
 app.include_router(admin.router, prefix="/admin", tags=["Admin Tenant"])
-# app.include_router(sysadmin.router, prefix="/sysadmin", tags=["SysAdmin"]) # REMOVED LEGACY
-# app.include_router(sysadmin_health.router, prefix="/sysadmin/health", tags=["SysAdmin Health"]) # REMOVED LEGACY
-# app.include_router(demo.router, prefix="/sysadmin/demo", tags=["System Demo"])
-# app.include_router(webhooks.router, prefix="/webhooks", tags=["Webhooks"])
-# app.include_router(analytics.router, prefix="/crm/analytics", tags=["Analytics"])
 app.include_router(v1_auth.router, prefix="/v1", tags=["V1 Auth"])
-# app.include_router(v1_meta.router, prefix="/v1/meta", tags=["Metadados (No-Code)"])
-# app.include_router(engine.router, prefix="/v1/engine", tags=["No-Code Engine"])
+# Builder API (No-Code Engine)
+app.include_router(builder.router, prefix="/api/builder", tags=["Builder"])
+app.include_router(metadata.router, prefix="/api/engine", tags=["Engine Runtime"])
 app.include_router(companies.router, prefix="/v1/sysadmin/companies", tags=["SysAdmin Companies"])
 app.include_router(v1_sysadmin_tasks.router, prefix="/v1/sysadmin/tasks", tags=["SysAdmin Tasks"])
 app.include_router(diagnostics.router, prefix="/sysadmin/diagnostics", tags=["SysAdmin Diagnostics"])

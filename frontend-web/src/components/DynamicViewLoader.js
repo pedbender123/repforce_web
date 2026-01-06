@@ -1,6 +1,6 @@
 import React from 'react';
-import DynamicTable from './DynamicTable';
-import DynamicForm from './DynamicForm';
+import DynamicTable from './engine/DynamicTable';
+import DynamicForm from './engine/DynamicForm';
 
 /**
  * Interpretador de Visualizações (Fase 3 - Refatorado)
