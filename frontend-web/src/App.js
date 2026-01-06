@@ -23,55 +23,62 @@ import Billing from './pages/sysadmin/Billing';
 import SysAdminDiagnostics from './pages/sysadmin/SysAdminDiagnostics';
 
 // Core Modules (Dynamic)
-// Core Modules (Dynamic)
-// import EntityPage from './pages/crm/EntityPage';
-// import ProfilePage from './pages/system/ProfilePage';
+import { BuilderProvider } from './context/BuilderContext'; // Builder / Engine
+import DatabaseEditor from './pages/editor/DatabaseEditor'; // REFAC: New Editor
+import WorkflowManager from './pages/builder/WorkflowManager';
+import DynamicPageLoader from './pages/app/DynamicPageLoader'; // NEW: Dynamic Page
 
 function App() {
   return (
-    <Router>
-      <Routes>
-        {/* Public Routes */}
-        <Route path="/login" element={<Login />} />
+    <BuilderProvider>
+      <Router>
+        <Routes>
+          {/* Public Routes */}
+          <Route path="/login" element={<Login />} />
 
-        {/* Root Redirect */}
-        <Route path="/" element={<Navigate to="/app" replace />} />
+          {/* Root Redirect */}
+          <Route path="/" element={<Navigate to="/app" replace />} />
 
-        {/* APP ROUTES (Sales Rep & Tenant Admin) - REDUCED (Redirects to Admin or Dashboard) */}
-        <Route path="/app" element={<PrivateRoute><CrmLayout /></PrivateRoute>}>
-          {/* Only Dashboard for now */}
-          {/* <Route path="profile" element={<ProfilePage />} /> */}
-          {/* <Route path=":entity" element={<EntityPage />} /> */}
-          <Route path="dashboard" element={<div>User Dashboard Placeholder</div>} />
-          <Route index element={<Navigate to="dashboard" replace />} />
-        </Route>
+          {/* APP ROUTES (Sales Rep & Tenant Admin) - REDUCED (Redirects to Admin or Dashboard) */}
+          <Route path="/app" element={<PrivateRoute><CrmLayout /></PrivateRoute>}>
+            {/* Only Dashboard for now */}
+            <Route path="dashboard" element={<div>User Dashboard Placeholder</div>} />
 
-        {/* ADMIN ROUTES (Tenant Owner) - REDUCED */}
-        <Route path="/admin" element={<PrivateRoute><CrmLayout /></PrivateRoute>}>
-          <Route path="dashboard" element={<AdminDashboard />} />
-          <Route path="config" element={<AdminConfigPage />} />
-          {/* <Route path=":entity" element={<EntityPage />} /> */}
-          {/* <Route path="webhooks" element={<Webhooks />} /> */}
-          <Route index element={<Navigate to="dashboard" replace />} />
-        </Route>
+            {/* Builder Routes */}
+            <Route path="page/:pageId" element={<DynamicPageLoader />} />
+            <Route path="editor/database" element={<DatabaseEditor />} />
+            <Route path="editor/workflows" element={<WorkflowManager />} />
 
-        {/* SYSADMIN ROUTES (Platform Owner) */}
-        <Route path="/sysadmin" element={<PrivateRoute requiredProfile="sysadmin"><SystemLayout /></PrivateRoute>}>
-          <Route path="companies" element={<CompanyList />} />
-          <Route path="companies/new" element={<CompanyForm />} />
-          <Route path="companies/:id" element={<CompanyForm />} />
-          <Route path="companies/:id/design" element={<CRMDesigner />} />
-          <Route path="billing" element={<Billing />} />
-          <Route path="config" element={<SettingsHub />} />
-          <Route path="diagnostics" element={<SysAdminDiagnostics />} />
-          <Route path="settings" element={<Navigate to="config" replace />} />
-          <Route index element={<Navigate to="companies" replace />} />
-        </Route>
+            <Route index element={<Navigate to="dashboard" replace />} />
+          </Route>
 
-        {/* Catch all */}
-        <Route path="*" element={<Navigate to="/login" replace />} />
-      </Routes>
-    </Router>
+          {/* ADMIN ROUTES (Tenant Owner) - REDUCED */}
+          <Route path="/admin" element={<PrivateRoute><CrmLayout /></PrivateRoute>}>
+            <Route path="dashboard" element={<AdminDashboard />} />
+            <Route path="config" element={<AdminConfigPage />} />
+            {/* <Route path=":entity" element={<EntityPage />} /> */}
+            {/* <Route path="webhooks" element={<Webhooks />} /> */}
+            <Route index element={<Navigate to="dashboard" replace />} />
+          </Route>
+
+          {/* SYSADMIN ROUTES (Platform Owner) */}
+          <Route path="/sysadmin" element={<PrivateRoute requiredProfile="sysadmin"><SystemLayout /></PrivateRoute>}>
+            <Route path="companies" element={<CompanyList />} />
+            <Route path="companies/new" element={<CompanyForm />} />
+            <Route path="companies/:id" element={<CompanyForm />} />
+            <Route path="companies/:id/design" element={<CRMDesigner />} />
+            <Route path="billing" element={<Billing />} />
+            <Route path="config" element={<SettingsHub />} />
+            <Route path="diagnostics" element={<SysAdminDiagnostics />} />
+            <Route path="settings" element={<Navigate to="config" replace />} />
+            <Route index element={<Navigate to="companies" replace />} />
+          </Route>
+
+          {/* Catch all */}
+          <Route path="*" element={<Navigate to="/login" replace />} />
+        </Routes>
+      </Router>
+    </BuilderProvider>
   );
 }
 
