@@ -5,7 +5,7 @@ const WidgetConfigModal = ({ isOpen, onClose, widget, onSave }) => {
     const [title, setTitle] = useState('');
     const [entitySlug, setEntitySlug] = useState('');
     const [entities, setEntities] = useState([]);
-    const [fields, setFields] = useState([]); // Fields of selected entity
+    const [fields, setFields] = useState([]); // Fields of selected enti
     
     // Config
     const [metric, setMetric] = useState('count');
