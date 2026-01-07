@@ -3,7 +3,7 @@ from typing import List, Optional
 from sqlalchemy.orm import Session
 from sqlalchemy import text # Import text for raw SQL
 from app.shared import database, security
-from app.system.models import models as models_system
+from app.system import models as models_system
 from app.engine import models_tenant
 from fastapi.security import OAuth2PasswordBearer
 from pydantic import BaseModel, EmailStr
@@ -99,13 +99,66 @@ def create_company(
             conn.execute(text(f"CREATE SCHEMA IF NOT EXISTS \"{schema_name}\""))
             conn.commit()
             
-            conn.execute(text(f"SET search_path TO \"{schema_name}\", public"))
-            conn.commit()
-            
-            # Create all tables in the new schema
-            models_tenant.BaseCrm.metadata.create_all(bind=conn)
-            conn.commit()
-            print(f"Schema '{schema_name}' provisioned successfully.")
+            # --- SEEDING FROM TEMPLATE ---
+            # Instead of static models, we load the dynamic template
+            import json
+            import os
+            from app.engine.metadata import models as models_meta
+            from app.system.services.schema_manager import SchemaManager
+
+            template_path = os.path.join(os.path.dirname(__file__), "../../../engine/templates/crm_v1.json")
+            if os.path.exists(template_path):
+                print(f"Seeding CRM Template from {template_path}...")
+                with open(template_path, 'r') as f:
+                    template_data = json.load(f)
+                
+                # We need to use the 'db' session for Metadata (MetaEntity/MetaField)
+                # and SchemaManager for physical tables.
+                
+                for entity_def in template_data.get("entities", []):
+                    # 1. Create MetaEntity
+                    new_entity = models_meta.MetaEntity(
+                        tenant_id=tenant_id,
+                        slug=entity_def["slug"],
+                        display_name=entity_def["display_name"],
+                        icon=entity_def.get("icon", "Database"),
+                        is_system=False # User can delete if they want
+                    )
+                    db.add(new_entity)
+                    db.commit()     # Commit to get ID
+                    db.refresh(new_entity)
+                    
+                    # 2. Physical Table
+                    SchemaManager.create_table(schema_name, new_entity.slug)
+                    
+                    # 3. Create Fields
+                    for field_def in entity_def.get("fields", []):
+                        new_field = models_meta.MetaField(
+                            entity_id=new_entity.id,
+                            name=field_def["name"],
+                            label=field_def["label"],
+                            field_type=field_def["type"],
+                            is_required=field_def.get("is_required", False),
+                            options=field_def.get("options", [])
+                        )
+                        db.add(new_field)
+                        # Physical Column
+                        SchemaManager.add_column(
+                            schema_name, 
+                            new_entity.slug, 
+                            field_def["name"], 
+                            field_def["type"], 
+                            field_def.get("is_required", False)
+                        )
+                    
+                    db.commit() # Commit fields
+                    
+                print("CRM Template Seeded Successfully.")
+            else:
+                print("Template file not found. Skipping seed.")
+
+            # Create any remaining static tables if needed (e.g. specialized system tables not in metadata)
+            # models_tenant.BaseCrm.metadata.create_all(bind=conn) # DISABLED in favor of dynamic
             
             # Finalize status
             with database.engine.connect() as conn_sys:

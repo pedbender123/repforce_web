@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, Body, Request
 from sqlalchemy.orm import Session
 from app.shared import database, schemas
 from app.shared.security import create_access_token, verify_password
-from app.system.models import models
+from app.system import models
 import re
 
 router = APIRouter()
@@ -13,13 +13,9 @@ def login(
     password: str = Body(..., embed=True),
     db: Session = Depends(database.get_db)
 ):
-    # 1. Validation: Username must NOT be an email
-    email_regex = r"^[\w\.-]+@[\w\.-]+\.\w+$"
-    if re.match(email_regex, username):
-       raise HTTPException(
-           status_code=400, 
-           detail="Username login does not accept email format. Please use your username."
-       )
+    # 1. Validation Logic Removed (Allow emails as usernames)
+    # email_regex = r"^[\w\.-]+@[\w\.-]+\.\w+$"
+    # if re.match(email_regex, username): ...
 
     # 2. Fetch User
     user = db.query(models.GlobalUser).filter(models.GlobalUser.username == username).first()

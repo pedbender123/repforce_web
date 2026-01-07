@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from app.shared import database
 from app.engine.metadata import models as models_meta, schemas as schemas_meta
 from app.system.services.schema_manager import SchemaManager
-from typing import List
+from typing import List, Optional
 import re
 
 router = APIRouter()
@@ -64,6 +64,67 @@ def create_entity(
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Erro ao criar tabela fisica: {str(e)}")
 
+@router.patch("/entities/{entity_id}", response_model=schemas_meta.MetaEntityResponse)
+def update_entity(
+    request: Request,
+    entity_id: str,
+    payload: schemas_meta.MetaEntityUpdate,
+    db: Session = Depends(database.get_db)
+):
+    schema = get_tenant_schema(request)
+    entity = db.query(models_meta.MetaEntity).filter(models_meta.MetaEntity.id == entity_id).first()
+    if not entity:
+        raise HTTPException(status_code=404, detail="Tabela nao encontrada.")
+        
+    # 1. Handle Rename
+    if payload.slug and payload.slug != entity.slug:
+        validate_slug(payload.slug)
+        # Check duplicate
+        if db.query(models_meta.MetaEntity).filter(
+            models_meta.MetaEntity.tenant_id == entity.tenant_id, 
+            models_meta.MetaEntity.slug == payload.slug
+        ).first():
+            raise HTTPException(status_code=400, detail="Slug ja existe.")
+            
+        try:
+            SchemaManager.rename_table(schema, entity.slug, payload.slug)
+            entity.slug = payload.slug
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Erro ao renomear tabela fisica: {str(e)}")
+
+    # 2. Update other fields
+    if payload.display_name:
+        entity.display_name = payload.display_name
+    if payload.icon:
+        entity.icon = payload.icon
+        
+    db.commit()
+    db.refresh(entity)
+    return entity
+
+@router.delete("/entities/{entity_id}")
+def delete_entity(
+    request: Request,
+    entity_id: str,
+    db: Session = Depends(database.get_db)
+):
+    schema = get_tenant_schema(request)
+    entity = db.query(models_meta.MetaEntity).filter(models_meta.MetaEntity.id == entity_id).first()
+    if not entity:
+        raise HTTPException(status_code=404, detail="Tabela nao encontrada.")
+        
+    if entity.is_system:
+        raise HTTPException(status_code=400, detail="Nao e possivel deletar tabelas de sistema.")
+        
+    try:
+        SchemaManager.drop_table(schema, entity.slug)
+        db.delete(entity)
+        db.commit()
+        return {"ok": True}
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Erro ao deletar tabela: {str(e)}")
+
 # --- Endpoints: Fields ---
 
 @router.get("/entities/{entity_id}/fields", response_model=List[schemas_meta.MetaFieldResponse])
@@ -112,6 +173,76 @@ def create_field(
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Erro ao criar coluna fisica: {str(e)}")
 
+@router.patch("/entities/{entity_id}/fields/{field_id}", response_model=schemas_meta.MetaFieldResponse)
+def update_field(
+    request: Request,
+    entity_id: str,
+    field_id: str,
+    payload: schemas_meta.MetaFieldUpdate,
+    db: Session = Depends(database.get_db)
+):
+    schema = get_tenant_schema(request)
+    field = db.query(models_meta.MetaField).filter(
+        models_meta.MetaField.id == field_id,
+        models_meta.MetaField.entity_id == entity_id
+    ).first()
+    
+    if not field:
+        raise HTTPException(status_code=404, detail="Campo nao encontrado.")
+    
+    entity = db.query(models_meta.MetaEntity).filter(models_meta.MetaEntity.id == entity_id).first()
+    
+    # 1. Handle Rename
+    if payload.name and payload.name != field.name:
+        validate_slug(payload.name)
+        # Check duplicate
+        if db.query(models_meta.MetaField).filter(
+            models_meta.MetaField.entity_id == entity_id,
+            models_meta.MetaField.name == payload.name
+        ).first():
+            raise HTTPException(status_code=400, detail="Campo ja existe.")
+            
+        try:
+            SchemaManager.rename_column(schema, entity.slug, field.name, payload.name)
+            field.name = payload.name
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Erro ao renomear coluna fisica: {str(e)}")
+            
+    # 2. Update Label
+    if payload.label:
+        field.label = payload.label
+        
+    db.commit()
+    db.refresh(field)
+    return field
+
+@router.delete("/entities/{entity_id}/fields/{field_id}")
+def delete_field(
+    request: Request,
+    entity_id: str,
+    field_id: str,
+    db: Session = Depends(database.get_db)
+):
+    schema = get_tenant_schema(request)
+    field = db.query(models_meta.MetaField).filter(
+        models_meta.MetaField.id == field_id,
+        models_meta.MetaField.entity_id == entity_id
+    ).first()
+    
+    if not field:
+        raise HTTPException(status_code=404, detail="Campo nao encontrado.")
+        
+    entity = db.query(models_meta.MetaEntity).filter(models_meta.MetaEntity.id == entity_id).first()
+
+    try:
+        SchemaManager.drop_column(schema, entity.slug, field.name)
+        db.delete(field)
+        db.commit()
+        return {"ok": True}
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Erro ao deletar coluna: {str(e)}")
+
 # --- Endpoints: Navigation ---
 
 @router.get("/navigation", response_model=List[schemas_meta.MetaNavigationGroupResponse])
@@ -144,6 +275,33 @@ def create_nav_group(
     db.refresh(new_group)
     return new_group
 
+@router.put("/navigation/groups/{group_id}", response_model=schemas_meta.MetaNavigationGroupResponse)
+def update_nav_group(
+    request: Request,
+    group_id: str,
+    payload: schemas_meta.MetaNavigationGroupUpdate,
+    db: Session = Depends(database.get_db)
+):
+    tenant_id = request.state.tenant_id
+    group = db.query(models_meta.MetaNavigationGroup).filter(
+        models_meta.MetaNavigationGroup.id == group_id,
+        models_meta.MetaNavigationGroup.tenant_id == tenant_id
+    ).first()
+
+    if not group:
+        raise HTTPException(status_code=404, detail="Grupo nao encontrado.")
+
+    if payload.name:
+        group.name = payload.name
+    if payload.icon:
+        group.icon = payload.icon
+    if payload.order is not None:
+        group.order = payload.order
+    
+    db.commit()
+    db.refresh(group)
+    return group
+
 @router.post("/navigation/groups/{group_id}/pages", response_model=schemas_meta.MetaPageResponse)
 def create_nav_page(
     group_id: str,
@@ -162,6 +320,35 @@ def create_nav_page(
     db.commit()
     db.refresh(new_page)
     return new_page
+
+@router.put("/navigation/pages/{page_id}", response_model=schemas_meta.MetaPageResponse)
+def update_nav_page(
+    request: Request,
+    page_id: str,
+    payload: schemas_meta.MetaPageUpdate,
+    db: Session = Depends(database.get_db)
+):
+    tenant_id = request.state.tenant_id
+    page = db.query(models_meta.MetaPage)\
+        .join(models_meta.MetaNavigationGroup)\
+        .filter(
+            models_meta.MetaPage.id == page_id,
+            models_meta.MetaNavigationGroup.tenant_id == tenant_id
+        ).first()
+
+    if not page:
+        raise HTTPException(status_code=404, detail="Pagina nao encontrada.")
+
+    if payload.name:
+        page.name = payload.name
+    if payload.layout_config is not None:
+        page.layout_config = payload.layout_config
+    if payload.order is not None:
+        page.order = payload.order
+
+    db.commit()
+    db.refresh(page)
+    return page
 
 # --- Endpoints: Workflows ---
 
@@ -194,3 +381,85 @@ def create_workflow(
     db.commit()
     db.refresh(new_flow)
     return new_flow
+
+@router.delete("/workflows/{workflow_id}")
+def delete_workflow(
+    request: Request,
+    workflow_id: str,
+    db: Session = Depends(database.get_db)
+):
+    tenant_id = request.state.tenant_id
+    
+    # Verify Workflow Ownership
+    wf = db.query(models_meta.MetaWorkflow).join(models_meta.MetaEntity).filter(
+        models_meta.MetaWorkflow.id == workflow_id,
+        models_meta.MetaEntity.tenant_id == tenant_id
+    ).first()
+    
+    if not wf:
+        raise HTTPException(status_code=404, detail="Workflow nao encontrado.")
+        
+    db.delete(wf)
+    db.commit()
+    return {"ok": True}
+
+# --- Endpoints: Actions ---
+
+@router.get("/actions", response_model=List[schemas_meta.MetaActionResponse])
+def list_actions(
+    request: Request, 
+    trigger_source: Optional[str] = None,
+    trigger_context: Optional[str] = None,
+    db: Session = Depends(database.get_db)
+):
+    tenant_id = request.state.tenant_id
+    query = db.query(models_meta.MetaAction).filter(models_meta.MetaAction.tenant_id == tenant_id)
+    
+    if trigger_source:
+        query = query.filter(models_meta.MetaAction.trigger_source == trigger_source)
+    if trigger_context:
+        query = query.filter(models_meta.MetaAction.trigger_context == trigger_context)
+        
+    return query.all()
+
+@router.post("/actions", response_model=schemas_meta.MetaActionResponse)
+def create_action(
+    request: Request,
+    payload: schemas_meta.MetaActionCreate,
+    db: Session = Depends(database.get_db)
+):
+    tenant_id = request.state.tenant_id
+    
+    # 1. Create Action
+    new_action = models_meta.MetaAction(
+        tenant_id=tenant_id,
+        trigger_source=payload.trigger_source,
+        trigger_context=payload.trigger_context,
+        name=payload.name,
+        action_type=payload.action_type,
+        config=payload.config
+    )
+    db.add(new_action)
+    db.commit()
+    db.refresh(new_action)
+    return new_action
+
+@router.delete("/actions/{action_id}")
+def delete_action(
+    request: Request,
+    action_id: str,
+    db: Session = Depends(database.get_db)
+):
+    tenant_id = request.state.tenant_id
+    
+    action = db.query(models_meta.MetaAction).filter(
+        models_meta.MetaAction.id == action_id,
+        models_meta.MetaAction.tenant_id == tenant_id
+    ).first()
+    
+    if not action:
+        raise HTTPException(status_code=404, detail="Acao nao encontrada.")
+        
+    db.delete(action)
+    db.commit()
+    return {"ok": True}

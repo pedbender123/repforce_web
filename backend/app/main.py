@@ -2,9 +2,9 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 import os 
-from .middleware import TenantMiddleware
+from .core.middleware import TenantMiddleware
 from app.shared import database, security, schemas
-from app.system.models import models as models_system
+from app.system import models as models_system
 # --- SYSTEM ROUTERS (OS Core) ---
 from app.system.api import auth as v1_auth
 from app.system.api.sysadmin import companies, tasks as v1_sysadmin_tasks
@@ -14,15 +14,22 @@ from app.engine.metadata import models as models_meta # REFAC: Metadata Engine M
 
 from app.engine.metadata import models as models_meta # REFAC: Metadata Engine Models
 # Engine Models (Transient/Dynamic)
+from app.engine.metadata import models as models_meta # REFAC: Metadata Engine Models
+# Engine Models (Transient/Dynamic)
 from app.engine import models_tenant 
+from app.engine.services.seeder import seed_tenant_defaults 
 
 # --- SYSTEM ROUTERS (OS Core) ---
 from app.system.api import auth as v1_auth
 from app.system.api.sysadmin import companies, tasks as v1_sysadmin_tasks
+from app.system.api import tasks_v2 # Tasks V2 IMPORT
 
 # --- ENGINE ROUTERS (CRM Motor) ---
 from app.engine.api import builder # REFAC: Builder API
 from app.engine.api import metadata # REFAC: Engine Runtime API
+from app.engine.api import data # REFAC: Universal Data API
+from app.engine.api import actions # REFAC: Actions API
+from app.engine.api import analytics # REFAC: Analytics API
 
 # --- LEGACY / SHARED ROUTERS ---
 # Reduced for Stability Protocol
@@ -72,6 +79,29 @@ def startup_event():
             db.add(sysadmin_user)
             db.commit()
             print("SysAdmin created: pbrandon / 1asdfgh.")
+
+        # Check for 'admin' user
+        admin_user = db.query(models_system.GlobalUser).filter(models_system.GlobalUser.username == "admin").first()
+        if not admin_user:
+            print("Seeding Admin...")
+            hashed_pw = security.get_password_hash("12345678")
+            admin_user = models_system.GlobalUser(
+                username="admin",
+                recovery_email="admin@repforce.com", 
+                password_hash=hashed_pw,
+                full_name="Administrator",
+                is_superuser=True,
+                is_active=True
+            )
+            db.add(admin_user)
+            db.commit()
+            print("Admin created: admin / 12345678")
+        
+        # 3. Seed "Rotas" Entity (Default for first tenant)
+        # Assuming the first tenant is the default one created by system or manual request
+        first_tenant = db.query(models_system.Tenant).first()
+        if first_tenant:
+             seed_tenant_defaults(db, first_tenant.id)
     except Exception as e:
         print(f"Startup Seeding Error: {e}")
     finally:
@@ -97,9 +127,14 @@ def read_root():
 app.include_router(manager.router, prefix="/manager", tags=["Manager (Provisioning)"])
 app.include_router(admin.router, prefix="/admin", tags=["Admin Tenant"])
 app.include_router(v1_auth.router, prefix="/v1", tags=["V1 Auth"])
+# User Tasks System
+app.include_router(tasks_v2.router, prefix="/api/system/tasks", tags=["System Tasks (User)"])
 # Builder API (No-Code Engine)
 app.include_router(builder.router, prefix="/api/builder", tags=["Builder"])
 app.include_router(metadata.router, prefix="/api/engine", tags=["Engine Runtime"])
+app.include_router(data.router, prefix="/api/engine", tags=["Universal Data"])
+app.include_router(actions.router, prefix="/api/engine", tags=["Engine Actions"])
+app.include_router(analytics.router, prefix="/api/engine/analytics", tags=["Engine Analytics"])
 app.include_router(companies.router, prefix="/v1/sysadmin/companies", tags=["SysAdmin Companies"])
 app.include_router(v1_sysadmin_tasks.router, prefix="/v1/sysadmin/tasks", tags=["SysAdmin Tasks"])
 app.include_router(diagnostics.router, prefix="/sysadmin/diagnostics", tags=["SysAdmin Diagnostics"])

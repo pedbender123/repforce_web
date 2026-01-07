@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from app.shared import database, security
-from app.system.models import models as models_system
+from app.system import models as models_system
 from pydantic import BaseModel
 from typing import List, Optional
 from datetime import datetime
