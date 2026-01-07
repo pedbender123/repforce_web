@@ -1,44 +1,43 @@
-import React, { useContext } from 'react';
+import React, { useContext, useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ThemeContext } from '../context/ThemeContext';
 import { AuthContext } from '../context/AuthContext';
 
-import { Settings, LogOut, Sun, Moon, User, PenTool } from 'lucide-react';
+import { Settings, LogOut, Sun, Moon, User, PenTool, ChevronDown } from 'lucide-react';
 import NotificationCenter from './NotificationCenter';
 import { useBuilder } from '../context/BuilderContext';
 
 const TopHeaderActions = () => {
     const { theme, toggleTheme } = useContext(ThemeContext);
     const { logout, user } = useContext(AuthContext);
-    const { isEditMode, toggleEditMode } = useBuilder(); // Consume Builder Context
+    const { isEditMode, toggleEditMode } = useBuilder(); 
     const navigate = useNavigate();
+    const [isProfileOpen, setIsProfileOpen] = useState(false);
+    const dropdownRef = useRef(null);
+
+    // Close dropdown on click outside
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+                setIsProfileOpen(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
 
     const handleLogout = () => {
         logout();
         navigate('/login');
     };
 
-    // Helper to get initial
     const initial = user?.name ? user.name.charAt(0).toUpperCase() : 'U';
 
     return (
         <div className="flex items-center space-x-3 ml-auto">
-            {/* Builder Direct Access (Explicit) */}
-            <button
-                onClick={() => navigate('/app/editor/database')}
-                className="hidden md:flex items-center gap-2 px-3 py-1.5 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 rounded-md text-sm font-medium transition-colors text-gray-700 dark:text-gray-200"
-                title="Ir para o Construtor de Banco de Dados"
-            >
-                <PenTool size={16} />
-                <span>Construtor</span>
-            </button>
-
-            {/* Edit Mode Toggle (Keep for Context Logic if needed, but made less prominent or removed if direct access is preferred. 
-                User complained about "activating dev mode". Direct access is better. 
-                Let's keep context logic but auto-activate on entering builder pages? 
-                For now, let's keep the globally available toggle but make the direct link primary.
-            */}
-
+            {/* Notification Center */}
+            <NotificationCenter />
+            
             {/* Theme Toggle */}
             <button
                 onClick={toggleTheme}
@@ -48,35 +47,66 @@ const TopHeaderActions = () => {
                 {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
             </button>
 
-            {/* Notifications */}
-            <NotificationCenter />
+            {/* Profile Dropdown */}
+            <div className="relative" ref={dropdownRef}>
+                <button
+                    onClick={() => setIsProfileOpen(!isProfileOpen)}
+                    className="flex items-center gap-2 focus:outline-none"
+                >
+                    <div className="h-8 w-8 rounded-full bg-blue-600 text-white flex items-center justify-center text-sm font-bold shadow hover:bg-blue-700 transition-colors">
+                        {initial}
+                    </div>
+                </button>
 
-            {/* Config Button (Corrected Route) */}
-            <button
-                onClick={() => navigate('/admin/config')}
-                className="p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-                title="Configurações"
-            >
-                <Settings size={20} />
-            </button>
+                {isProfileOpen && (
+                    <div className="absolute right-0 mt-2 w-56 bg-white dark:bg-gray-800 rounded-lg shadow-lg py-2 border border-gray-100 dark:border-gray-700 z-50 animate-in fade-in zoom-in duration-200">
+                        {/* User Header */}
+                        <div className="px-4 py-2 border-b border-gray-100 dark:border-gray-700">
+                            <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{user?.name}</p>
+                            <p className="text-xs text-gray-500 truncate">{user?.email}</p>
+                        </div>
 
-            {/* Profile Avatar */}
-            <button
-                onClick={() => navigate('/sysadmin/config?tab=profile')}
-                className="h-8 w-8 rounded-full bg-blue-600 text-white flex items-center justify-center text-sm font-bold shadow hover:bg-blue-700 transition-colors"
-                title="Perfil"
-            >
-                {initial}
-            </button>
+                        {/* Edit Mode Toggle */}
+                        <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-700">
+                            <div className="flex items-center justify-between">
+                                <span className="text-sm text-gray-700 dark:text-gray-300 flex items-center gap-2">
+                                    <PenTool size={16} /> Modo Edição
+                                </span>
+                                <button
+                                    onClick={toggleEditMode}
+                                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${isEditMode ? 'bg-blue-600' : 'bg-gray-200 dark:bg-gray-700'}`}
+                                >
+                                    <span
+                                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${isEditMode ? 'translate-x-6' : 'translate-x-1'}`}
+                                    />
+                                </button>
+                            </div>
+                        </div>
 
-            {/* Logout */}
-            <button
-                onClick={handleLogout}
-                className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors"
-                title="Sair"
-            >
-                <LogOut size={20} />
-            </button>
+                        {/* Menu Items */}
+                        <button
+                            onClick={() => { navigate('/sysadmin/config?tab=profile'); setIsProfileOpen(false); }}
+                            className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
+                        >
+                            <User size={16} /> Meu Perfil
+                        </button>
+                        
+                        <button
+                            onClick={() => { navigate('/admin/config'); setIsProfileOpen(false); }}
+                            className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
+                        >
+                            <Settings size={16} /> Configurações
+                        </button>
+
+                        <button
+                            onClick={handleLogout}
+                            className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center gap-2 mt-1 border-t border-gray-100 dark:border-gray-700"
+                        >
+                            <LogOut size={16} /> Sair
+                        </button>
+                    </div>
+                )}
+            </div>
         </div>
     );
 };

@@ -4,9 +4,11 @@ import apiClient from '../../api/apiClient';
 import {
     LayoutDashboard, Users, ShoppingCart, Map, Package, Settings, Briefcase,
     Phone, ShieldAlert, Database, Layout, Server, Circle, Folder, FileText,
-    Plus, ChevronRight, ChevronDown, Trash
+    Plus, ChevronRight, ChevronDown, Trash, Pencil
 } from 'lucide-react';
 import { useBuilder } from '../../context/BuilderContext';
+import PageWizard from '../builder/PageWizard'; // Wizard Import
+import NavigationGroupModal from '../builder/NavigationGroupModal';
 
 const iconMap = {
     'LayoutDashboard': LayoutDashboard,
@@ -26,34 +28,18 @@ const iconMap = {
     'FileText': FileText
 };
 
-import PageWizard from '../builder/PageWizard'; // Wizard Import
-
-const DynamicSidebar = ({ isCollapsed }) => {
-    const [groups, setGroups] = useState([]);
+const DynamicSidebar = ({ isCollapsed, groups = [], onRefresh }) => {
     const { isEditMode } = useBuilder();
     const navigate = useNavigate();
     const location = useLocation();
     
-    // Wizard State
-    const [wizardOpen, setWizardOpen] = useState(false);
-    const [selectedGroupId, setSelectedGroupId] = useState(null);
+    // Group Modal State
+    const [groupModalOpen, setGroupModalOpen] = useState(false);
+    const [groupToEdit, setGroupToEdit] = useState(null);
 
-    // State for creating group
+    // State for creating group (Inline - KEEPING for quick add, but mainly using Modal for edits)
     const [isCreatingGroup, setIsCreatingGroup] = useState(false);
     const [newGroupName, setNewGroupName] = useState("");
-
-    useEffect(() => {
-        fetchNavigation();
-    }, []);
-
-    const fetchNavigation = async () => {
-        try {
-            const { data } = await apiClient.get('/api/builder/navigation');
-            setGroups(data);
-        } catch (error) {
-            console.error("Erro ao carregar navegação:", error);
-        }
-    };
 
     const handleCreateGroup = async () => {
         if (!newGroupName) return;
@@ -65,10 +51,16 @@ const DynamicSidebar = ({ isCollapsed }) => {
             });
             setNewGroupName("");
             setIsCreatingGroup(false);
-            fetchNavigation();
+            if (onRefresh) onRefresh();
         } catch (error) {
             alert("Erro ao criar grupo");
         }
+    };
+
+    const handleEditGroup = (e, group) => {
+        e.stopPropagation();
+        setGroupToEdit(group);
+        setGroupModalOpen(true);
     };
 
     // Render Icon Helper
@@ -80,44 +72,40 @@ const DynamicSidebar = ({ isCollapsed }) => {
     return (
         <nav className="flex-1 overflow-y-auto py-4 px-2 space-y-4">
             {/* Dynamic Groups */}
-            {groups.map(group => (
-                <div key={group.id} className="space-y-1">
-                    <div className={`flex items-center justify-between px-2 text-xs font-semibold text-gray-500 uppercase mb-1 ${isCollapsed ? 'justify-center' : ''}`}>
-                        {!isCollapsed && <span>{group.name}</span>}
+            {groups.map(group => {
+                // Determine if this group is active (either directly selected or one of its pages is viewed)
+                const isGroupActive = location.pathname === `/app/group/${group.id}` || 
+                                     group.pages?.some(p => location.pathname === `/app/page/${p.id}`);
+                
+                return (
+                    <div
+                        key={group.id}
+                        onClick={() => navigate(`/app/group/${group.id}`)}
+                        className={`w-full flex items-center justify-between px-3 py-2 text-sm font-medium rounded-lg transition-colors duration-150 mb-1 cursor-pointer group/item
+                            ${isGroupActive
+                                ? 'bg-blue-600 text-white shadow-md'
+                                : 'text-gray-400 hover:bg-gray-800 hover:text-white'
+                            } ${isCollapsed ? 'justify-center px-0' : ''}`}
+                        title={isCollapsed ? group.name : ''}
+                    >
+                        <div className="flex items-center overflow-hidden">
+                            <RenderIcon name={group.icon || 'Folder'} size={20} className={`${isCollapsed ? '' : 'mr-3'}`} />
+                            {!isCollapsed && <span className="truncate">{group.name}</span>}
+                        </div>
+                        
+                        {/* Edit Button */}
                         {isEditMode && !isCollapsed && (
-                             <button 
-                                onClick={() => { setSelectedGroupId(group.id); setWizardOpen(true); }}
-                                className="text-gray-400 hover:text-blue-500" 
-                                title="Adicionar Página"
-                            >+</button>
+                            <button
+                                onClick={(e) => handleEditGroup(e, group)}
+                                className="opacity-0 group-hover/item:opacity-100 p-1 hover:bg-white/20 rounded transition-all"
+                                title="Editar Grupo"
+                            >
+                                <Pencil size={12} />
+                            </button>
                         )}
                     </div>
-
-                    {/* Pages in Group */}
-                    {group.pages && group.pages.map(page => (
-                        <button
-                            key={page.id}
-                            onClick={() => navigate(`/app/page/${page.id}`)}
-                            className={`w-full flex items-center py-2 text-sm font-medium rounded-lg transition-colors duration-150 ${isCollapsed ? 'justify-center px-0' : 'px-3'}
-                                ${location.pathname === `/app/page/${page.id}`
-                                    ? 'bg-blue-600 text-white shadow-md'
-                                    : 'text-gray-400 hover:bg-gray-800 hover:text-white'
-                                }`}
-                            title={isCollapsed ? page.name : ''}
-                        >
-                            <span className={`${isCollapsed ? '' : 'mr-3'}`}>
-                                <FileText size={20} />
-                            </span>
-                            {!isCollapsed && <span className="truncate">{page.name}</span>}
-                        </button>
-                    ))}
-
-                    {/* Empty Group State */}
-                    {(!group.pages || group.pages.length === 0) && !isCollapsed && (
-                        <div className="px-3 py-1 text-xs text-gray-600 italic">Vazio</div>
-                    )}
-                </div>
-            ))}
+                );
+            })}
 
             {/* Builder Mode: Add Group Action */}
             {isEditMode && (
@@ -149,11 +137,12 @@ const DynamicSidebar = ({ isCollapsed }) => {
                     )}
                 </div>
             )}
-            <PageWizard 
-                isOpen={wizardOpen} 
-                onClose={() => setWizardOpen(false)} 
-                groupId={selectedGroupId}
-                onPageCreated={fetchNavigation}
+            
+            <NavigationGroupModal 
+                isOpen={groupModalOpen}
+                onClose={() => { setGroupModalOpen(false); setGroupToEdit(null); }}
+                onGroupCreated={onRefresh} // Also handles updates
+                groupToEdit={groupToEdit}
             />
         </nav>
     );

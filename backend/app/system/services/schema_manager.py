@@ -51,3 +51,43 @@ class SchemaManager:
         with engine.connect() as conn:
             conn.execute(text(ddl))
             conn.commit()
+
+    @classmethod
+    def rename_table(cls, tenant_schema: str, old_slug: str, new_slug: str):
+        old_name = f'"{tenant_schema}"."{old_slug}"'
+        new_name = f'"{tenant_schema}"."{new_slug}"'
+        
+        # PostgreSQL syntax: ALTER TABLE schema.old_name RENAME TO new_name
+        # Note: "new_name" in RENAME TO should NOT include schema
+        ddl = f'ALTER TABLE {old_name} RENAME TO "{new_slug}";'
+        
+        with engine.connect() as conn:
+            conn.execute(text(ddl))
+            conn.commit()
+
+    @classmethod
+    def drop_table(cls, tenant_schema: str, table_slug: str):
+        table_name = f'"{tenant_schema}"."{table_slug}"'
+        ddl = f'DROP TABLE IF EXISTS {table_name} CASCADE;'
+        
+        with engine.connect() as conn:
+            conn.execute(text(ddl))
+            conn.commit()
+
+    @classmethod
+    def rename_column(cls, tenant_schema: str, table_slug: str, old_name: str, new_name: str):
+        table_name = f'"{tenant_schema}"."{table_slug}"'
+        ddl = f'ALTER TABLE {table_name} RENAME COLUMN "{old_name}" TO "{new_name}";'
+        
+        with engine.connect() as conn:
+            conn.execute(text(ddl))
+            conn.commit()
+
+    @classmethod
+    def drop_column(cls, tenant_schema: str, table_slug: str, column_name: str):
+        table_name = f'"{tenant_schema}"."{table_slug}"'
+        ddl = f'ALTER TABLE {table_name} DROP COLUMN IF EXISTS "{column_name}";'
+        
+        with engine.connect() as conn:
+            conn.execute(text(ddl))
+            conn.commit()

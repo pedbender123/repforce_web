@@ -1,7 +1,7 @@
 import React from 'react';
-import { Plus, Type, Hash, Calendar, CheckSquare, AlignLeft, DollarSign, Mail, Phone, List } from 'lucide-react';
+import { Plus, Type, Hash, Calendar, CheckSquare, AlignLeft, DollarSign, Mail, Phone, List, Edit2, Trash2 } from 'lucide-react';
 
-const FieldsGrid = ({ fields, onAddField }) => {
+const FieldsGrid = ({ fields, onAddField, onEditField, onDeleteField }) => {
 
     const getTypeIcon = (type) => {
         switch (type) {
@@ -37,7 +37,11 @@ const FieldsGrid = ({ fields, onAddField }) => {
                                     {field.label}
                                 </span>
                             </div>
-                            {field.is_required && <span className="text-red-500 text-xs" title="Obrigatório">*</span>}
+                            <div className="flex items-center gap-1 transition-opacity">
+                                {field.is_required && <span className="text-red-500 text-xs mr-1" title="Obrigatório">*</span>}
+                                <button onClick={() => onEditField && onEditField(field)} className="text-gray-400 hover:text-blue-500"><Edit2 size={12} /></button>
+                                <button onClick={() => onDeleteField && onDeleteField(field)} className="text-gray-400 hover:text-red-500"><Trash2 size={12} /></button>
+                            </div>
                         </div>
                     ))}
 

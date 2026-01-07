@@ -1,13 +1,17 @@
 import React, { useState } from 'react';
-import { Users, Shield, ArrowLeft, Ruler, Table2, Database } from 'lucide-react';
+import { Users, Shield, ArrowLeft, Ruler, Table2, Database, Zap } from 'lucide-react';
 import { Link, useSearchParams } from 'react-router-dom';
 
 // Tabs
 import AdminUserManagement from '../system/AdminUserManagement';
 import DatabaseEditor from '../editor/DatabaseEditor';
+import { useBuilder } from '../../context/BuilderContext';
+import WorkflowManager from '../builder/WorkflowManager';
+import ActionManager from '../builder/ActionManager';
 
 const AdminConfigPage = () => {
     const [searchParams, setSearchParams] = useSearchParams();
+    const { isEditMode } = useBuilder();
     const activeTab = searchParams.get('tab') || 'users';
 
     const setActiveTab = (tab) => {
@@ -16,8 +20,15 @@ const AdminConfigPage = () => {
 
     const tabs = [
         { id: 'users', label: 'Usuários', icon: <Users size={20} /> },
-        { id: 'database', label: 'Banco de Dados', icon: <Database size={20} /> },
     ];
+
+    if (isEditMode) {
+        tabs.push(
+            { id: 'database', label: 'Banco de Dados', icon: <Database size={20} /> },
+            { id: 'workflows', label: 'Webhooks (Saída)', icon: <Ruler size={20} /> },
+            { id: 'actions', label: 'Gestão de Botões', icon: <Zap size={20} /> }
+        );
+    }
 
     return (
         <div className="flex flex-col h-full bg-gray-50 dark:bg-gray-900">
@@ -28,7 +39,7 @@ const AdminConfigPage = () => {
                 </Link>
                 <div>
                     <h1 className="text-2xl font-bold text-gray-800 dark:text-white">Configurações da Empresa</h1>
-                    <p className="text-gray-500 dark:text-gray-400 mt-1">Gerencie usuários e estrutura de dados.</p>
+                    <p className="text-gray-500 dark:text-gray-400 mt-1">Gerencie usuários {isEditMode && 'e estrutura do sistema'}.</p>
                 </div>
             </div>
 
@@ -56,9 +67,19 @@ const AdminConfigPage = () => {
                         <AdminUserManagement />
                     </div>
                 )}
-                {activeTab === 'database' && (
+                {activeTab === 'database' && isEditMode && (
                     <div className="h-full">
                         <DatabaseEditor />
+                    </div>
+                )}
+                {activeTab === 'workflows' && isEditMode && (
+                     <div className="h-full">
+                        <WorkflowManager />
+                    </div>
+                )}
+                {activeTab === 'actions' && isEditMode && (
+                     <div className="h-full">
+                        <ActionManager />
                     </div>
                 )}
             </div>

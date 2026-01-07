@@ -25,8 +25,11 @@ import SysAdminDiagnostics from './pages/sysadmin/SysAdminDiagnostics';
 // Core Modules (Dynamic)
 import { BuilderProvider } from './context/BuilderContext'; // Builder / Engine
 import DatabaseEditor from './pages/editor/DatabaseEditor'; // REFAC: New Editor
+import NavigationEditor from './pages/editor/NavigationEditor'; // REFAC: New Nav Editor
 import WorkflowManager from './pages/builder/WorkflowManager';
+import ActionManager from './pages/builder/ActionManager';
 import DynamicPageLoader from './pages/app/DynamicPageLoader'; // NEW: Dynamic Page
+import GroupPlaceholder from './pages/app/GroupPlaceholder';
 
 function App() {
   return (
@@ -46,8 +49,11 @@ function App() {
 
             {/* Builder Routes */}
             <Route path="page/:pageId" element={<DynamicPageLoader />} />
+            <Route path="group/:groupId" element={<GroupPlaceholder />} />
             <Route path="editor/database" element={<DatabaseEditor />} />
+            <Route path="editor/navigation" element={<NavigationEditor />} />
             <Route path="editor/workflows" element={<WorkflowManager />} />
+            <Route path="editor/actions" element={<ActionManager />} />
 
             <Route index element={<Navigate to="dashboard" replace />} />
           </Route>

@@ -1,27 +1,19 @@
+
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import apiClient from '../../api/apiClient';
 import { useBuilder } from '../../context/BuilderContext';
 import { Settings, PenTool } from 'lucide-react';
+import GenericListPage from '../../components/builder/GenericListPage';
+import GenericRecordPage from '../../components/builder/GenericRecordPage';
+import GenericForm from '../../components/builder/GenericForm';
+import GenericFormPage from '../../components/builder/GenericFormPage';
+import DashboardPage from '../../components/builder/DashboardPage';
 
 // Placeholders for Real Components (List, Form, etc)
 // We will replace these with real generic components later
-const GenericList = ({ entityId, layoutConfig }) => (
-    <div className="p-4 border border-gray-200 dark:border-gray-800 rounded-lg">
-        <h3 className="text-lg font-bold mb-4">Lista Genérica (Entity {entityId})</h3>
-        <p className="text-gray-500">Aqui será renderizada a tabela de dados.</p>
-        <pre className="mt-4 bg-gray-100 dark:bg-gray-900 p-2 text-xs rounded">
-            Config: {JSON.stringify(layoutConfig, null, 2)}
-        </pre>
-    </div>
-);
 
-const GenericForm = ({ entityId, layoutConfig }) => (
-    <div className="p-4 border border-gray-200 dark:border-gray-800 rounded-lg">
-        <h3 className="text-lg font-bold mb-4">Formulário Genérico (Entity {entityId})</h3>
-        <p className="text-gray-500">Aqui será renderizado o formulário de cadastro.</p>
-    </div>
-);
+
 
 const DynamicPageLoader = () => {
     const { pageId } = useParams();
@@ -38,19 +30,28 @@ const DynamicPageLoader = () => {
         setLoading(true);
         setError(null);
         try {
-            // We need an endpoint to get single page details
-            // If it doesn't exist, we might need to create it or filter from groups
-            // For now, assuming we filter from full navigation or add endpoint.
-            // Let's assume we added GET /navigation/pages/{id} or we filter client side for MVP
-            // Hack: Fetch all groups and find page (Optimizable)
-            const { data } = await apiClient.get('/api/builder/navigation');
+            // 1. Fetch Navigation to find page
+            const { data: navData } = await apiClient.get('/api/builder/navigation');
             let foundPage = null;
-            for (const group of data) {
+            for (const group of navData) {
                 const p = group.pages.find(p => p.id === pageId);
                 if (p) foundPage = p;
             }
             
             if (foundPage) {
+                // 2. If page has entity, fetch entity details to get name
+                if (foundPage.entity_id) {
+                    try {
+                        const { data: entities } = await apiClient.get('/api/builder/entities');
+                        const ent = entities.find(e => e.id === foundPage.entity_id);
+                        if (ent) {
+                            foundPage.entityName = ent.display_name;
+                            foundPage.entitySlug = ent.slug;
+                        }
+                    } catch (e) {
+                         console.warn("Could not fetch entity details");
+                    }
+                }
                 setPage(foundPage);
             } else {
                 setError("Página não encontrada.");
@@ -77,17 +78,37 @@ const DynamicPageLoader = () => {
                     {isEditMode && <span className="text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded">Modo Edição</span>}
                 </div>
                 
-                {isEditMode && (
-                    <button className="flex items-center gap-2 px-3 py-1.5 text-sm bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 rounded text-gray-700 dark:text-gray-300">
-                        <Settings size={16} /> Configurar Slots
-                    </button>
-                )}
+
             </div>
 
             {/* Content Renderer */}
-            {page.type === 'list' && <GenericList entityId={page.entity_id} layoutConfig={page.layout_config} />}
+            {['list', 'list_readonly', 'list_custom'].includes(page.type) && <GenericListPage 
+                pageId={page.id}
+                entityId={page.entity_id} 
+                entitySlug={page.entitySlug}
+                entityName={page.entityName}
+                layoutConfig={page.layout_config} 
+                pageType={page.type}
+            />}
             {page.type === 'form' && <GenericForm entityId={page.entity_id} layoutConfig={page.layout_config} />}
-            {page.type === 'dashboard' && <div className="p-10 text-center border-dashed border-2 rounded">Dashboard Placeholder</div>}
+            {page.type === 'form_page' && <GenericFormPage pageId={page.id} entityId={page.entity_id} layoutConfig={page.layout_config} />}
+            {page.type === 'ficha_simples' && <GenericRecordPage 
+                pageId={page.id}
+                entityId={page.entity_id}
+                entitySlug={page.entitySlug}
+                entityName={page.entityName}
+                layoutConfig={page.layout_config}
+            />}
+            {page.type === 'dashboard' && <DashboardPage 
+                pageId={page.id}
+                layoutConfig={page.layout_config}
+                entitySlug={page.entitySlug}
+            />}
+            {page.type === 'blank' && (
+                <div className="p-6">
+                    <h2 className="text-xl font-semibold text-gray-700 dark:text-gray-300">Tabela Vinculada: <span className="text-blue-600">{page.entityName || page.entity_id || 'Nenhuma'}</span></h2>
+                </div>
+            )}
         </div>
     );
 };

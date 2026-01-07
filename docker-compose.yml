@@ -43,7 +43,7 @@ services:
     build:
       context: ./frontend-web
       args:
-        - REACT_APP_API_URL=https://repforce.com.br/api 
+        - REACT_APP_API_URL=http://localhost:8100
       dockerfile: Dockerfile
     container_name: repforce_frontend
     ports:

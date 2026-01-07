@@ -2,8 +2,11 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 from app.shared import database as session
-from app.system.models import models as models_system
+from app.system import models as models_system
+from app.shared import database as session
+from app.system import models as models_system
 from app.engine import models_tenant
+from app.engine.services.seeder import seed_tenant_defaults
 from app.core import security
 from pydantic import BaseModel
 
@@ -34,13 +37,14 @@ def create_tenant(
         db.flush() # Get ID
         
         # B. Check/Create Admin User
-        admin_user = db.query(models_system.GlobalUser).filter(models_system.GlobalUser.email == payload.admin_email).first()
+        # Using admin_email as the unique username for login
+        admin_user = db.query(models_system.GlobalUser).filter(models_system.GlobalUser.username == payload.admin_email).first()
         if not admin_user:
             hashed_pw = security.get_password_hash(payload.admin_password)
             admin_user = models_system.GlobalUser(
-                username=payload.admin_email, # Use email as username for simplicity or robustify later
-                email=payload.admin_email,
-                hashed_password=hashed_pw,
+                username=payload.admin_email, # Primary Login
+                recovery_email=payload.admin_email, # Recovery Contact
+                password_hash=hashed_pw,
                 full_name=payload.admin_name,
                 is_active=True
             )
@@ -56,6 +60,9 @@ def create_tenant(
         db.add(membership)
         db.commit() # Commit Global State
         db.refresh(new_tenant)
+
+        # C2. Seed Defaults
+        seed_tenant_defaults(db, new_tenant.id)
         
     except Exception as e:
         db.rollback()
@@ -103,5 +110,5 @@ def create_tenant(
     return {
         "message": "Tenant provisioned successfully", 
         "tenant": {"id": new_tenant.id, "slug": new_tenant.slug},
-        "admin": {"id": admin_user.id, "email": admin_user.email}
+        "admin": {"id": admin_user.id, "username": admin_user.username}
     }

@@ -27,7 +27,10 @@ import TopHeaderActions from '../components/TopHeaderActions'; // FIXED: Unified
 import DemoModeBanner from '../components/DemoModeBanner';
 
 import { useBuilder } from '../context/BuilderContext'; // Import Context
-import DynamicSidebar from '../components/navigation/DynamicSidebar'; // NEW: Dynamic Nav
+import DynamicSidebar from '../components/navigation/DynamicSidebar'; 
+import apiClient from '../api/apiClient';
+import NavigationPageModal from '../components/builder/NavigationPageModal';
+import { Plus } from 'lucide-react';
 
 // ... imports ...
 
@@ -39,6 +42,30 @@ const CrmLayout = () => {
     const location = useLocation();
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const [isCollapsed, setIsCollapsed] = useState(false);
+    
+    // Dynamic Navigation State
+    const [navGroups, setNavGroups] = useState([]);
+    const [isAddPageOpen, setIsAddPageOpen] = useState(false);
+
+    // Fetch Navigation
+    const fetchNavigation = async () => {
+        try {
+            const { data } = await apiClient.get('/api/builder/navigation');
+            setNavGroups(data);
+        } catch (error) {
+            console.error("Failed to load navigation", error);
+        }
+    };
+
+    useEffect(() => {
+        fetchNavigation();
+
+        // Listen for updates from Builder
+        const handleUpdate = () => fetchNavigation();
+        window.addEventListener('navigation-updated', handleUpdate);
+        
+        return () => window.removeEventListener('navigation-updated', handleUpdate);
+    }, []);
 
     // Mapeamento de Ícones
     const iconMap = {
@@ -63,7 +90,8 @@ const CrmLayout = () => {
         icon: 'Database',
         pages_json: [
             { label: 'Base de Dados', path: '/app/editor/database' },
-            { label: 'Automações', path: '/app/editor/workflows' }
+            { label: 'Webhooks (Saída)', path: '/app/editor/workflows' },
+            { label: 'Gestão de Botões', path: '/app/editor/actions' }
         ]
     };
 
@@ -71,13 +99,27 @@ const CrmLayout = () => {
     let userAreas = [];
     const dynamicAreas = user?.role_obj?.areas || [];
 
-    // Se Modo Edição -> Injeta Builder no topo
-    if (isEditMode) {
-        userAreas.push(builderArea);
-    }
+    // Mapear NavGroups do Builder para o formato de "Area"
+    const builderAreas = navGroups.map(g => ({
+        id: g.id,
+        name: g.name,
+        icon: g.icon,
+        is_dynamic: true, // Flag to identify mutable areas
+        pages_json: g.pages.map(p => ({
+            id: p.id, // Keep ID for reference
+            label: p.name,
+            path: `/app/page/${p.id}`
+        }))
+    }));
 
-    // Adiciona áreas dinâmicas do usuário
-    userAreas = [...userAreas, ...dynamicAreas];
+    // Se Modo Edição -> Injeta Builder no topo
+    // if (isEditMode) {
+    //     userAreas.push(builderArea);
+    // }
+
+    // Adiciona áreas dinâmicas do usuário E do Builder
+    userAreas = [...userAreas, ...dynamicAreas, ...builderAreas];
+
 
     // Remove duplicatas por ID
     userAreas = userAreas.filter((area, index, self) =>
@@ -91,6 +133,7 @@ const CrmLayout = () => {
     useEffect(() => {
         if (userAreas.length > 0) {
             const foundArea = userAreas.find(area =>
+                (area.is_dynamic && location.pathname.startsWith(`/app/group/${area.id}`)) ||
                 area.pages_json?.some(page => location.pathname.startsWith(page.path))
             );
             if (foundArea) {
@@ -128,7 +171,11 @@ const CrmLayout = () => {
                 </div>
 
                 {/* DYNAMIC SIDEBAR (Replaces Static Areas) */}
-                <DynamicSidebar isCollapsed={isCollapsed} />
+                <DynamicSidebar 
+                    isCollapsed={isCollapsed} 
+                    groups={navGroups}
+                    onRefresh={fetchNavigation} 
+                />
 
                 {/* Footer Fixed: Configurações - MOVIDO PARA HEADER */}
                 {/* <div className="p-2 border-t border-gray-800"> ... </div> */}
@@ -170,6 +217,18 @@ const CrmLayout = () => {
                                 </Link>
                             );
                         })}
+                        
+                        {/* Builder: Add Page Button */}
+                        {isEditMode && activeArea?.is_dynamic && (
+                            <button
+                                onClick={() => setIsAddPageOpen(true)}
+                                className="mr-6 py-5 text-sm font-medium text-gray-400 hover:text-blue-500 border-b-2 border-transparent hover:border-blue-300 flex items-center gap-1 transition-colors"
+                                title="Adicionar Página nesta Área"
+                            >
+                                <Plus size={16} />
+                                <span>Adicionar</span>
+                            </button>
+                        )}
                     </div>
 
                     {/* Right Actions Section (NEW) */}
@@ -238,6 +297,12 @@ const CrmLayout = () => {
                     <Outlet />
                 </main>
             </div>
+            <NavigationPageModal 
+                isOpen={isAddPageOpen} 
+                onClose={() => setIsAddPageOpen(false)} 
+                groupId={activeArea?.id}
+                onPageCreated={fetchNavigation}
+            />
         </div>
     );
 };

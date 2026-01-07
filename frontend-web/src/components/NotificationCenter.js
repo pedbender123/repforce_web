@@ -11,7 +11,7 @@ const NotificationCenter = () => {
     const fetchTasks = async () => {
         setLoading(true);
         try {
-            const { data } = await apiClient.get('/crm/tasks?status=open');
+            const { data } = await apiClient.get('/api/system/tasks/me');
             setTasks(data);
             setUnreadCount(data.length);
         } catch (error) {
@@ -30,7 +30,7 @@ const NotificationCenter = () => {
 
     const handleComplete = async (taskId) => {
         try {
-            await apiClient.patch(`/crm/tasks/${taskId}`, { status: 'completed' });
+            await apiClient.put(`/api/system/tasks/${taskId}/complete`);
             setTasks(tasks.filter(t => t.id !== taskId));
             setUnreadCount(prev => Math.max(0, prev - 1));
         } catch (error) {
@@ -76,7 +76,7 @@ const NotificationCenter = () => {
                                 {tasks.map(task => (
                                     <li key={task.id} className="p-3 border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors flex items-start gap-3">
                                         <div className="mt-1 flex-shrink-0">
-                                            {getIcon(task.type)}
+                                           <Info size={16} className="text-gray-500" />
                                         </div>
                                         <div className="flex-1">
                                             <p className="text-sm font-medium text-gray-800 dark:text-gray-200">{task.title}</p>

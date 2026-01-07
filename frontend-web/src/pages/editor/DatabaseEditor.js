@@ -12,6 +12,8 @@ const DatabaseEditor = () => {
     const [fields, setFields] = useState([]);
     const [isFieldModalOpen, setIsFieldModalOpen] = useState(false);
 
+    const [selectedFieldToEdit, setSelectedFieldToEdit] = useState(null);
+
     useEffect(() => {
         fetchEntities();
     }, []);
@@ -39,6 +41,16 @@ const DatabaseEditor = () => {
             setFields(data);
         } catch (error) {
             console.error("Erro ao buscar campos:", error);
+        }
+    };
+    
+    const handleDeleteField = async (field) => {
+        if (!window.confirm("Tem certeza que deseja excluir este campo? Todos os dados dele serão perdidos.")) return;
+        try {
+            await apiClient.delete(`/api/builder/entities/${selectedEntity.id}/fields/${field.id}`);
+            fetchFields(selectedEntity.id);
+        } catch (error) {
+            alert("Erro ao excluir campo: " + (error.response?.data?.detail || error.message));
         }
     };
 
@@ -69,7 +81,15 @@ const DatabaseEditor = () => {
 
                         <FieldsGrid
                             fields={fields}
-                            onAddField={() => setIsFieldModalOpen(true)}
+                            onAddField={() => {
+                                setSelectedFieldToEdit(null);
+                                setIsFieldModalOpen(true);
+                            }}
+                            onEditField={(field) => {
+                                setSelectedFieldToEdit(field);
+                                setIsFieldModalOpen(true);
+                            }}
+                            onDeleteField={handleDeleteField}
                         />
                     </>
                 ) : (
@@ -82,9 +102,13 @@ const DatabaseEditor = () => {
 
             <FieldModal
                 isOpen={isFieldModalOpen}
-                onClose={() => setIsFieldModalOpen(false)}
+                onClose={() => {
+                    setIsFieldModalOpen(false);
+                    setSelectedFieldToEdit(null);
+                }}
                 entity={selectedEntity}
                 onFieldCreated={() => fetchFields(selectedEntity.id)}
+                initialData={selectedFieldToEdit}
             />
         </div>
     );

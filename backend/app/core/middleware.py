@@ -3,7 +3,7 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse
 from app.shared.security import decode_access_token
 from app.shared.database import SessionSys
-from app.system.models import models as models_system
+from app.system import models as models_system
 import os
 
 PUBLIC_ROUTES = [
