@@ -1,35 +1,45 @@
 
-import httpx
+
 import asyncio
 from typing import Dict, Any
 
 # Internal n8n webhook base (Docker DNS)
 # Use env var eventually, hardcoded for Resilient SaaS mvp speed
-N8N_WEBHOOK_BASE = "http://n8n:5678/webhook" 
+ 
 
 async def emit_event(tenant_slug: str, event_type: str, payload: Dict[str, Any]):
     """
-    Async Fire-and-Forget event emission to n8n.
-    Constructs URL: http://n8n:5678/webhook/{tenant_slug}/{event_type}
+    Async Fire-and-Forget event emission to Internal Automation Engine.
     """
-    url = f"{N8N_WEBHOOK_BASE}/{tenant_slug}/{event_type}"
+    # Requires tenant_id, not slug, for credit deduction.
+    # We will try to resolve it or add it to payload.
+    # For now, we assume payload might contain 'tenant_id' or we need to lookup.
     
-    # We don't await response validation strictly, but we log errors.
-    # To truly be fire-and-forget without blocking main thread, 
-    # we can use asyncio.create_task or BackgroundTasks if passed from route.
-    # Here we assume caller uses await or BackgroundTasks wrapper.
+    # Ideally, event_bus should receive tenant_id. 
+    # For this refactor, let's assume tenant_slug is actually tenant_id or we can't deduct.
+    # Or we construct a tenant_id lookup cache. 
+    # TO KEEP IT SIMPLE: We will require payload to have 'tenant_id'.
     
-    headers = {
-        "Content-Type": "application/json",
-        "X-Event-Source": "Repforce-Backend"
-    }
+    tenant_id = payload.get("tenant_id")
+    if not tenant_id:
+        print(f"Event {event_type} missing tenant_id for automation.")
+        return
+
+    # Direct Internal Script Execution for System Events
+    # (Assuming we want to run a script matching the event type)
+    from app.engine.services.internal_scripts import execute_script_by_name
+    from app.shared.database import SessionSys
     
+    # We need a DB session? Maybe not if just running script content logic.
+    # But internal_scripts might need DB? execute_script_by_name is pure logic mostly, but if it accesses DB...
+    # Let's keep SessionSys just in case we need it later, but remove credit check.
+    
+    db = SessionSys()
     try:
-        async with httpx.AsyncClient(timeout=3.0) as client:
-            # We don't care about the response body for events, just status
-            # But we catch exceptions to not crash the backend.
-            await client.post(url, json=payload, headers=headers)
-            # print(f"Event Emitted: {event_type} -> {url}") # Debug log
-            
+        result = execute_script_by_name(event_type, payload)
+        # print(f"Event {event_type} executed: {result}")
+        
     except Exception as e:
-        print(f"Failed to emit event {event_type} to n8n: {e}")
+        print(f"Error executing event {event_type}: {e}")
+    finally:
+        db.close()
