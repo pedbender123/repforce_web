@@ -3,11 +3,9 @@ import httpx
 import json
 from typing import List, Dict, Any, Optional
 
-import os
-
 logger = logging.getLogger(__name__)
 
-OLLAMA_HOST = os.getenv("OLLAMA_HOST", "http://ai_engine:11434")
+OLLAMA_HOST = "http://ai_engine:11434"
 MODEL_NAME = "llama3.2:1b"
 
 class AIService:
@@ -114,7 +112,7 @@ class AIService:
             return False
 
     @staticmethod
-    def _inference_generate(prompt: str, system: str = None) -> str:
+    def _inference_generate(prompt: str) -> str:
         """
         Calls Ollama Generate API.
         """
@@ -127,127 +125,9 @@ class AIService:
                 "temperature": 0.1 # Low temp for deterministic classification
             }
         }
-        if system:
-            payload["system"] = system
         
         with httpx.Client(timeout=60.0) as client:
             resp = client.post(url, json=payload)
             resp.raise_for_status()
             data = resp.json()
             return data.get("response", "")
-
-    @staticmethod
-    def analyze_symptoms(text: str, context_history: List[str] = None) -> Dict[str, Any]:
-        """
-        Analyzes symptoms and returns exactly 3 product recommendations.
-        Includes timestamp tracing.
-        """
-        from datetime import datetime
-        
-        # 1. Timestamps & Init
-        start_time_iso = datetime.utcnow().isoformat()
-        logger.info(f"[AI] Analyzing symptoms: {text}")
-        
-        # 0. Ensure Model
-        if not AIService._ensure_model_loaded(MODEL_NAME):
-             return {"status": "error", "message": "Model bootstrapping failed"}
-
-        # 2. Construct Prompt
-        # 2. Construct Prompt (Extraction Only)
-        # Bypassing safety refusuals by asking for Keyword Extraction instead of Advice
-        system_prompt = """
-        You are a text extraction tool. 
-        Your task is to extract health symptoms from the input text.
-        Extract both specific symptoms (like "dor", "febre", "tosse") AND generic sensations (like "moleza", "corpo ruim").
-        Output ONLY the symptoms found, separated by commas.
-        If the input is noise, background sounds, or contains no symptoms, output exactly: NENHUMA
-        """
-        
-        user_prompt = f"""
-        Task: Extract symptoms from text.
-        
-        Examples:
-        Input: (Som de batida)
-        Output: NENHUMA
-        
-        Input: dor de cabeça
-        Output: DOR DE CABEÇA
-        
-        Input: estou com uma moleza
-        Output: MOLEZA
-        
-        Input: "{text}"
-        Output:
-        """
-
-        # 3. Inference
-        try:
-            raw_output = AIService._inference_generate(user_prompt, system=system_prompt)
-            end_time_iso = datetime.utcnow().isoformat()
-            
-            # 4. Parse Output (Symptoms)
-            cleaned = raw_output.strip().replace("\"", "").replace("'", "").replace(".", "").upper()
-            
-            symptoms_found = []
-            if "NENHUMA" in cleaned:
-                status = "filtered"
-            else:
-                status = "success"
-                parts = cleaned.split(',')
-                for p in parts:
-                    s = p.strip()
-                    if len(s) > 2: # Filter noise chars
-                        symptoms_found.append(s)
-
-            # 5. Product Mapping (Deterministic)
-            # This ensures 3 products and avoids hallucinations
-            PRODUCT_MAP = {
-                "DOR": ["Dipirona", "Paracetamol", "Ibuprofeno"],
-                "CABEÇA": ["Dipirona", "Neosaldina", "Paracetamol"],
-                "FEBRE": ["Paracetamol", "Dipirona", "Novalgina"],
-                "ENJOO": ["Dramin", "Plasil", "Meclin"],
-                "VOMITO": ["Dramin", "Ondansetrona", "Sais Minerais"],
-                "TOSSE": ["Xarope Expectorante", "Pastilhas", "Vitamina C"],
-                "MOLEZA": ["Vitamina C", "Polivitamínico", "Isotônico"],
-                "CORPO": ["Relaxante Muscular", "Dorflex", "Torsilax"],
-                "GARGANTA": ["Spray de Própolis", "Pastilhas", "Ibuprofeno"]
-            }
-            
-            final_recs = []
-            if status == "success":
-                for symptom in symptoms_found:
-                    # Simple fuzzy match
-                    for key, products in PRODUCT_MAP.items():
-                        if key in symptom:
-                            for prod in products:
-                                if prod not in final_recs:
-                                    final_recs.append(prod)
-            
-            # Fallback if AI found symptom but we don't have map
-            if status == "success" and not final_recs:
-                # Generic fallback
-                final_recs = ["Vitamina C", "Dipirona", "Hidratante"]
-                
-            # Enforce exactly 3
-            display_recs = final_recs[:3]
-            # Pad if needed (unlikely if map uses 3, but possible if overlapping)
-            while len(display_recs) < 3 and status == "success":
-                display_recs.append("Vitamina C") # Safe padding
-            
-            if status == "filtered":
-                display_recs = []
-
-            return {
-                "status": status,
-                "symptoms_detected": symptoms_found,
-                "recommendations": display_recs, 
-                "timestamps": {
-                    "transcription_ready": start_time_iso,
-                    "suggestion_generated": end_time_iso
-                },
-                "raw_output": raw_output
-            }
-
-        except Exception as e:
-            logger.error(f"[AI] Analysis Error: {e}")
-            return {"status": "error", "message": str(e)}

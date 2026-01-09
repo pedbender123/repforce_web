@@ -32,20 +32,4 @@ def execute_script_by_name(script_name: str, payload: Dict[str, Any]) -> Dict[st
         logger.info(f"[Script Side-Effect] Processing new order {order_id}. Notifying Logistics...")
         return {"status": "processed"}
 
-    elif script_name == 'pharmacy_recommendation':
-        # Pharmacy AI Recommendation
-        from app.services.ai_service import AIService
-        
-        text = payload.get("text", "")
-        # Optional: "audio_received_at" passed from frontend
-        audio_received = payload.get("audio_received_at") 
-        
-        result = AIService.analyze_symptoms(text)
-        
-        if audio_received:
-            # Inject audio timestamp if available
-            result["timestamps"]["audio_received"] = audio_received
-            
-        return result
-
     return {"error": f"Script {script_name} not found"}
