@@ -255,6 +255,77 @@ def _execute_logic(action, payload, db, background_tasks, user_id: Optional[str]
             # Placeholder for Email Service
             to_email = config.get('to_email')
             return {"status": "success", "action": "EMAIL", "message": f"Email queued for {to_email} (Simulated)"}
+
+        elif action.action_type == 'PYTHON_SCRIPT':
+            # Internal internal automation logic (Replaces n8n simple hooks)
+            script_name = config.get('script_name')
+            if not script_name:
+                 return {"status": "error", "message": "No script_name configured"}
+            
+            # Use Shared Service
+            from app.engine.services.internal_scripts import execute_script_by_name
+            
+            # Execute
+            result = execute_script_by_name(script_name, payload)
+            return {"status": "success", "action": "PYTHON_SCRIPT", "result": result}
+
+        elif action.action_type == 'AI_CLASSIFY':
+            # No-Code AI Integration
+            from app.services.ai_service import AIService
+            
+            # 1. Extract Input
+            input_source = config.get("input_source", "payload") # 'payload' or 'column'
+            input_field = config.get("input_field", "description") 
+            
+            content_to_classify = payload.get(input_field)
+            if not content_to_classify:
+                 # Try nested if payload is complex, but keep simple for V1.0
+                 return {"status": "skipped", "reason": f"Input field '{input_field}' empty"}
+
+            # 2. Config
+            valid_tags = config.get("tags", ["Geral"])
+            sys_prompt = config.get("system_prompt")
+            
+            # 3. Inference
+            result = AIService.classify_text(content_to_classify, valid_tags, sys_prompt)
+            
+            # 4. Output Handling
+            output_target = config.get("output_target", "return") # 'return' or 'db_column'
+            
+            if output_target == 'db_column' and result.get("status") == "success":
+                 target_entity = config.get("target_entity") # Slug
+                 target_record_id = payload.get("id")
+                 target_column = config.get("target_column")
+                 
+                 if target_entity and target_record_id and target_column:
+                      # Update Record (quick logic reuse)
+                      try:
+                          from app.engine.metadata import models as models_meta
+                          from app.engine.metadata import data_models
+                          
+                          # We need to find the record again? Or assume tenant context correct.
+                          # Warning: This is "Action" context, db is System Session usually?
+                          # If execute_ui_action, db is System. 
+                          # We rely on 'data_models' accepting this session.
+                          
+                          ent = db.query(models_meta.MetaEntity).filter(
+                              models_meta.MetaEntity.slug == target_entity, 
+                              models_meta.MetaEntity.tenant_id == tenant_id
+                          ).first()
+
+                          if ent:
+                              rec = db.query(data_models.EntityRecord).filter(
+                                  data_models.EntityRecord.id == target_record_id
+                              ).first()
+                              if rec:
+                                  curr_data = rec.data.copy()
+                                  curr_data[target_column] = result.get("tag")
+                                  rec.data = curr_data
+                                  db.commit()
+                      except Exception as ex:
+                          logger.error(f"[AI Action] DB Update failed: {ex}")
+            
+            return {"status": "success", "action": "AI_CLASSIFY", "result": result}
             
         else:
             return {"status": "ignored", "message": f"Action type {action.action_type} not supported for internal logic"}

@@ -106,7 +106,7 @@ const SysAdminLayout = () => {
           className="h-16 flex items-center justify-center border-b border-gray-800 cursor-pointer hover:bg-gray-800 transition-colors"
           onClick={() => setIsCollapsed(!isCollapsed)}
         >
-          <img src="/logo_clara.png" alt="RepForce" className="h-8 w-auto object-contain" />
+          <img src="/logo_pbpm.png" alt="PBPM" className="h-8 w-auto object-contain" />
         </div>
 
         <nav className="flex-1 overflow-y-auto py-4 overflow-x-hidden">
@@ -150,7 +150,7 @@ const SysAdminLayout = () => {
       <div className="flex-1 flex flex-col overflow-hidden">
         <header className="md:hidden flex items-center justify-between p-4 bg-gray-900 text-white border-b border-gray-800">
           <div className="flex items-center">
-            <img src="/logo_clara.png" alt="RepForce" className="h-6 mr-2" />
+            <img src="/logo_pbpm.png" alt="PBPM" className="h-6 mr-2" />
           </div>
           <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="text-gray-300">
             {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}

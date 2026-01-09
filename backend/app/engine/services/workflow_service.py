@@ -66,6 +66,20 @@ class WorkflowService:
             async with httpx.AsyncClient() as client:
                 for wf in workflows:
                     try:
+                        # Internal Script Handler
+                        if wf.webhook_url and wf.webhook_url.startswith("internal://"):
+                            script_name = wf.webhook_url.replace("internal://", "")
+                            logger.info(f"[Workflow] Executing Internal Script: {script_name}")
+                            
+                            # Import shared service
+                            from app.engine.services.internal_scripts import execute_script_by_name
+                            
+                            # Execute (Sync in Async loop - acceptable for light scripts, else use threadpool)
+                            result = execute_script_by_name(script_name, event_payload)
+                            logger.info(f"[Workflow] Result: {result}")
+                            continue
+
+                        # Standard Webhook
                         logger.info(f"[Workflow] Dispatching {wf.name or 'Webhook'} to {wf.webhook_url}")
                         resp = await client.post(wf.webhook_url, json=event_payload, timeout=10.0)
                         if resp.status_code >= 400:
