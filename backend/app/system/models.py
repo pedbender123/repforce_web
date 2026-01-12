@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, Boolean, ForeignKey, DateTime, Text, Enum
+from sqlalchemy import Column, String, Boolean, ForeignKey, DateTime, Text, Enum, Integer
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from sqlalchemy.dialects.postgresql import UUID, JSONB
@@ -65,6 +65,8 @@ class Tenant(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     slug = Column(String, unique=True, index=True) # URL routing
     name = Column(String, index=True)
+    
+
     
     status = Column(Enum(TenantStatus), default=TenantStatus.setup_pending)
     fiscal_data = Column(JSONB, default={}) # CNPJ, Address, etc.
