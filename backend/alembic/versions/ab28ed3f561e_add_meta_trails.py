@@ -1,8 +1,8 @@
-"""fix_cascade_delete_on_tenant_fks
+"""add_meta_trails
 
-Revision ID: 9fe072cbcef8
-Revises: 4aec44cd6a9b
-Create Date: 2026-01-12 09:18:59.794466
+Revision ID: ab28ed3f561e
+Revises: 7e1fcc52fa86
+Create Date: 2026-01-12 14:03:50.526022
 
 """
 from typing import Sequence, Union
@@ -12,8 +12,8 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision: str = '9fe072cbcef8'
-down_revision: Union[str, Sequence[str], None] = '4aec44cd6a9b'
+revision: str = 'ab28ed3f561e'
+down_revision: Union[str, Sequence[str], None] = '7e1fcc52fa86'
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 

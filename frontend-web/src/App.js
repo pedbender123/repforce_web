@@ -30,6 +30,8 @@ import WorkflowManager from './pages/builder/WorkflowManager';
 import ActionManager from './pages/builder/ActionManager';
 import DynamicPageLoader from './pages/app/DynamicPageLoader'; // NEW: Dynamic Page
 import GroupPlaceholder from './pages/app/GroupPlaceholder';
+import TrailList from './pages/builder/TrailList';
+import TrailBuilder from './components/builder/trail/TrailBuilder';
 
 function App() {
   return (
@@ -54,6 +56,8 @@ function App() {
             <Route path="editor/navigation" element={<NavigationEditor />} />
             <Route path="editor/workflows" element={<WorkflowManager />} />
             <Route path="editor/actions" element={<ActionManager />} />
+            <Route path="editor/trails" element={<TrailList />} />
+            <Route path="editor/trails/:trailId" element={<BuilderWrapper />} />
 
             <Route index element={<Navigate to="dashboard" replace />} />
           </Route>
@@ -87,5 +91,10 @@ function App() {
     </BuilderProvider>
   );
 }
+
+const BuilderWrapper = () => {
+    const { trailId } = require('react-router-dom').useParams();
+    return <TrailBuilder trailId={trailId} />;
+};
 
 export default App;
