@@ -95,7 +95,7 @@ const FormulaEditorModal = ({ isOpen, onClose, formula, onSave, fields = [], ent
             if (functions.some(f => f.name === part)) {
                 return <span key={i} style={{ color: colors.function }} className="font-black italic">{part}</span>;
             }
-            return <span key={i}>{part}</span>;
+            return <span key={i} className="text-slate-800 dark:text-slate-100">{part}</span>;
         });
     };
 
