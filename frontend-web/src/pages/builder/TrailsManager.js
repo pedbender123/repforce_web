@@ -116,7 +116,65 @@ const TrailsManager = () => {
       return trail.trigger_type;
   };
  
-  // ... (mapIconForType, mapNodeIcon, mapNodeColor, handleCreateTrail, handleDelete SAME)
+  const mapIconForType = (type) => {
+      if (type === 'WEBHOOK') return <Webhook size={18}/>;
+      if (type === 'MANUAL') return <MousePointer2 size={18}/>;
+      if (type === 'DB_EVENT') return <Database size={18}/>;
+      if (type === 'SCHEDULER') return <Clock size={18}/>;
+      return <Zap size={18}/>;
+  };
+
+  const mapNodeIcon = (type, actionType) => {
+    if (type === 'DECISION') return <GitBranch className="text-amber-500" />;
+    if (actionType === 'DB_UPDATE') return <Database className="text-blue-500" />;
+    if (actionType === 'SCRIPT') return <Terminal className="text-purple-500" />;
+    if (actionType === 'NOTIFICATION') return <MessageSquare className="text-green-500" />;
+    return <Zap className="text-slate-500" />;
+  };
+
+  const mapNodeColor = (type) => {
+     if (type === 'DECISION') return "bg-amber-500";
+     if (type === 'ACTION') return "bg-blue-500"; 
+     return "bg-slate-500";
+  };
+
+  const handleCreateTrail = async () => {
+    if(!newTrailName) return;
+    try {
+        const { data } = await apiClient.post('/api/builder/trails', {
+            name: newTrailName,
+            trigger_type: 'MANUAL', 
+            is_active: true,
+            nodes: {} 
+        });
+        const newTrail = {
+            id: data.id,
+            name: data.name,
+            type: 'MANUAL',
+            triggerDisplay: 'Não Configurado',
+            active: true,
+            steps: 0,
+            original: data
+        };
+        setTrails([...trails, newTrail]);
+        setActiveTrail(newTrail);
+        setView('editor');
+        setTriggerSelectionOpen(true); 
+        setIsCreating(false);
+        setNewTrailName('');
+    } catch (e) {
+        alert('Erro ao criar trilha');
+    }
+  };
+
+  const handleDelete = async (e, id) => {
+    e.stopPropagation();
+    if(!window.confirm("Tem certeza que deseja excluir esta trilha?")) return;
+    try {
+        await apiClient.delete(`/api/builder/trails/${id}`);
+        fetchTrails();
+    } catch (e) { alert("Erro ao deletar"); }
+  };
 
   const handleUpdateTrigger = async (type, config) => {
     try {
@@ -131,7 +189,49 @@ const TrailsManager = () => {
     } catch (e) { alert("Erro ao salvar gatilho"); }
   };
   
-  // ... (handleAddNode SAME)
+  const handleAddNode = async (type) => {
+    if (!addingNodeTo) return;
+    
+    const newNodeId = crypto.randomUUID();
+    const newNode = {
+        id: newNodeId,
+        type: type,
+        action_type: type === 'ACTION' ? 'SCRIPT' : null,
+        name: type === 'ACTION' ? 'Nova Ação' : 'Nova Decisão',
+        config: {},
+        next_node_id: null
+    };
+
+    if (type === 'DECISION') {
+        newNode.next_true = null;
+        newNode.next_false = null;
+        delete newNode.next_node_id;
+    }
+
+    // Clone & Update
+    const currentNodes = { ...activeTrail.original.nodes };
+    const { parentId, branch } = addingNodeTo;
+
+    if (parentId !== 'ROOT' && currentNodes[parentId]) {
+        if (branch === 'true') currentNodes[parentId].next_true = newNodeId;
+        else if (branch === 'false') currentNodes[parentId].next_false = newNodeId;
+        else currentNodes[parentId].next_node_id = newNodeId;
+    }
+
+    currentNodes[newNodeId] = newNode;
+
+    try {
+        const { data } = await apiClient.put(`/api/builder/trails/${activeTrail.id}`, {
+            nodes: currentNodes
+        });
+        
+        const updated = { ...activeTrail, original: data, steps: Object.keys(data.nodes).length };
+        setActiveTrail(updated);
+        setTrails(prev => prev.map(t => t.id === updated.id ? updated : t));
+        setAddingNodeTo(null);
+        setSelectedNode({ ...newNode, original: newNode, expression: '' }); 
+    } catch (e) { alert("Erro ao adicionar nó"); }
+  };
 
   // --- SUB-COMPONENTS ---
 
