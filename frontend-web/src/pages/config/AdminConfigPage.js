@@ -6,8 +6,7 @@ import { Link, useSearchParams } from 'react-router-dom';
 import AdminUserManagement from '../system/AdminUserManagement';
 import DatabaseEditor from '../editor/DatabaseEditor';
 import { useBuilder } from '../../context/BuilderContext';
-import WorkflowManager from '../builder/WorkflowManager';
-import ActionManager from '../builder/ActionManager';
+import TrailsManager from '../builder/TrailsManager';
 
 const AdminConfigPage = () => {
     const [searchParams, setSearchParams] = useSearchParams();
@@ -25,8 +24,7 @@ const AdminConfigPage = () => {
     if (isEditMode) {
         tabs.push(
             { id: 'database', label: 'Banco de Dados', icon: <Database size={20} /> },
-            { id: 'workflows', label: 'Webhooks (Saída)', icon: <Ruler size={20} /> },
-            { id: 'actions', label: 'Gestão de Botões', icon: <Zap size={20} /> }
+            { id: 'trails', label: 'Trilhas (Workflow)', icon: <Zap size={20} /> }
         );
     }
 
@@ -72,14 +70,9 @@ const AdminConfigPage = () => {
                         <DatabaseEditor />
                     </div>
                 )}
-                {activeTab === 'workflows' && isEditMode && (
+                {activeTab === 'trails' && isEditMode && (
                      <div className="h-full">
-                        <WorkflowManager />
-                    </div>
-                )}
-                {activeTab === 'actions' && isEditMode && (
-                     <div className="h-full">
-                        <ActionManager />
+                        <TrailsManager />
                     </div>
                 )}
             </div>

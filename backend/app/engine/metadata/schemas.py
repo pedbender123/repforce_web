@@ -160,3 +160,32 @@ class MetaActionResponse(MetaActionBase):
     
     class Config:
         from_attributes = True
+# --- Trail Schemas ---
+
+class MetaTrailBase(BaseModel):
+    name: str
+    description: Optional[str] = None
+    is_active: bool = True
+    trigger_type: str = "MANUAL" # MANUAL, DB_EVENT, WEBHOOK, SCHEDULE
+    trigger_config: Optional[Dict[str, Any]] = {}
+    nodes: Optional[Dict[str, Any]] = {}
+
+class MetaTrailCreate(MetaTrailBase):
+    pass
+
+class MetaTrailUpdate(BaseModel):
+    name: Optional[str] = None
+    description: Optional[str] = None
+    is_active: Optional[bool] = None
+    trigger_type: Optional[str] = None
+    trigger_config: Optional[Dict[str, Any]] = None
+    nodes: Optional[Dict[str, Any]] = None
+
+class MetaTrailResponse(MetaTrailBase):
+    id: UUID
+    tenant_id: UUID
+    created_at: datetime
+    updated_at: Optional[datetime] = None
+    
+    class Config:
+        from_attributes = True

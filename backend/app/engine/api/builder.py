@@ -405,6 +405,16 @@ def delete_nav_page(
     db.commit()
     return {"ok": True}
 
+@router.get("/pages", response_model=List[schemas_meta.MetaPageResponse])
+def list_all_pages(request: Request, db: Session = Depends(database.get_db)):
+    tenant_id = request.state.tenant_id
+    # Pages are linked to Groups which are linked to Tenants
+    pages = db.query(models_meta.MetaPage)\
+        .join(models_meta.MetaNavigationGroup)\
+        .filter(models_meta.MetaNavigationGroup.tenant_id == tenant_id)\
+        .all()
+    return pages
+
 # --- Endpoints: Workflows ---
 
 @router.get("/workflows", response_model=List[schemas_meta.MetaWorkflowResponse])
@@ -518,6 +528,98 @@ def delete_action(
     db.delete(action)
     db.commit()
     return {"ok": True}
+# --- Endpoints: Trails ---
+
+@router.get("/trails", response_model=List[schemas_meta.MetaTrailResponse])
+def list_trails(request: Request, db: Session = Depends(database.get_db)):
+    tenant_id = request.state.tenant_id
+    trails = db.query(models_meta.MetaTrail).filter(models_meta.MetaTrail.tenant_id == tenant_id).all()
+    return trails
+
+@router.post("/trails", response_model=schemas_meta.MetaTrailResponse)
+def create_trail(
+    request: Request,
+    payload: schemas_meta.MetaTrailCreate,
+    db: Session = Depends(database.get_db)
+):
+    tenant_id = request.state.tenant_id
+    
+    new_trail = models_meta.MetaTrail(
+        tenant_id=tenant_id,
+        name=payload.name,
+        description=payload.description,
+        is_active=payload.is_active,
+        trigger_type=payload.trigger_type,
+        trigger_config=payload.trigger_config,
+        nodes=payload.nodes or {}
+    )
+    db.add(new_trail)
+    db.commit()
+    db.refresh(new_trail)
+    return new_trail
+
+@router.get("/trails/{trail_id}", response_model=schemas_meta.MetaTrailResponse)
+def get_trail(
+    request: Request,
+    trail_id: str,
+    db: Session = Depends(database.get_db)
+):
+    tenant_id = request.state.tenant_id
+    trail = db.query(models_meta.MetaTrail).filter(
+        models_meta.MetaTrail.id == trail_id,
+        models_meta.MetaTrail.tenant_id == tenant_id
+    ).first()
+    
+    if not trail:
+        raise HTTPException(status_code=404, detail="Trilha nao encontrada.")
+    return trail
+
+@router.put("/trails/{trail_id}", response_model=schemas_meta.MetaTrailResponse)
+def update_trail(
+    request: Request,
+    trail_id: str,
+    payload: schemas_meta.MetaTrailUpdate,
+    db: Session = Depends(database.get_db)
+):
+    tenant_id = request.state.tenant_id
+    trail = db.query(models_meta.MetaTrail).filter(
+        models_meta.MetaTrail.id == trail_id,
+        models_meta.MetaTrail.tenant_id == tenant_id
+    ).first()
+    
+    if not trail:
+        raise HTTPException(status_code=404, detail="Trilha nao encontrada.")
+        
+    if payload.name: trail.name = payload.name
+    if payload.description is not None: trail.description = payload.description
+    if payload.is_active is not None: trail.is_active = payload.is_active
+    if payload.trigger_type: trail.trigger_type = payload.trigger_type
+    if payload.trigger_config is not None: trail.trigger_config = payload.trigger_config
+    if payload.nodes is not None: trail.nodes = payload.nodes
+    
+    db.commit()
+    db.refresh(trail)
+    return trail
+
+@router.delete("/trails/{trail_id}")
+def delete_trail(
+    request: Request,
+    trail_id: str,
+    db: Session = Depends(database.get_db)
+):
+    tenant_id = request.state.tenant_id
+    trail = db.query(models_meta.MetaTrail).filter(
+        models_meta.MetaTrail.id == trail_id,
+        models_meta.MetaTrail.tenant_id == tenant_id
+    ).first()
+    
+    if not trail:
+        raise HTTPException(status_code=404, detail="Trilha nao encontrada.")
+        
+    db.delete(trail)
+    db.commit()
+    return {"ok": True}
+    
 @router.post("/formulas/preview")
 def preview_formula(
     request: Request,

@@ -243,6 +243,16 @@ const FieldModal = ({ isOpen, onClose, entity, onFieldCreated, initialData }) =>
                                     ? "Calculado em tempo de execução (Compute-on-Read)."
                                     : "Calculado ao salvar (Snapshot)."}
                             </p>
+                            
+                            {/* Quick Suggestions */}
+                            <div className="flex gap-2 mt-2">
+                                <button
+                                    onClick={() => setFieldData({ ...fieldData, formula: "LATLONG([Endereco])", is_virtual: true })}
+                                    className="text-[10px] bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 px-2 py-1 rounded hover:bg-blue-200 transition-colors"
+                                >
+                                    Fórmula Geo: LATLONG([Endereco])
+                                </button>
+                            </div>
                         </div>
                     )}
 
