@@ -168,6 +168,7 @@ class MetaTrailBase(BaseModel):
     is_active: bool = True
     trigger_type: str = "MANUAL" # MANUAL, DB_EVENT, WEBHOOK, SCHEDULE
     trigger_config: Optional[Dict[str, Any]] = {}
+    local_variables: Optional[List[Dict[str, str]]] = [] # [{name: 'var1', type: 'TEXT'}]
     nodes: Optional[Dict[str, Any]] = {}
 
 class MetaTrailCreate(MetaTrailBase):

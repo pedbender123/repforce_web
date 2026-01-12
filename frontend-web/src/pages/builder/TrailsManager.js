@@ -21,9 +21,11 @@ import {
   Clock,
   Filter,
   Save,
-  X
+  X,
+  ListTree
 } from 'lucide-react';
 import apiClient from '../../api/apiClient';
+import FormulaEditorModal from '../../components/builder/FormulaEditorModal';
 
 // --- COMPONENTES AUXILIARES ---
 
@@ -50,6 +52,9 @@ const TrailsManager = () => {
   const [filterType, setFilterType] = useState('ALL');
   const [isLoading, setIsLoading] = useState(true);
 
+  // Variables State
+  const [isVariablesModalOpen, setIsVariablesModalOpen] = useState(false);
+
   // Creation State
   const [isCreating, setIsCreating] = useState(false);
   const [newTrailName, setNewTrailName] = useState('');
@@ -58,10 +63,16 @@ const TrailsManager = () => {
   const [triggerSelectionOpen, setTriggerSelectionOpen] = useState(false);
   const [availableEntities, setAvailableEntities] = useState([]);
   const [availableActions, setAvailableActions] = useState([]);
-  const [availablePages, setAvailablePages] = useState([]); // [NEW]
+  const [availablePages, setAvailablePages] = useState([]);
 
   // Node Manipulation State
   const [addingNodeTo, setAddingNodeTo] = useState(null); // { parentId, branch }
+  const [isFormulaEditorOpen, setIsFormulaEditorOpen] = useState(false);
+  const [formulaFieldTarget, setFormulaFieldTarget] = useState(null); // { path: 'config.expression', label: 'Expressão' }
+
+  // Action Configuration State
+  const [entityFieldsCache, setEntityFieldsCache] = useState({}); // { entityId: [fields] }
+
 
   // --- EFFECTS ---
 
@@ -126,9 +137,15 @@ const TrailsManager = () => {
 
   const mapNodeIcon = (type, actionType) => {
     if (type === 'DECISION') return <GitBranch className="text-amber-500" />;
+    
+    // Action Types
+    if (actionType === 'DB_CREATE') return <Plus className="text-green-500" />;
     if (actionType === 'DB_UPDATE') return <Database className="text-blue-500" />;
-    if (actionType === 'SCRIPT') return <Terminal className="text-purple-500" />;
-    if (actionType === 'NOTIFICATION') return <MessageSquare className="text-green-500" />;
+    if (actionType === 'DB_DELETE') return <Trash2 className="text-red-500" />;
+    if (actionType === 'NAVIGATE') return <ChevronRight className="text-indigo-500" />;
+    if (actionType === 'WEBHOOK_OUT') return <Webhook className="text-purple-500" />;
+    if (actionType === 'CREATE_TASK') return <CheckCircle2 className="text-teal-500" />;
+    
     return <Zap className="text-slate-500" />;
   };
 
@@ -189,6 +206,15 @@ const TrailsManager = () => {
     } catch (e) { alert("Erro ao salvar gatilho"); }
   };
   
+  const fetchEntityFields = async (entityId) => {
+      if (entityFieldsCache[entityId]) return entityFieldsCache[entityId];
+      try {
+          const { data } = await apiClient.get(`/api/builder/entities/${entityId}/fields`);
+          setEntityFieldsCache(prev => ({ ...prev, [entityId]: data }));
+          return data;
+      } catch (e) { return []; }
+  };
+
   const handleAddNode = async (type) => {
     if (!addingNodeTo) return;
     
@@ -196,12 +222,13 @@ const TrailsManager = () => {
     const newNode = {
         id: newNodeId,
         type: type,
-        action_type: type === 'ACTION' ? 'SCRIPT' : null,
+        action_type: type === 'ACTION' ? 'DB_CREATE' : null, // Default to DB_CREATE for actions
         name: type === 'ACTION' ? 'Nova Ação' : 'Nova Decisão',
         config: {},
         next_node_id: null
     };
-
+    
+    // ... (rest same)
     if (type === 'DECISION') {
         newNode.next_true = null;
         newNode.next_false = null;
@@ -231,6 +258,17 @@ const TrailsManager = () => {
         setAddingNodeTo(null);
         setSelectedNode({ ...newNode, original: newNode, expression: '' }); 
     } catch (e) { alert("Erro ao adicionar nó"); }
+  };
+
+  const handleUpdateVariable = async (newVars) => {
+      try {
+          const { data } = await apiClient.put(`/api/builder/trails/${activeTrail.id}`, {
+            local_variables: newVars // Assuming backend supports this field now
+          });
+          const updated = { ...activeTrail, original: data, local_variables: newVars };
+          setActiveTrail(updated);
+          setTrails(prev => prev.map(t => t.id === updated.id ? updated : t));
+      } catch (e) { console.error("Error saving vars", e); }
   };
 
   // --- SUB-COMPONENTS ---
@@ -431,8 +469,6 @@ const TrailsManager = () => {
     // Recursive Graph Rendering
     const renderSequence = (nodeId, nodesMap) => {
         if (!nodeId || !nodesMap[nodeId]) {
-            // This is handled by parent usually, but if called, it's a dead end? 
-            // We shouldn't reach here if parentLogic is correct, but just in case
             return null;
         }
         
@@ -443,7 +479,7 @@ const TrailsManager = () => {
             type: `${node.type}${node.action_type ? `: ${node.action_type}` : ''}`,
             icon: mapNodeIcon(node.type, node.action_type),
             color: mapNodeColor(node.type),
-            expression: JSON.stringify(node.config || {}),
+            expression: typeof node.config?.expression === 'string' ? node.config.expression : JSON.stringify(node.config || {}),
             original: node
         };
 
@@ -488,6 +524,7 @@ const TrailsManager = () => {
     };
 
     const renderFlow = () => {
+        // ... (same implementation of renderFlow)
         // Empty State (ROOT)
         const nodesMap = activeTrail.original.nodes || {};
         const hasNodes = Object.keys(nodesMap).length > 0;
@@ -502,7 +539,7 @@ const TrailsManager = () => {
         const startNodeId = Object.keys(nodesMap).find(id => !allTargetIds.has(id));
 
         return (
-            <div className="flex flex-col items-center">
+            <div className="flex flex-col items-center pb-96"> {/* Added padding bottom for scrol */}
                  <div className="flex flex-col items-center mb-10">
                     <div className="bg-slate-900 dark:bg-white text-white dark:text-black rounded-2xl px-8 py-5 shadow-2xl flex items-center gap-4 border-2 border-slate-800 dark:border-slate-200">
                         {mapIconForType(activeTrail.type)}
@@ -532,9 +569,9 @@ const TrailsManager = () => {
     };
 
     return (
-        <div className="h-full flex overflow-hidden bg-slate-50 dark:bg-slate-950">
-            <div className="flex-1 overflow-auto flex flex-col">
-                 <header className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-8 py-4 flex items-center justify-between sticky top-0 z-20">
+        <div className="h-full flex overflow-hidden bg-slate-50 dark:bg-slate-950 relative">
+            <div className="flex-1 overflow-auto bg-slate-50 dark:bg-slate-950">
+                 <header className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-8 py-4 flex items-center justify-between sticky top-0 z-20 shadow-sm">
                     <div className="flex items-center gap-4">
                         <button onClick={() => setView('list')} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors">
                         <ArrowDown className="rotate-90 text-slate-400" size={20} />
@@ -546,33 +583,546 @@ const TrailsManager = () => {
                         </div>
                         </div>
                     </div>
+                    
+                    <button 
+                        onClick={() => setIsVariablesModalOpen(true)}
+                        className="flex items-center gap-2 px-3 py-1.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 rounded-lg text-xs font-bold text-slate-600 dark:text-slate-300 transition-colors"
+                    >
+                        <ListTree size={16}/> Variáveis ({activeTrail.original.local_variables?.length || 0})
+                    </button>
                  </header>
-                 <div className="flex-1 p-16 flex flex-col items-center">
+                 <div className="min-w-full min-h-full p-16 flex flex-col items-center justify-start">
                     {renderFlow()}
                  </div>
             </div>
             
-            <aside className={`w-96 bg-white dark:bg-slate-900 border-l border-slate-200 dark:border-slate-800 transition-transform fixed inset-y-0 right-0 z-30 lg:relative ${selectedNode ? 'translate-x-0' : 'translate-x-full'}`}>
-                <div className="p-6 h-full flex flex-col">
-                <div className="flex items-center justify-between mb-8">
-                    <h3 className="font-black text-xs uppercase tracking-[0.2em] text-slate-400">Configurar Nó</h3>
-                    <button onClick={() => setSelectedNode(null)} className="text-slate-400 hover:text-slate-600"><Plus className="rotate-45" size={20}/></button>
-                </div>
-                {selectedNode ? (
-                     <div className="space-y-6 flex-1 overflow-auto">
-                        <div className="p-3 bg-slate-100 dark:bg-slate-800 rounded-xl font-bold text-sm text-slate-600 dark:text-slate-300">
-                             {selectedNode.type}
+            {/* OVERLAY SIDEBAR */}
+            <div 
+                className={`fixed inset-y-0 right-0 w-[500px] bg-white dark:bg-slate-900 shadow-2xl transform transition-transform duration-300 ease-out z-[50] ${selectedNode ? 'translate-x-0' : 'translate-x-full'}`}
+            >
+                {selectedNode && (
+                     <div className="h-full flex flex-col">
+                        <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-white dark:bg-slate-900 z-10">
+                            <h3 className="font-black text-xs uppercase tracking-[0.2em] text-slate-400">Configurar Nó</h3>
+                            <button onClick={() => setSelectedNode(null)} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full text-slate-400 hover:text-red-500 transition-colors"><X size={20}/></button>
                         </div>
-                        <textarea 
-                           className="w-full bg-slate-900 text-blue-400 p-4 rounded-xl font-mono text-xs border-2 border-slate-800 focus:border-blue-500 outline-none"
-                           rows={10}
-                           defaultValue={JSON.stringify(selectedNode.config, null, 2)}
-                           // TODO: Make this real config editing
-                        />
+
+                        <div className="flex-1 overflow-y-auto p-6 space-y-8">
+                             {/* Node Header */}
+                             <div className="flex items-center gap-4">
+                                <div className={`p-4 rounded-2xl ${mapNodeColor(selectedNode.original.type)} bg-opacity-20 text-slate-700 dark:text-white`}>
+                                    {mapNodeIcon(selectedNode.original.type, selectedNode.original.action_type)}
+                                </div>
+                                <div>
+                                    <input 
+                                        className="text-xl font-black bg-transparent outline-none w-full placeholder:text-slate-300" 
+                                        value={selectedNode.title}
+                                        onChange={e => setSelectedNode(prev => ({...prev, title: e.target.value}))}
+                                    />
+                                    <p className="text-[10px] font-black uppercase text-slate-400 tracking-wide mt-1">{selectedNode.type}</p>
+                                </div>
+                            </div>
+
+                            {/* Dynamic Config Form */}
+                            {selectedNode.original.type === 'ACTION' && (
+                                <div className="space-y-4">
+                                    <div className="space-y-2">
+                                        <label className="text-xs font-bold text-slate-500 uppercase">Tipo de Ação</label>
+                                        <div className="grid grid-cols-2 gap-2">
+                                            {[
+                                                { id: 'DB_CREATE', label: 'Criar Item', icon: <Plus size={14}/> },
+                                                { id: 'DB_UPDATE', label: 'Editar Item', icon: <Database size={14}/> },
+                                                { id: 'DB_DELETE', label: 'Deletar Item', icon: <Trash2 size={14}/> },
+                                                { id: 'NAVIGATE', label: 'Ir para Página', icon: <ChevronRight size={14}/> },
+                                                { id: 'WEBHOOK_OUT', label: 'Webhook (API)', icon: <Webhook size={14}/> },
+                                                { id: 'CREATE_TASK', label: 'Criar Tarefa', icon: <CheckCircle2 size={14}/> },
+                                            ].map(opt => (
+                                                <button
+                                                    key={opt.id}
+                                                    onClick={() => {
+                                                         // Reset config when type changes
+                                                         setSelectedNode(prev => ({ 
+                                                             ...prev, 
+                                                             type: `ACTION: ${opt.id}`,
+                                                             original: { ...prev.original, action_type: opt.id, config: {} }
+                                                         }));
+                                                    }}
+                                                    className={`p-3 rounded-xl flex items-center gap-2 text-xs font-bold border-2 transition-all ${selectedNode.original.action_type === opt.id ? 'border-blue-500 bg-blue-50 text-blue-600' : 'border-slate-100 bg-white text-slate-400 hover:border-slate-200'}`}
+                                                >
+                                                    {opt.icon} {opt.label}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                    
+                                    <div className="h-px bg-slate-100 dark:bg-slate-800 my-4"></div>
+
+                                    {/* Sub-Forms */}
+                                    {selectedNode.original.action_type === 'DB_CREATE' && (
+                                         <div className="space-y-4 animate-fade-in">
+                                             {/* Table Selection */}
+                                              <div className="space-y-2">
+                                                <label className="text-xs font-bold text-slate-500 uppercase">Tabela Alvo</label>
+                                                <select 
+                                                    className="w-full p-3 bg-slate-50 rounded-xl text-sm font-bold border border-slate-200 outline-none"
+                                                    value={selectedNode.original.config.table_id || ''}
+                                                    onChange={async (e) => {
+                                                        const tid = e.target.value;
+                                                        await fetchEntityFields(tid); // Pre-fetch fields
+                                                        setSelectedNode(prev => ({
+                                                             ...prev,
+                                                             original: { ...prev.original, config: { ...prev.original.config, table_id: tid } }
+                                                        }));
+                                                    }}
+                                                >
+                                                    <option value="">Selecione...</option>
+                                                    {availableEntities.map(e => <option key={e.id} value={e.id}>{e.display_name}</option>)}
+                                                </select>
+                                              </div>
+                                              
+                                              {/* Fields Mapping */}
+                                              {selectedNode.original.config.table_id && (
+                                                  <div className="space-y-2">
+                                                      <label className="text-xs font-bold text-slate-500 uppercase">Preencher Campos</label>
+                                                      <div className="space-y-2">
+                                                          {(entityFieldsCache[selectedNode.original.config.table_id] || []).map(field => (
+                                                              <div key={field.name} className="flex flex-col gap-1 p-3 bg-slate-50 rounded-xl border border-slate-100">
+                                                                  <div className="flex justify-between">
+                                                                    <span className="text-xs font-bold text-slate-700">{field.label}</span>
+                                                                    <code className="text-[10px] text-slate-400">{field.name}</code>
+                                                                  </div>
+                                                                  <div 
+                                                                    onClick={() => {
+                                                                        setIsFormulaEditorOpen(true);
+                                                                        setFormulaFieldTarget({ 
+                                                                            path: `mapped_values.${field.name}`, 
+                                                                            label: field.label 
+                                                                        });
+                                                                    }}
+                                                                    className="w-full p-2 bg-white rounded-lg border border-slate-200 text-xs text-blue-600 font-mono cursor-pointer hover:border-blue-400"
+                                                                  >
+                                                                     {selectedNode.original.config.mapped_values?.[field.name] || 'Clique para definir fórmula...'}
+                                                                  </div>
+                                                              </div>
+                                                          ))}
+                                                      </div>
+                                                  </div>
+                                              )}
+                                         </div>
+                                    )}
+                                    {/* DB UPDATE FORM */}
+                                    {selectedNode.original.action_type === 'DB_UPDATE' && (
+                                         <div className="space-y-4 animate-fade-in">
+                                              <div className="space-y-2">
+                                                <label className="text-xs font-bold text-slate-500 uppercase">Tabela Alvo</label>
+                                                <select 
+                                                    className="w-full p-3 bg-slate-50 rounded-xl text-sm font-bold border border-slate-200 outline-none"
+                                                    value={selectedNode.original.config.table_id || ''}
+                                                    onChange={async (e) => {
+                                                        const tid = e.target.value;
+                                                        await fetchEntityFields(tid);
+                                                        setSelectedNode(prev => ({
+                                                             ...prev,
+                                                             original: { ...prev.original, config: { ...prev.original.config, table_id: tid } }
+                                                        }));
+                                                    }}
+                                                >
+                                                    <option value="">Selecione...</option>
+                                                    {availableEntities.map(e => <option key={e.id} value={e.id}>{e.display_name}</option>)}
+                                                </select>
+                                              </div>
+
+                                              <div className="space-y-2">
+                                                <label className="text-xs font-bold text-slate-500 uppercase">ID do Registro (Fórmula)</label>
+                                                <div 
+                                                    onClick={() => {
+                                                        setIsFormulaEditorOpen(true);
+                                                        setFormulaFieldTarget({ path: 'config.record_id', label: 'ID do Registro' });
+                                                    }}
+                                                    className="w-full p-3 bg-white rounded-xl border border-slate-200 text-sm font-mono text-blue-600 cursor-pointer hover:border-blue-400"
+                                                >
+                                                    {selectedNode.original.config.record_id || 'Clique para definir ID...'}
+                                                </div>
+                                              </div>
+                                              
+                                              {selectedNode.original.config.table_id && (
+                                                  <div className="space-y-2">
+                                                      <label className="text-xs font-bold text-slate-500 uppercase">Atualizar Campos</label>
+                                                      <div className="space-y-2">
+                                                          {(entityFieldsCache[selectedNode.original.config.table_id] || []).map(field => (
+                                                              <div key={field.name} className="flex flex-col gap-1 p-3 bg-slate-50 rounded-xl border border-slate-100">
+                                                                  <div className="flex justify-between">
+                                                                    <span className="text-xs font-bold text-slate-700">{field.label}</span>
+                                                                    <code className="text-[10px] text-slate-400">{field.name}</code>
+                                                                  </div>
+                                                                  <div 
+                                                                    onClick={() => {
+                                                                        setIsFormulaEditorOpen(true);
+                                                                        setFormulaFieldTarget({ 
+                                                                            path: `mapped_values.${field.name}`, 
+                                                                            label: field.label 
+                                                                        });
+                                                                    }}
+                                                                    className="w-full p-2 bg-white rounded-lg border border-slate-200 text-xs text-blue-600 font-mono cursor-pointer hover:border-blue-400"
+                                                                  >
+                                                                     {selectedNode.original.config.mapped_values?.[field.name] || 'Clique para definir valor...'}
+                                                                  </div>
+                                                              </div>
+                                                          ))}
+                                                      </div>
+                                                  </div>
+                                              )}
+                                         </div>
+                                    )}
+
+                                    {/* DB DELETE FORM */}
+                                    {selectedNode.original.action_type === 'DB_DELETE' && (
+                                        <div className="space-y-4 animate-fade-in">
+                                            <div className="space-y-2">
+                                                <label className="text-xs font-bold text-slate-500 uppercase">Tabela Alvo</label>
+                                                <select 
+                                                    className="w-full p-3 bg-slate-50 rounded-xl text-sm font-bold border border-slate-200 outline-none"
+                                                    value={selectedNode.original.config.table_id || ''}
+                                                    onChange={e => {
+                                                        setSelectedNode(prev => ({
+                                                             ...prev,
+                                                             original: { ...prev.original, config: { ...prev.original.config, table_id: e.target.value } }
+                                                        }));
+                                                    }}
+                                                >
+                                                    <option value="">Selecione...</option>
+                                                    {availableEntities.map(e => <option key={e.id} value={e.id}>{e.display_name}</option>)}
+                                                </select>
+                                            </div>
+                                            <div className="space-y-2">
+                                                <label className="text-xs font-bold text-slate-500 uppercase">ID do Registro para Deletar</label>
+                                                <div 
+                                                    onClick={() => {
+                                                        setIsFormulaEditorOpen(true);
+                                                        setFormulaFieldTarget({ path: 'config.record_id', label: 'ID do Registro' });
+                                                    }}
+                                                    className="w-full p-3 bg-white rounded-xl border border-slate-200 text-sm font-mono text-red-500 cursor-pointer hover:border-red-400"
+                                                >
+                                                    {selectedNode.original.config.record_id || 'Clique para definir ID...'}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* NAVIGATE FORM */}
+                                    {selectedNode.original.action_type === 'NAVIGATE' && (
+                                        <div className="space-y-4 animate-fade-in">
+                                             <div className="space-y-2">
+                                                <label className="text-xs font-bold text-slate-500 uppercase">Página de Destino</label>
+                                                <select 
+                                                    className="w-full p-3 bg-slate-50 rounded-xl text-sm font-bold border border-slate-200 outline-none"
+                                                    value={selectedNode.original.config.page_id || ''}
+                                                    onChange={e => {
+                                                        setSelectedNode(prev => ({
+                                                             ...prev,
+                                                             original: { ...prev.original, config: { ...prev.original.config, page_id: e.target.value } }
+                                                        }));
+                                                    }}
+                                                >
+                                                    <option value="">Selecione...</option>
+                                                    {availablePages.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                                                </select>
+                                            </div>
+                                            <div className="space-y-2">
+                                                <label className="text-xs font-bold text-slate-500 uppercase">ID do Registro (Opcional - Para abrir Detalhes)</label>
+                                                <div 
+                                                    onClick={() => {
+                                                        setIsFormulaEditorOpen(true);
+                                                        setFormulaFieldTarget({ path: 'config.record_id', label: 'ID do Registro' });
+                                                    }}
+                                                    className="w-full p-3 bg-white rounded-xl border border-slate-200 text-sm font-mono text-blue-600 cursor-pointer hover:border-blue-400"
+                                                >
+                                                    {selectedNode.original.config.record_id || 'Vazio (Nenhum Filtro)'}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* WEBHOOK FORM */}
+                                    {selectedNode.original.action_type === 'WEBHOOK_OUT' && (
+                                        <div className="space-y-4 animate-fade-in">
+                                             <div className="space-y-2">
+                                                <label className="text-xs font-bold text-slate-500 uppercase">Método HTTP</label>
+                                                <select 
+                                                    className="w-full p-3 bg-slate-50 rounded-xl text-sm font-bold border border-slate-200 outline-none"
+                                                    value={selectedNode.original.config.method || 'POST'}
+                                                    onChange={e => {
+                                                        setSelectedNode(prev => ({
+                                                             ...prev,
+                                                             original: { ...prev.original, config: { ...prev.original.config, method: e.target.value } }
+                                                        }));
+                                                    }}
+                                                >
+                                                    <option value="GET">GET</option>
+                                                    <option value="POST">POST</option>
+                                                    <option value="PUT">PUT</option>
+                                                    <option value="DELETE">DELETE</option>
+                                                </select>
+                                            </div>
+                                            <div className="space-y-2">
+                                                <label className="text-xs font-bold text-slate-500 uppercase">URL de Destino</label>
+                                                <div 
+                                                    onClick={() => {
+                                                        setIsFormulaEditorOpen(true);
+                                                        setFormulaFieldTarget({ path: 'config.url', label: 'URL' });
+                                                    }}
+                                                    className="w-full p-3 bg-white rounded-xl border border-slate-200 text-sm font-mono text-purple-600 cursor-pointer hover:border-purple-400 break-all"
+                                                >
+                                                    {selectedNode.original.config.url || 'https://api.exemplo.com/...'}
+                                                </div>
+                                            </div>
+                                            
+                                            <div className="space-y-2">
+                                                <label className="text-xs font-bold text-slate-500 uppercase flex justify-between">
+                                                    <span>Corpo do Request (JSON)</span>
+                                                    <button 
+                                                        onClick={() => {
+                                                            const key = prompt("Nome do campo (ex: email):");
+                                                            if(key) {
+                                                                setSelectedNode(prev => ({
+                                                                    ...prev,
+                                                                    original: { 
+                                                                        ...prev.original, 
+                                                                        config: { 
+                                                                            ...prev.original.config, 
+                                                                            body: { ...(prev.original.config.body || {}), [key]: '' } 
+                                                                        } 
+                                                                    }
+                                                                }));
+                                                            }
+                                                        }}
+                                                        className="text-blue-500 hover:underline"
+                                                    >+ Add Campo</button>
+                                                </label>
+                                                <div className="space-y-2">
+                                                    {Object.entries(selectedNode.original.config.body || {}).map(([key, val]) => (
+                                                        <div key={key} className="flex flex-col gap-1 p-3 bg-slate-50 rounded-xl border border-slate-100 group">
+                                                            <div className="flex justify-between">
+                                                                <span className="text-xs font-bold text-slate-700">{key}</span>
+                                                                <button 
+                                                                    onClick={() => {
+                                                                        const newBody = { ...selectedNode.original.config.body };
+                                                                        delete newBody[key];
+                                                                        setSelectedNode(prev => ({
+                                                                            ...prev,
+                                                                            original: { ...prev.original, config: { ...prev.original.config, body: newBody } }
+                                                                        }));
+                                                                    }}
+                                                                    className="text-red-400 opacity-0 group-hover:opacity-100"
+                                                                ><Trash2 size={12}/></button>
+                                                            </div>
+                                                            <div 
+                                                                onClick={() => {
+                                                                    setIsFormulaEditorOpen(true);
+                                                                    setFormulaFieldTarget({ path: `config.body.${key}`, label: key });
+                                                                }}
+                                                                className="w-full p-2 bg-white rounded-lg border border-slate-200 text-xs text-blue-600 font-mono cursor-pointer hover:border-blue-400"
+                                                            >
+                                                                {val || 'Definir Valor...'}
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                    {Object.keys(selectedNode.original.config.body || {}).length === 0 && (
+                                                        <p className="text-center text-xs text-slate-400 py-2">Sem campos no corpo.</p>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* TASK FORM */}
+                                    {selectedNode.original.action_type === 'CREATE_TASK' && (
+                                        <div className="space-y-4 animate-fade-in">
+                                            <div className="space-y-2">
+                                                <label className="text-xs font-bold text-slate-500 uppercase">Responsável (ID ou Email)</label>
+                                                <div 
+                                                    onClick={() => {
+                                                        setIsFormulaEditorOpen(true);
+                                                        setFormulaFieldTarget({ path: 'config.assignee', label: 'Responsável' });
+                                                    }}
+                                                    className="w-full p-3 bg-white rounded-xl border border-slate-200 text-sm font-mono text-blue-600 cursor-pointer hover:border-blue-400"
+                                                >
+                                                    {selectedNode.original.config.assignee || 'Clique para definir responsável...'}
+                                                </div>
+                                            </div>
+                                            <div className="space-y-2">
+                                                <label className="text-xs font-bold text-slate-500 uppercase">Título da Tarefa</label>
+                                                 <div 
+                                                    onClick={() => {
+                                                        setIsFormulaEditorOpen(true);
+                                                        setFormulaFieldTarget({ path: 'config.title', label: 'Título' });
+                                                    }}
+                                                    className="w-full p-3 bg-white rounded-xl border border-slate-200 text-sm font-mono text-blue-600 cursor-pointer hover:border-blue-400"
+                                                >
+                                                    {selectedNode.original.config.title || 'Clique para definir título...'}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
+                            {selectedNode.original.type === 'DECISION' && (
+                                <div className="space-y-2">
+                                    <label className="text-xs font-bold text-slate-500 uppercase">Expressão Lógica (Se Verdadeiro)</label>
+                                    <div 
+                                        onClick={() => {
+                                            setIsFormulaEditorOpen(true);
+                                            setFormulaFieldTarget({ path: 'expression', label: 'Condição' });
+                                        }}
+                                        className="w-full bg-slate-50 dark:bg-slate-800 p-4 rounded-xl border-2 border-slate-200 dark:border-slate-700 hover:border-blue-500 cursor-pointer group transition-all"
+                                    >
+                                        <div className="flex items-center justify-between mb-2">
+                                            <div className="flex items-center gap-2 text-blue-500">
+                                                <Code2 size={16}/>
+                                                <span className="text-xs font-black uppercase">Editor de Fórmula</span>
+                                            </div>
+                                            <ArrowDown className="-rotate-90 text-slate-300 group-hover:text-blue-500 transition-colors" size={16}/>
+                                        </div>
+                                        <p className="font-mono text-xs text-slate-600 dark:text-slate-400 break-all line-clamp-3">
+                                            {selectedNode.original.config?.expression || "Clique para editar a lógica..."}
+                                        </p>
+                                    </div>
+                                    <p className="text-[10px] text-slate-400">
+                                        Use fórmulas estilo AppSheet para definir quando o fluxo deve seguir pelo caminho <strong className="text-green-600">VERDADEIRO</strong>.
+                                    </p>
+                                </div>
+                            )}
+
+                        </div>
+
+                        {/* Footer */}
+                        <div className="p-6 border-t border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50">
+                             <button 
+                                onClick={async () => {
+                                    // Save Logic
+                                    const currentNodes = { ...activeTrail.original.nodes };
+                                    
+                                    // Preserve title edit
+                                    const nodeToSave = {
+                                        ...selectedNode.original,
+                                        name: selectedNode.title, 
+                                        config: selectedNode.original.config 
+                                    };
+
+                                    currentNodes[selectedNode.id] = nodeToSave;
+
+                                    try {
+                                        const { data } = await apiClient.put(`/api/builder/trails/${activeTrail.id}`, { nodes: currentNodes });
+                                        const updated = { ...activeTrail, original: data };
+                                        setActiveTrail(updated);
+                                        setTrails(prev => prev.map(t => t.id === updated.id ? updated : t));
+                                        alert('Salvo com sucesso!');
+                                    } catch (e) { alert('Erro ao salvar'); }
+                                }}
+                                className="w-full py-4 bg-green-500 hover:bg-green-600 text-white rounded-xl font-bold shadow-xl shadow-green-500/20 active:scale-95 transition-all flex items-center justify-center gap-2"
+                            >
+                                <Save size={18}/> Salvar e Fechar
+                            </button>
+                        </div>
                      </div>
-                ) : <div/>}
+                )}
+            </div>
+            
+            {/* VARIABLES MODAL */}
+            {isVariablesModalOpen && (
+                <div className="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center backdrop-blur-sm">
+                    <div className="bg-white dark:bg-slate-900 w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden p-6 animate-fade-in-up">
+                        <div className="flex justify-between items-center mb-6">
+                            <h3 className="text-lg font-black dark:text-white">Variáveis Locais</h3>
+                            <button onClick={() => setIsVariablesModalOpen(false)}><X size={20}/></button>
+                        </div>
+                        
+                        <div className="space-y-3 mb-6">
+                            {(activeTrail.local_variables || []).map((v, i) => (
+                                <div key={i} className="flex items-center gap-2 p-3 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-100 dark:border-slate-700">
+                                    <div className="p-2 bg-purple-100 text-purple-600 rounded-lg font-mono text-xs font-bold">{v.type}</div>
+                                    <div className="flex-1 font-bold text-sm text-slate-700 dark:text-slate-300">{v.name}</div>
+                                    <button 
+                                        onClick={() => {
+                                            const newVars = [...(activeTrail.local_variables || [])];
+                                            newVars.splice(i, 1);
+                                            handleUpdateVariable(newVars);
+                                        }}
+                                        className="text-slate-400 hover:text-red-500"
+                                    ><Trash2 size={16}/></button>
+                                </div>
+                            ))}
+                            {(activeTrail.local_variables || []).length === 0 && (
+                                <p className="text-center text-slate-400 text-sm py-4">Nenhuma variável criada.</p>
+                            )}
+                        </div>
+
+                        <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-xl border-2 border-dashed border-slate-200 dark:border-slate-700">
+                            <h4 className="text-xs font-black uppercase text-slate-400 mb-3">Nova Variável</h4>
+                            <form 
+                                onSubmit={e => {
+                                    e.preventDefault();
+                                    const name = e.target.name.value;
+                                    const type = e.target.type.value;
+                                    if(name && type) {
+                                        const newVars = [...(activeTrail.local_variables || []), { name, type }];
+                                        handleUpdateVariable(newVars);
+                                        e.target.reset();
+                                    }
+                                }}
+                                className="flex gap-2"
+                            >
+                                <input name="name" placeholder="Nome (ex: total_vendas)" className="flex-1 p-2 rounded-lg border border-slate-200 text-sm font-bold outline-none" required/>
+                                <select name="type" className="p-2 rounded-lg border border-slate-200 text-xs font-bold outline-none">
+                                    <option value="TEXT">Texto</option>
+                                    <option value="NUMBER">Número</option>
+                                    <option value="DATE">Data</option>
+                                </select>
+                                <button type="submit" className="p-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"><Plus size={18}/></button>
+                            </form>
+                        </div>
+                    </div>
                 </div>
-            </aside>
+            )}
+            
+            {/* FORMULA EDITOR */}
+            {isFormulaEditorOpen && selectedNode && formulaFieldTarget && (
+                <FormulaEditorModal
+                    isOpen={true}
+                    onClose={() => {
+                        setIsFormulaEditorOpen(false);
+                        setFormulaFieldTarget(null);
+                    }}
+                    initialValue={
+                        formulaFieldTarget.path.includes('.') 
+                        ? (function resolvePath(obj, path){
+                            return path.split('.').reduce((prev, curr) => prev ? prev[curr] : null, obj);
+                          })(selectedNode.original.config, formulaFieldTarget.path) || ''
+                        : selectedNode.original.config?.[formulaFieldTarget.path] || ''
+                    }
+                    onSave={(newFormula) => {
+                         // Deep set value
+                         const deepSet = (obj, path, value) => {
+                             const keys = path.split('.');
+                             const last = keys.pop();
+                             const target = keys.reduce((o, k) => o[k] = o[k] || {}, obj);
+                             target[last] = value;
+                             return obj;
+                         };
+
+                         setSelectedNode(prev => ({
+                            ...prev,
+                            original: { 
+                                ...prev.original, 
+                                config: deepSet({ ...prev.original.config }, formulaFieldTarget.path, newFormula)
+                            }
+                        }));
+                    }}
+                    entityId={activeTrail.trigger_config?.entity_id}
+                    fields={activeTrail.local_variables?.map(v => ({ name: v.name, label: `(Var) ${v.name}` })) || []} // Passing vars as fields
+                />
+            )}
         </div>
     );
   };
