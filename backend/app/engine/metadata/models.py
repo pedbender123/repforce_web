@@ -37,6 +37,10 @@ class MetaField(Base):
     is_required = Column(Boolean, default=False)
     options = Column(JSON, nullable=True) # Para selects
     
+    # Formula Engine
+    formula = Column(String, nullable=True) # Expressão: [Preco] * [Qtd]
+    is_virtual = Column(Boolean, default=False) # Se True, não persiste (On-Read). Se False, persiste (Snapshot).
+    
     created_at = Column(DateTime, default=datetime.utcnow)
     
     entity = relationship("MetaEntity", back_populates="fields")
@@ -85,6 +89,7 @@ class MetaPage(Base):
     name = Column(String, nullable=False)
     type = Column(String, default="list") # list, form, dashboard, blank
     layout_config = Column(JSON, default={})
+    tabs_config = Column(JSON, default={})
     order = Column(Integer, default=0)
     
     created_at = Column(DateTime, default=datetime.utcnow)
@@ -128,6 +133,31 @@ class MetaAction(Base):
     config = Column(JSON, default={})
     
     created_at = Column(DateTime, default=datetime.utcnow)
+    
+    # Relationships
+    tenant = relationship("app.system.models.Tenant")
+
+class MetaTrail(Base):
+    __tablename__ = "meta_trails"
+    __table_args__ = {"schema": "public"}
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("public.tenants.id", ondelete="CASCADE"), nullable=False)
+    
+    name = Column(String, nullable=False)
+    description = Column(String, nullable=True)
+    is_active = Column(Boolean, default=True)
+    
+    # Core Graph Data
+    # Structure: { "node_id": { "type": "ACTION", "action_type": "DB_UPDATE", "config": {...}, "next": "id" } }
+    nodes = Column(JSON, default={}) 
+    
+    # Quick Access Metadata
+    trigger_type = Column(String, nullable=False) # 'MANUAL', 'DB_EVENT', 'WEBHOOK', 'SCHEDULE'
+    trigger_config = Column(JSON, default={}) # { "entity_id": "...", "event": "ON_CREATE" }
+    
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
     # Relationships
     tenant = relationship("app.system.models.Tenant")

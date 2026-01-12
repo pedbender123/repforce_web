@@ -9,18 +9,25 @@ import GenericRecordPage from '../../components/builder/GenericRecordPage';
 import GenericForm from '../../components/builder/GenericForm';
 import GenericFormPage from '../../components/builder/GenericFormPage';
 import DashboardPage from '../../components/builder/DashboardPage';
+import EntityPage from '../EntityPage';
+
 
 // Placeholders for Real Components (List, Form, etc)
 // We will replace these with real generic components later
 
 
 
+import PageSettingsModal from '../../components/builder/PageSettingsModal'; // Import Modal
+import { useNavigate } from 'react-router-dom';
+
 const DynamicPageLoader = () => {
     const { pageId } = useParams();
     const { isEditMode } = useBuilder();
+    const navigate = useNavigate();
     const [page, setPage] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+    const [isConfigOpen, setIsConfigOpen] = useState(false); // Modal State
 
     useEffect(() => {
         if (pageId) fetchPageDetails();
@@ -65,6 +72,19 @@ const DynamicPageLoader = () => {
         }
     };
 
+    const handlePageUpdate = (result) => {
+        // If deleted, redirect
+        if (result?.deleted) {
+            window.dispatchEvent(new Event('navigation-updated')); // Trigger Sidebar Refresh
+            navigate('/app');
+            return;
+        }
+        
+        // Refresh local data and global nav
+        fetchPageDetails();
+        window.dispatchEvent(new Event('navigation-updated'));
+    };
+
     if (loading) return <div className="p-10 text-center text-gray-500">Carregando página...</div>;
     if (error) return <div className="p-10 text-center text-red-500">{error}</div>;
     if (!page) return null;
@@ -73,12 +93,31 @@ const DynamicPageLoader = () => {
         <div className="p-6">
             {/* Header */}
             <div className="flex justify-between items-center mb-6">
-                <div>
+                <div className="flex items-center gap-3">
                     <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{page.name}</h1>
-                    {isEditMode && <span className="text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded">Modo Edição</span>}
+                    {isEditMode && (
+                        <div className="flex items-center gap-2">
+                             <span className="text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded">Modo Edição</span>
+                             <button 
+                                onClick={() => setIsConfigOpen(true)}
+                                className="p-1.5 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 rounded-full text-gray-500 hover:text-blue-600 transition-colors"
+                                title="Editar Configurações da Página"
+                             >
+                                <PenTool size={16} />
+                             </button>
+                        </div>
+                    )}
                 </div>
                 
-
+                {/* Modal de Configuração */}
+                {isEditMode && (
+                    <PageSettingsModal
+                        isOpen={isConfigOpen}
+                        onClose={() => setIsConfigOpen(false)}
+                        page={page}
+                        onUpdate={handlePageUpdate}
+                    />
+                )}
             </div>
 
             {/* Content Renderer */}
@@ -103,6 +142,13 @@ const DynamicPageLoader = () => {
                 pageId={page.id}
                 layoutConfig={page.layout_config}
                 entitySlug={page.entitySlug}
+            />}
+            {page.type === 'split_view' && <EntityPage 
+                page={page} 
+                pageId={page.id}
+                entityId={page.entity_id}
+                entitySlug={page.entitySlug}
+                entityName={page.entityName}
             />}
             {page.type === 'blank' && (
                 <div className="p-6">

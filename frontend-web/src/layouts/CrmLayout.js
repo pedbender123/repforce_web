@@ -200,7 +200,7 @@ const CrmLayout = () => {
                 </header>
 
                 {/* --- MENU SUPERIOR (TABS DA ÁREA ATIVA) --- */}
-                <div className="hidden md:flex bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 px-6 py-0 items-center h-16 shadow-sm z-10">
+                <div className="hidden md:flex bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 px-3 py-0 items-center h-12 shadow-sm z-10">
                     <div className="flex items-end h-full overflow-x-auto mr-auto">
                         {activeArea?.pages_json?.map((page) => {
                             const isPageActive = location.pathname.startsWith(page.path);
@@ -208,7 +208,7 @@ const CrmLayout = () => {
                                 <Link
                                     key={page.path}
                                     to={page.path}
-                                    className={`mr-6 py-5 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${isPageActive
+                                    className={`mr-6 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${isPageActive
                                         ? 'border-blue-600 text-blue-600 dark:text-blue-400 dark:border-blue-400'
                                         : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:border-gray-300'
                                         }`}
@@ -222,7 +222,7 @@ const CrmLayout = () => {
                         {isEditMode && activeArea?.is_dynamic && (
                             <button
                                 onClick={() => setIsAddPageOpen(true)}
-                                className="mr-6 py-5 text-sm font-medium text-gray-400 hover:text-blue-500 border-b-2 border-transparent hover:border-blue-300 flex items-center gap-1 transition-colors"
+                                className="mr-6 py-3 text-sm font-medium text-gray-400 hover:text-blue-500 border-b-2 border-transparent hover:border-blue-300 flex items-center gap-1 transition-colors"
                                 title="Adicionar Página nesta Área"
                             >
                                 <Plus size={16} />
@@ -293,7 +293,7 @@ const CrmLayout = () => {
                     </div>
                 )}
 
-                <main className="flex-1 overflow-y-auto p-4 md:p-6 bg-gray-50 dark:bg-gray-900">
+                <main className="flex-1 overflow-y-auto p-2 md:p-3 bg-gray-50 dark:bg-gray-900">
                     <Outlet />
                 </main>
             </div>

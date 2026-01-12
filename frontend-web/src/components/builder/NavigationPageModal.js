@@ -77,13 +77,15 @@ const NavigationPageModal = ({ isOpen, onClose, groupId, onPageCreated }) => {
                             <option value="list_custom">Lista com Botão Personalizado</option>
                             <option value="form_page">Página de Formulário (Standalone)</option>
                             <option value="ficha_simples">Ficha Simples (Detalhes)</option>
+                            <option value="split_view">Ficha 360 (V2)</option>
+
                             <option value="dashboard">Dashboard</option>
                             <option value="blank">Em Branco (Apenas Título)</option>
                         </select>
                     </div>
                     
                     {/* Show Entity Select for relevant types */}
-                    {['list', 'list_readonly', 'list_custom', 'form', 'form_page', 'ficha_simples', 'blank'].includes(type) && (
+                    {['list', 'list_readonly', 'list_custom', 'form', 'form_page', 'ficha_simples', 'split_view', 'blank'].includes(type) && (
                         <div>
                             <label className="block text-xs font-medium text-gray-500 mb-1">Tabela Vinculada</label>
                             <select

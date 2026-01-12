@@ -12,12 +12,12 @@ from alembic import context
 sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
 
 # Import configurations and models
-from app.db.session import SQLALCHEMY_DATABASE_URL, Base, BaseCrm
+from app.shared.database import SQLALCHEMY_DATABASE_URL, Base, BaseCrm
 
 # Import all models to ensure they are registered with the Bases
-from app.db import models_system
-from app.db import models_tenant
-from app.db import models_metadata
+from app.system import models as models_system
+from app.engine import models_tenant
+from app.engine.metadata import models as models_metadata
 
 config = context.config
 

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import apiClient from '../api/apiClient';
+import apiClient from '../../api/apiClient';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Save, X, RotateCcw } from 'lucide-react';
 
@@ -12,7 +12,7 @@ const DynamicForm = ({ entity, recordId, onCancel, onSuccess }) => {
     const { data: meta, isLoading: isMetaLoading } = useQuery({
         queryKey: ['metadata', entity],
         queryFn: async () => {
-            const response = await apiClient.get(`/v1/engine/metadata/${entity}`);
+            const response = await apiClient.get(`/api/engine/metadata/${entity}`);
             return response.data;
         }
     });
@@ -21,7 +21,7 @@ const DynamicForm = ({ entity, recordId, onCancel, onSuccess }) => {
     const { data: record, isLoading: isRecordLoading } = useQuery({
         queryKey: ['record', entity, recordId],
         queryFn: async () => {
-            const response = await apiClient.get(`/v1/engine/${entity}/${recordId}`);
+            const response = await apiClient.get(`/api/engine/object/${entity}/${recordId}`);
             return response.data;
         },
         enabled: !!recordId
@@ -38,9 +38,9 @@ const DynamicForm = ({ entity, recordId, onCancel, onSuccess }) => {
     const saveMutation = useMutation({
         mutationFn: async (data) => {
             if (recordId) {
-                return await apiClient.put(`/v1/engine/${entity}/${recordId}`, data);
+                return await apiClient.put(`/api/engine/object/${entity}/${recordId}`, data);
             } else {
-                return await apiClient.post(`/v1/engine/${entity}`, data);
+                return await apiClient.post(`/api/engine/object/${entity}`, data);
             }
         },
         onSuccess: () => {

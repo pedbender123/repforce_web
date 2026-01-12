@@ -36,3 +36,4 @@ Ignora o arquivo .env que contém os segredos
 
 /backend/uploads/
 /backend/app/data/*.db
+.venv_fix

@@ -17,7 +17,6 @@ def seed_tenant_defaults(db: Session, tenant_id: str):
             logger.info(f"Seeding defaults for tenant {tenant_id}: Creating Rotas entity...")
             rotas = models_meta.MetaEntity(
                 tenant_id=tenant_id,
-                name="Rotas",
                 slug="rotas",
                 display_name="Rotas",
                 is_system=True
@@ -35,6 +34,21 @@ def seed_tenant_defaults(db: Session, tenant_id: str):
             logger.info("Rotas seeded successfully.")
         else:
             logger.info(f"Tenant {tenant_id} already has Rotas entity.")
+
+        # Seed Default Cargos
+        from app.system import models as models_system
+        cargos_count = db.query(models_system.Cargo).filter_by(tenant_id=tenant_id).count()
+        if cargos_count == 0:
+            logger.info(f"Seeding default Cargos for tenant {tenant_id}...")
+            default_cargos = [
+                models_system.Cargo(tenant_id=tenant_id, name="Gerente", description="Gestão de equipe e vendas"),
+                models_system.Cargo(tenant_id=tenant_id, name="Vendedor", description="Prospecção e vendas diretas")
+            ]
+            db.add_all(default_cargos)
+            db.commit()
+            logger.info("Cargos seeded successfully.")
+        else:
+            logger.info(f"Tenant {tenant_id} already has cargos.")
             
     except Exception as e:
         logger.error(f"Failed to seed defaults for tenant {tenant_id}: {e}")

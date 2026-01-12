@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import apiClient from '../../api/apiClient';
-import { PlusIcon } from '@heroicons/react/24/solid';
+import { PlusIcon, TrashIcon } from '@heroicons/react/24/solid';
 import { useAuth } from '../../context/AuthContext';
 
 export default function CompanyList() {
@@ -44,6 +44,24 @@ export default function CompanyList() {
         } catch (error) {
             console.error("Failed to access CRM", error);
             alert("Erro ao acessar ambiente da empresa.");
+        }
+    };
+    
+    const deleteCompany = async (company) => {
+        const confirmName = window.prompt(`ATENÇÃO: Ação Destrutiva!\n\nIsso apagará TODO o banco de dados da empresa "${company.name}" e não pode ser desfeito.\n\nDigite o nome da empresa para confirmar:`);
+        
+        if (confirmName !== company.name) {
+            if (confirmName !== null) alert("Nome incorreto. Operação cancelada.");
+            return;
+        }
+
+        try {
+            await apiClient.delete(`/v1/sysadmin/companies/${company.id}`);
+            alert("Empresa excluída com sucesso.");
+            fetchCompanies();
+        } catch (error) {
+            console.error("Failed to delete company", error);
+            alert("Erro ao excluir empresa: " + (error.response?.data?.detail || error.message));
         }
     };
 
@@ -119,6 +137,14 @@ export default function CompanyList() {
                                         className="text-gray-600 hover:text-gray-900 px-3 py-1 rounded hover:bg-gray-100 transition-colors text-xs"
                                     >
                                         Configs
+                                    </button>
+
+                                    <button
+                                        onClick={() => deleteCompany(company)}
+                                        className="text-red-400 hover:text-red-700 p-1 rounded hover:bg-red-50 transition-colors"
+                                        title="Excluir Empresa"
+                                    >
+                                        <TrashIcon className="w-5 h-5" />
                                     </button>
                                 </td>
                             </tr>

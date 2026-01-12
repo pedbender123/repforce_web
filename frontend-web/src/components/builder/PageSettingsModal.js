@@ -1,51 +1,22 @@
 import React, { useState, useEffect } from 'react';
 import apiClient from '../../api/apiClient';
 
-const PageSettingsModal = ({ isOpen, onClose, pageId, onUpdate }) => {
+import { Plus, Trash2 } from 'lucide-react';
+
+const PageSettingsModal = ({ isOpen, onClose, page, onUpdate }) => {
     const [name, setName] = useState('');
-    // specific config fields
-    const [permanentFilters, setPermanentFilters] = useState('{}');
-    const [loading, setLoading] = useState(false);
-    const [pageData, setPageData] = useState(null);
-
-    useEffect(() => {
-        if (isOpen && pageId) {
-            fetchPageDetails();
-        }
-    }, [isOpen, pageId]);
-
-    const fetchPageDetails = async () => {
-        try {
-            // We need to find the page or fetch it direct.
-            // There is no direct GET /pages/{id} in standard routes usually, we get it from navigation structure.
-            // But we can try to GET from navigation structure or just rely on what we have?
-            // Actually, backend might have `get_all_pages` or we iterate.
-            // Let's assume we need to fetch the hierarchy or just use a helper if available.
-            // Update: We can use the GenericListPage fetch logic? No.
-            // Let's just PUT with what we know, but we need existing layout_config to not lose columns.
-            // Better: Fetch the layout config first? 
-            // The `api/builder/navigation` returns everything. Let's fetch that?
-            // Or assume the parent component passed the `page` object?
-            // Let's make the parent pass the `page` object to avoid complex fetching here.
-        } catch (error) {
-            console.error(error);
-        }
-    };
-
-    // NOTE: We change the prop to `page` instead of `pageId` for simplicity in MVP
-};
-
-// Re-writing component with `page` prop
-const PageSettingsModalReal = ({ isOpen, onClose, page, onUpdate }) => {
-    const [name, setName] = useState('');
-    const [permanentFilters, setPermanentFilters] = useState('{}');
+    const [filters, setFilters] = useState([]); // Array of { key: '', value: '' }
     const [loading, setLoading] = useState(false);
 
     useEffect(() => {
         if (isOpen && page) {
             setName(page.name);
-            const filters = page.layout_config?.permanent_filters || {};
-            setPermanentFilters(JSON.stringify(filters, null, 2));
+
+            
+            // Convert Object to Array for UI
+            const pf = page.layout_config?.permanent_filters || {};
+            const filterArray = Object.entries(pf).map(([k, v]) => ({ key: k, value: v }));
+            setFilters(filterArray);
         }
     }, [isOpen, page]);
 
@@ -54,25 +25,15 @@ const PageSettingsModalReal = ({ isOpen, onClose, page, onUpdate }) => {
     const handleSave = async () => {
         setLoading(true);
         try {
-            let parsedFilters = {};
-            try {
-                parsedFilters = JSON.parse(permanentFilters);
-            } catch (e) {
-                alert("JSON de filtros inválido.");
-                setLoading(false);
-                return;
-            }
+            // Convert Array back to Object
+            const parsedFilters = filters.reduce((acc, curr) => {
+                if (curr.key && curr.value) acc[curr.key] = curr.value;
+                return acc;
+            }, {});
 
-            // We need to preserve other layout_config keys (like columns)
-            // But `page` prop might be stale if we just edited columns in another tab.
-            // Ideally we re-fetch. But for now let's trust `page` or doing a shallow merge on backend?
-            // The backend `update_page` likely replaces `layout_config`.
-            // So we should ideally merge client side with specific knowledge or server side.
-            // Let's merge with `page.layout_config`.
-            
             const newLayoutConfig = {
                 ...(page.layout_config || {}),
-                permanent_filters: parsedFilters
+                permanent_filters: parsedFilters,
             };
 
             await apiClient.put(`/api/builder/navigation/pages/${page.id}`, {
@@ -89,42 +50,124 @@ const PageSettingsModalReal = ({ isOpen, onClose, page, onUpdate }) => {
         }
     };
 
+    const handleDelete = async () => {
+        if (!window.confirm("ATENÇÃO: Tem certeza que deseja excluir esta página? Esta ação não pode ser desfeita.")) return;
+        
+        setLoading(true);
+        try {
+            await apiClient.delete(`/api/builder/navigation/pages/${page.id}`);
+            if (onClose) onClose();
+            if (onUpdate) onUpdate({ deleted: true });
+        } catch (error) {
+            alert("Erro ao excluir página: " + (error.response?.data?.detail || error.message));
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const addFilter = () => {
+        setFilters([...filters, { key: '', value: '' }]);
+    };
+
+    const removeFilter = (index) => {
+        const newFilters = [...filters];
+        newFilters.splice(index, 1);
+        setFilters(newFilters);
+    };
+
+    const updateFilter = (index, field, val) => {
+        const newFilters = [...filters];
+        newFilters[index][field] = val;
+        setFilters(newFilters);
+    };
+
+    const isRecordPage = ['ficha_simples', 'form', 'form_page'].includes(page?.type);
+
     return (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 w-[500px] animate-in fade-in zoom-in duration-200">
-                <h3 className="text-lg font-bold mb-4 dark:text-white">Configurar Página: {page?.name}</h3>
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 w-[800px] h-[80vh] flex flex-col animate-in fade-in zoom-in duration-200">
+                <div className="flex-none mb-4">
+                    <h3 className="text-lg font-bold dark:text-white">Configurar Página: {page?.name} ({page?.type})</h3>
+                </div>
                 
-                <div className="space-y-4">
-                    <div>
-                        <label className="block text-xs font-medium text-gray-500 mb-1">Nome</label>
-                        <input
-                            type="text"
-                            className="w-full p-2 border border-gray-300 dark:border-gray-700 rounded bg-transparent dark:text-white"
-                            value={name}
-                            onChange={(e) => setName(e.target.value)}
-                        />
+                <div className="flex-1 overflow-y-auto pr-2 space-y-6">
+                    {/* General Settings */}
+                    <div className="p-4 border border-gray-100 dark:border-gray-700 rounded bg-gray-50/50 dark:bg-gray-800/50">
+                        <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Geral</label>
+                        <div>
+                            <label className="block text-xs font-medium text-gray-500 mb-1">Nome da Página</label>
+                            <input
+                                type="text"
+                                className="w-full p-2 border border-gray-300 dark:border-gray-700 rounded bg-white dark:bg-gray-900 dark:text-white"
+                                value={name}
+                                onChange={(e) => setName(e.target.value)}
+                            />
+                        </div>
                     </div>
+
+
                     
-                    <div>
-                        <label className="block text-xs font-medium text-gray-500 mb-1">Filtros Permanentes (JSON)</label>
-                        <p className="text-xs text-gray-400 mb-2">Ex: <code>{`{"status": "ativo", "created_by": "{me}"}`}</code></p>
-                        <textarea
-                            className="w-full p-2 border border-gray-300 dark:border-gray-700 rounded bg-transparent dark:text-white font-mono text-xs h-32"
-                            value={permanentFilters}
-                            onChange={(e) => setPermanentFilters(e.target.value)}
-                        />
-                    </div>
+                    {/* Filters - ONLY FOR Lists and Dashboards (NOT Record Pages) */}
+                    {!isRecordPage && (
+                        <div className="p-4 border border-gray-100 dark:border-gray-700 rounded bg-gray-50/50 dark:bg-gray-800/50">
+                            <div className="flex justify-between items-center mb-2">
+                                <label className="block text-xs font-bold text-gray-500 uppercase">Filtros Permanentes</label>
+                                <button onClick={addFilter} className="text-xs flex items-center gap-1 text-blue-600 hover:text-blue-800">
+                                    <Plus size={12} /> Adicionar
+                                </button>
+                            </div>
+                            
+                            {filters.length === 0 ? (
+                                <p className="text-xs text-gray-400 italic">Nenhum filtro configurado.</p>
+                            ) : (
+                                <div className="space-y-2">
+                                    {filters.map((f, idx) => (
+                                        <div key={idx} className="flex gap-2 items-center">
+                                            <input 
+                                                className="w-1/3 text-xs p-2 border rounded dark:bg-gray-900 dark:text-white"
+                                                placeholder="Campo (ex: status)"
+                                                value={f.key}
+                                                onChange={e => updateFilter(idx, 'key', e.target.value)}
+                                            />
+                                            <input 
+                                                className="flex-1 text-xs p-2 border rounded dark:bg-gray-900 dark:text-white"
+                                                placeholder="Valor ou Fórmula (ex: {me}, ativo)"
+                                                value={f.value}
+                                                onChange={e => updateFilter(idx, 'value', e.target.value)}
+                                            />
+                                            <button onClick={() => removeFilter(idx)} className="text-red-500 hover:text-red-700 p-1">
+                                                <Trash2 size={14} />
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                            <p className="text-[10px] text-gray-400 mt-2">
+                                Use chaves para variáveis de contexto: <code>{`{me}`}</code> para ID do usuário atual.
+                            </p>
+                        </div>
+                    )}
                 </div>
 
-                <div className="mt-6 flex justify-end gap-2">
-                    <button onClick={onClose} className="px-4 py-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded">Cancelar</button>
-                    <button onClick={handleSave} disabled={loading} className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50">
-                        {loading ? 'Salvando...' : 'Salvar Alterações'}
+                <div className="flex-none mt-6 flex justify-between pt-4 border-t border-gray-200 dark:border-gray-700">
+                     {/* Botão Deletar (Esquerda) */}
+                    <button 
+                        onClick={handleDelete} 
+                        className="px-4 py-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded border border-transparent hover:border-red-200 transition-colors text-sm font-medium"
+                    >
+                        Deletar Página
                     </button>
+
+                    <div className="flex gap-2">
+                        <button onClick={onClose} className="px-4 py-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded">Cancelar</button>
+                        <button onClick={handleSave} disabled={loading} className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50">
+                            {loading ? 'Salvando...' : 'Salvar Alterações'}
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
     );
 };
 
-export default PageSettingsModalReal;
+export default PageSettingsModal;

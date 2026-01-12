@@ -12,6 +12,8 @@ router = APIRouter()
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/v1/auth/login")
 
+from app.system.services.schema_manager import SchemaManager # Import SchemaManager
+
 def get_current_superuser(token: str = Depends(oauth2_scheme), db: Session = Depends(database.get_db)):
     payload = security.decode_access_token(token)
     if not payload:
@@ -207,3 +209,35 @@ def update_company(
     db.commit()
     db.refresh(tenant)
     return tenant
+
+@router.delete("/{company_id}")
+def delete_company(
+    company_id: str,
+    db: Session = Depends(database.get_db),
+    user=Depends(get_current_superuser)
+):
+    # 1. Fetch Tenant
+    tenant = db.query(models_system.Tenant).filter(models_system.Tenant.id == company_id).first()
+    if not tenant:
+        raise HTTPException(status_code=404, detail="Company not found")
+
+    # 2. Determine Schema Name
+    safe_slug = tenant.slug.replace("-", "_")
+    schema_name = f"tenant_{safe_slug}"
+
+    try:
+        # 3. Drop Schema (Destructive!)
+        print(f"Dropping schema {schema_name} for tenant {tenant.slug}...")
+        SchemaManager.drop_schema(schema_name)
+
+        # 4. Delete Tenant Record
+        # This should cascade delete MetaEntity, MetaPage, etc if FKs are correct.
+        # Ideally, we should check if metadata is deleted.
+        db.delete(tenant)
+        db.commit()
+        return {"message": f"Tenant {tenant.slug} completely removed."}
+
+    except Exception as e:
+        db.rollback()
+        print(f"Error deleting tenant: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to delete tenant: {str(e)}")

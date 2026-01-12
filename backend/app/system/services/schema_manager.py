@@ -23,6 +23,7 @@ class SchemaManager:
     def create_table(cls, tenant_schema: str, table_slug: str):
         table_name = f'"{tenant_schema}"."{table_slug}"'
         ddl = f"""
+        CREATE SCHEMA IF NOT EXISTS "{tenant_schema}";
         CREATE TABLE IF NOT EXISTS {table_name} (
             id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
             tenant_id INTEGER, 
@@ -88,6 +89,14 @@ class SchemaManager:
         table_name = f'"{tenant_schema}"."{table_slug}"'
         ddl = f'ALTER TABLE {table_name} DROP COLUMN IF EXISTS "{column_name}";'
         
+        with engine.connect() as conn:
+            conn.execute(text(ddl))
+            conn.commit()
+
+    @classmethod
+    def drop_schema(cls, tenant_schema: str):
+        """Drops the entire schema and all its objects."""
+        ddl = f'DROP SCHEMA IF EXISTS "{tenant_schema}" CASCADE;'
         with engine.connect() as conn:
             conn.execute(text(ddl))
             conn.commit()
