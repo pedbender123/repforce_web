@@ -70,7 +70,7 @@ const DynamicSidebar = ({ isCollapsed, groups = [], onRefresh }) => {
     };
 
     return (
-        <nav className="flex-1 overflow-y-auto py-4 px-2 space-y-4">
+        <nav className="flex-1 overflow-y-auto py-2 px-1 space-y-2">
             {/* Dynamic Groups */}
             {groups.map(group => {
                 // Determine if this group is active (either directly selected or one of its pages is viewed)
@@ -81,7 +81,7 @@ const DynamicSidebar = ({ isCollapsed, groups = [], onRefresh }) => {
                     <div
                         key={group.id}
                         onClick={() => navigate(`/app/group/${group.id}`)}
-                        className={`w-full flex items-center justify-between px-3 py-2 text-sm font-medium rounded-lg transition-colors duration-150 mb-1 cursor-pointer group/item
+                        className={`w-full flex items-center justify-between px-2 py-1.5 text-sm font-medium rounded-lg transition-colors duration-150 mb-0.5 cursor-pointer group/item
                             ${isGroupActive
                                 ? 'bg-blue-600 text-white shadow-md'
                                 : 'text-gray-400 hover:bg-gray-800 hover:text-white'

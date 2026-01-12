@@ -118,9 +118,29 @@ const NavigationGroupModal = ({ isOpen, onClose, onGroupCreated, groupToEdit }) 
                     </div>
                 </div>
 
-                <div className="mt-6 flex justify-end gap-2">
-                    <button onClick={onClose} className="px-4 py-2 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded">Cancelar</button>
-                    <button onClick={handleSave} className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">{groupToEdit ? 'Salvar' : 'Criar'}</button>
+                <div className="mt-6 flex justify-between pt-4 border-t border-gray-200 dark:border-gray-700">
+                    {groupToEdit && (
+                         <button 
+                            onClick={async () => {
+                                if (!window.confirm("ATENÇÃO: Tem certeza que deseja excluir ESTE GRUPO e TODAS AS PÁGINAS contidas nele?")) return;
+                                try {
+                                    await apiClient.delete(`/api/builder/navigation/groups/${groupToEdit.id}`);
+                                    onClose();
+                                    if (onGroupCreated) onGroupCreated();
+                                } catch (error) {
+                                    alert("Erro ao excluir grupo: " + (error.response?.data?.detail || error.message));
+                                }
+                            }}
+                            className="px-4 py-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded border border-transparent hover:border-red-200 transition-colors text-sm font-medium"
+                        >
+                            Deletar Grupo
+                        </button>
+                    )}
+
+                    <div className="flex gap-2 ml-auto">
+                        <button onClick={onClose} className="px-4 py-2 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded">Cancelar</button>
+                        <button onClick={handleSave} className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">{groupToEdit ? 'Salvar' : 'Criar'}</button>
+                    </div>
                 </div>
             </div>
         </div>

@@ -5,9 +5,6 @@ import os
 from .core.middleware import TenantMiddleware
 from app.shared import database, security, schemas
 from app.system import models as models_system
-# --- SYSTEM ROUTERS (OS Core) ---
-from app.system.api import auth as v1_auth
-from app.system.api.sysadmin import companies, tasks as v1_sysadmin_tasks
 
 # --- ENGINE ROUTERS (CRM Motor) ---
 from app.engine.metadata import models as models_meta # REFAC: Metadata Engine Models
@@ -21,7 +18,7 @@ from app.engine.services.seeder import seed_tenant_defaults
 
 # --- SYSTEM ROUTERS (OS Core) ---
 from app.system.api import auth as v1_auth
-from app.system.api.sysadmin import companies, tasks as v1_sysadmin_tasks
+from app.system.api.sysadmin import companies
 from app.system.api import tasks_v2 # Tasks V2 IMPORT
 
 # --- ENGINE ROUTERS (CRM Motor) ---
@@ -136,5 +133,4 @@ app.include_router(data.router, prefix="/api/engine", tags=["Universal Data"])
 app.include_router(actions.router, prefix="/api/engine", tags=["Engine Actions"])
 app.include_router(analytics.router, prefix="/api/engine/analytics", tags=["Engine Analytics"])
 app.include_router(companies.router, prefix="/v1/sysadmin/companies", tags=["SysAdmin Companies"])
-app.include_router(v1_sysadmin_tasks.router, prefix="/v1/sysadmin/tasks", tags=["SysAdmin Tasks"])
 app.include_router(diagnostics.router, prefix="/sysadmin/diagnostics", tags=["SysAdmin Diagnostics"])

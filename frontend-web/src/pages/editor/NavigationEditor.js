@@ -3,7 +3,7 @@ import apiClient from '../../api/apiClient';
 import NavigationGroupModal from '../../components/builder/NavigationGroupModal';
 import NavigationPageModal from '../../components/builder/NavigationPageModal';
 import PageSettingsModal from '../../components/builder/PageSettingsModal';
-import { Plus, Layout, Folder, FileText, Settings } from 'lucide-react';
+import { Plus, Layout, Folder, FileText, Settings, Trash2 } from 'lucide-react';
 
 const NavigationEditor = () => {
     const [groups, setGroups] = useState([]);
@@ -26,11 +26,32 @@ const NavigationEditor = () => {
             if (selectedGroup) {
                 const updated = data.find(g => g.id === selectedGroup.id);
                 if (updated) setSelectedGroup(updated);
+                else setSelectedGroup(null); // Deselect if deleted
             }
             // Trigger global refresh
             window.dispatchEvent(new Event('navigation-updated'));
         } catch (error) {
             console.error("Erro ao buscar navegação:", error);
+        }
+    };
+
+    const deleteGroup = async (group) => {
+        if (!window.confirm(`Tem certeza que deseja excluir o grupo "${group.name}" e todas as suas páginas?`)) return;
+        try {
+            await apiClient.delete(`/api/builder/navigation/groups/${group.id}`);
+            fetchGroups();
+        } catch (error) {
+            alert("Erro ao excluir grupo: " + (error.response?.data?.detail || error.message));
+        }
+    };
+
+    const deletePage = async (page) => {
+        if (!window.confirm(`Tem certeza que deseja excluir a página "${page.name}"?`)) return;
+        try {
+            await apiClient.delete(`/api/builder/navigation/pages/${page.id}`);
+            fetchGroups();
+        } catch (error) {
+            alert("Erro ao excluir página: " + (error.response?.data?.detail || error.message));
         }
     };
 
@@ -58,8 +79,16 @@ const NavigationEditor = () => {
                                 }`}
                         >
                             <Folder size={16} className="mr-3 opacity-70" />
-                            <span className="truncate">{group.name}</span>
-                            <span className="ml-auto text-xs opacity-50 bg-gray-200 dark:bg-gray-700 px-1.5 rounded-full">{group.pages?.length || 0}</span>
+                            <span className="truncate flex-1 text-left">{group.name}</span>
+                            <div className="flex items-center gap-1">
+                                <span className="text-xs opacity-50 bg-gray-200 dark:bg-gray-700 px-1.5 rounded-full">{group.pages?.length || 0}</span>
+                                <div
+                                    onClick={(e) => { e.stopPropagation(); deleteGroup(group); }}
+                                    className="p-1 hover:bg-red-100 dark:hover:bg-red-900/40 text-gray-400 hover:text-red-500 rounded transition-colors"
+                                >
+                                    <Trash2 size={12} />
+                                </div>
+                            </div>
                         </button>
                     ))}
                 </div>
@@ -101,8 +130,16 @@ const NavigationEditor = () => {
                                                     <button 
                                                         onClick={(e) => { e.stopPropagation(); setEditingPage(page); }}
                                                         className="p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded text-gray-400 hover:text-gray-600"
+                                                        title="Configurações"
                                                     >
                                                         <Settings size={14} />
+                                                    </button>
+                                                    <button 
+                                                        onClick={(e) => { e.stopPropagation(); deletePage(page); }}
+                                                        className="p-1 hover:bg-red-100 dark:hover:bg-red-900/30 rounded text-gray-400 hover:text-red-500"
+                                                        title="Excluir Página"
+                                                    >
+                                                        <Trash2 size={14} />
                                                     </button>
                                                 </div>
                                            </div>

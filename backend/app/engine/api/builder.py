@@ -5,6 +5,7 @@ from app.engine.metadata import models as models_meta, schemas as schemas_meta
 from app.system.services.schema_manager import SchemaManager
 from typing import List, Optional
 import re
+from app.engine.formulas import FormulaEngine
 
 router = APIRouter()
 
@@ -159,19 +160,27 @@ def create_field(
         label=payload.label,
         field_type=payload.field_type,
         is_required=payload.is_required,
-        options=payload.options
+        options=payload.options,
+        formula=payload.formula,
+        is_virtual=payload.is_virtual or False
     )
     db.add(new_field)
     
-    # 2. Sync DDL
-    try:
-        SchemaManager.add_column(schema, entity.slug, payload.name, payload.field_type, payload.is_required)
+    # 2. Sync DDL (Only if NOT virtual)
+    if not new_field.is_virtual:
+        try:
+            SchemaManager.add_column(schema, entity.slug, payload.name, payload.field_type, payload.is_required)
+            db.commit()
+            db.refresh(new_field)
+            return new_field
+        except Exception as e:
+            db.rollback()
+            raise HTTPException(status_code=500, detail=f"Erro ao criar coluna fisica: {str(e)}")
+    else:
+        # Virtual field only needs metadata
         db.commit()
         db.refresh(new_field)
         return new_field
-    except Exception as e:
-        db.rollback()
-        raise HTTPException(status_code=500, detail=f"Erro ao criar coluna fisica: {str(e)}")
 
 @router.patch("/entities/{entity_id}/fields/{field_id}", response_model=schemas_meta.MetaFieldResponse)
 def update_field(
@@ -192,7 +201,8 @@ def update_field(
     
     entity = db.query(models_meta.MetaEntity).filter(models_meta.MetaEntity.id == entity_id).first()
     
-    # 1. Handle Rename
+    # 1. Handle Rename (Only if NOT virtual - virtuals have no physical col to rename)
+    # Actually, we can rename virtuals metadata freely. 
     if payload.name and payload.name != field.name:
         validate_slug(payload.name)
         # Check duplicate
@@ -203,7 +213,8 @@ def update_field(
             raise HTTPException(status_code=400, detail="Campo ja existe.")
             
         try:
-            SchemaManager.rename_column(schema, entity.slug, field.name, payload.name)
+            if not field.is_virtual:
+                SchemaManager.rename_column(schema, entity.slug, field.name, payload.name)
             field.name = payload.name
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"Erro ao renomear coluna fisica: {str(e)}")
@@ -211,6 +222,10 @@ def update_field(
     # 2. Update Label
     if payload.label:
         field.label = payload.label
+    
+    # 3. Update Formula
+    if payload.formula is not None:
+        field.formula = payload.formula
         
     db.commit()
     db.refresh(field)
@@ -350,6 +365,46 @@ def update_nav_page(
     db.refresh(page)
     return page
 
+@router.delete("/navigation/groups/{group_id}")
+def delete_nav_group(
+    request: Request,
+    group_id: str,
+    db: Session = Depends(database.get_db)
+):
+    tenant_id = request.state.tenant_id
+    group = db.query(models_meta.MetaNavigationGroup).filter(
+        models_meta.MetaNavigationGroup.id == group_id,
+        models_meta.MetaNavigationGroup.tenant_id == tenant_id
+    ).first()
+
+    if not group:
+        raise HTTPException(status_code=404, detail="Grupo nao encontrado.")
+
+    db.delete(group)
+    db.commit()
+    return {"ok": True}
+
+@router.delete("/navigation/pages/{page_id}")
+def delete_nav_page(
+    request: Request,
+    page_id: str,
+    db: Session = Depends(database.get_db)
+):
+    tenant_id = request.state.tenant_id
+    page = db.query(models_meta.MetaPage)\
+        .join(models_meta.MetaNavigationGroup)\
+        .filter(
+            models_meta.MetaPage.id == page_id,
+            models_meta.MetaNavigationGroup.tenant_id == tenant_id
+        ).first()
+
+    if not page:
+        raise HTTPException(status_code=404, detail="Pagina nao encontrada.")
+
+    db.delete(page)
+    db.commit()
+    return {"ok": True}
+
 # --- Endpoints: Workflows ---
 
 @router.get("/workflows", response_model=List[schemas_meta.MetaWorkflowResponse])
@@ -463,3 +518,57 @@ def delete_action(
     db.delete(action)
     db.commit()
     return {"ok": True}
+@router.post("/formulas/preview")
+def preview_formula(
+    request: Request,
+    payload: dict, # {formula, entity_id, context_sample}
+    db: Session = Depends(database.get_db)
+):
+    tenant_id = request.state.tenant_id
+    formula = payload.get("formula")
+    entity_id = payload.get("entity_id")
+    context = payload.get("context", {}) # Dados de exemplo
+    
+    if not formula:
+        return {"result": None}
+        
+    try:
+        engine = FormulaEngine(db, tenant_id)
+        # Tenta pegar um contexto real se o sample estiver vazio
+        if not context and entity_id:
+            from sqlalchemy import text
+            entity = db.query(models_meta.MetaEntity).filter(models_meta.MetaEntity.id == entity_id).first()
+            if entity:
+                row = db.execute(text(f"SELECT data FROM entity_records WHERE entity_id = :eid LIMIT 1"), {"eid": entity.id}).fetchone()
+                if row:
+                    context = row[0]
+
+        result = engine.evaluate(formula, context, current_entity_id=entity_id)
+        return {"result": str(result) if result is not None else None, "success": True}
+    except Exception as e:
+        return {"result": str(e), "success": False}
+
+@router.get("/formulas/functions")
+def list_available_functions():
+    # Lista estática das funções suportadas no motor baseado no engine/formulas.py
+    return [
+        {"name": "IF", "syntax": "IF(cond, true, false)", "category": "Logic"},
+        {"name": "IFS", "syntax": "IFS(cond1, val1, cond2, val2...)", "category": "Logic"},
+        {"name": "AND", "syntax": "AND(e1, e2...)", "category": "Logic"},
+        {"name": "OR", "syntax": "OR(e1, e2...)", "category": "Logic"},
+        {"name": "NOT", "syntax": "NOT(val)", "category": "Logic"},
+        {"name": "ISBLANK", "syntax": "ISBLANK(val)", "category": "Logic"},
+        {"name": "ISNOTBLANK", "syntax": "ISNOTBLANK(val)", "category": "Logic"},
+        {"name": "LOOKUP", "syntax": "LOOKUP(val, table, col, return)", "category": "Data"},
+        {"name": "SELECT", "syntax": "SELECT(table, col, [filter])", "category": "Data"},
+        {"name": "FILTER", "syntax": "FILTER(table, [filter])", "category": "Data"},
+        {"name": "ANY", "syntax": "ANY(list)", "category": "List"},
+        {"name": "IN", "syntax": "IN(val, list)", "category": "List"},
+        {"name": "COUNT", "syntax": "COUNT(list)", "category": "Math"},
+        {"name": "SUM", "syntax": "SUM(list)", "category": "Math"},
+        {"name": "AVERAGE", "syntax": "AVERAGE(list)", "category": "Math"},
+        {"name": "TODAY", "syntax": "TODAY()", "category": "Date"},
+        {"name": "NOW", "syntax": "NOW()", "category": "Date"},
+        {"name": "CONCATENATE", "syntax": "CONCATENATE(a, b...)", "category": "Text"},
+        {"name": "LATLONG", "syntax": "LATLONG(address)", "category": "Geo"}
+    ]

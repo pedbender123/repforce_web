@@ -4,6 +4,7 @@ import apiClient from '../../api/apiClient';
 import { useBuilder } from '../../context/BuilderContext';
 import { Settings, RefreshCw, ChevronDown, Check, Plus, Loader2, Trash } from 'lucide-react';
 import GenericFormModal from './GenericFormModal';
+import VirtualInfoButton from '../VirtualInfoButton';
 import useActionExecutor from '../../hooks/useActionExecutor';
 
 const MAX_VISIBLE_COLUMNS = 8;
@@ -424,11 +425,22 @@ const GenericListPage = ({ pageId, entityId, entitySlug, entityName, layoutConfi
                                     className={`hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors border-b border-gray-50 dark:border-gray-800 ${listAction ? 'cursor-pointer' : ''}`}
                                     onClick={() => listAction && executeAction(listAction, row)}
                                 >
-                                    {visibleColumns.map(colName => (
-                                        <td key={colName} className="px-4 py-3 text-gray-700 dark:text-gray-300 whitespace-nowrap">
-                                            {String(row[colName] !== undefined ? row[colName] : '-')}
-                                        </td>
-                                    ))}
+                                    {visibleColumns.map(colName => {
+                                        const field = fields.find(f => f.name === colName);
+                                        const value = row[colName];
+                                        // Check if virtual and text/longtext
+                                        const isVirtualInfo = field?.is_virtual && (field?.type === 'text' || field?.field_type === 'text');
+
+                                        return (
+                                            <td key={colName} className="px-4 py-3 text-gray-700 dark:text-gray-300 whitespace-nowrap">
+                                                {isVirtualInfo ? (
+                                                     <VirtualInfoButton value={value} label={field?.label || colName} />
+                                                ) : (
+                                                    String(value !== undefined && value !== null ? value : '-')
+                                                )}
+                                            </td>
+                                        );
+                                    })}
                                     {visibleColumns.length === 0 && (
                                         <td className="px-4 py-3 text-gray-400 italic">
                                             Selecione colunas para visualizar dados.
@@ -440,6 +452,16 @@ const GenericListPage = ({ pageId, entityId, entitySlug, entityName, layoutConfi
                     </tbody>
                 </table>
             </div>
+            
+            {/* UX Hint: Missing Action */}
+            {isEditMode && !listAction && (
+                <div className="bg-yellow-50 border-t border-yellow-100 p-2 text-xs text-yellow-700 flex justify-center">
+                    <span>
+                        ⚠️ <b>Configuração Necessária:</b> O clique na linha está desativado. 
+                        Crie uma Ação do tipo <b>LIST_CLICK</b> para navegar para a Ficha 360 desta entidade.
+                    </span>
+                </div>
+            )}
 
             {/* Create Modal */}
             <GenericFormModal

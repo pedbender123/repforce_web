@@ -80,8 +80,8 @@ class Tenant(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     
     # Relationships
-    memberships = relationship("Membership", back_populates="tenant")
-    invites = relationship("Invite", back_populates="tenant")
+    memberships = relationship("Membership", back_populates="tenant", cascade="all, delete-orphan", passive_deletes=True)
+    invites = relationship("Invite", back_populates="tenant", cascade="all, delete-orphan", passive_deletes=True)
 
 # 3. Memberships (User <-> Tenant)
 class Membership(Base):
@@ -90,9 +90,12 @@ class Membership(Base):
     
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id = Column(UUID(as_uuid=True), ForeignKey("public.global_users.id"))
-    tenant_id = Column(UUID(as_uuid=True), ForeignKey("public.tenants.id"))
-    role = Column(String, default="user")
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("public.tenants.id", ondelete="CASCADE"))
+    role = Column(String, default="user") # Legacy role string, keep for backward compat or migrate later
     
+    cargo_id = Column(UUID(as_uuid=True), ForeignKey("public.cargos.id"), nullable=True)
+    cargo = relationship("Cargo", back_populates="memberships")
+
     user = relationship("GlobalUser", back_populates="memberships")
     tenant = relationship("Tenant", back_populates="memberships")
 
@@ -116,7 +119,7 @@ class Role(Base):
     description = Column(String, nullable=True)
     access_level = Column(Enum(AccessLevel), default=AccessLevel.OWN)
     
-    tenant_id = Column(UUID(as_uuid=True), ForeignKey("public.tenants.id"))
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("public.tenants.id", ondelete="CASCADE"))
     tenant = relationship("Tenant")
     
     areas = relationship("Area", secondary=role_area_association, back_populates="roles")
@@ -130,7 +133,7 @@ class Area(Base):
     icon = Column(String, nullable=True)
     pages_json = Column(JSONB, default=[]) 
     
-    tenant_id = Column(UUID(as_uuid=True), ForeignKey("public.tenants.id"))
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("public.tenants.id", ondelete="CASCADE"))
     tenant = relationship("Tenant")
     
     roles = relationship("Role", secondary=role_area_association, back_populates="areas")
@@ -143,7 +146,7 @@ class Invite(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     code = Column(String, unique=True, index=True)
     email = Column(String) # For sending the invite
-    tenant_id = Column(UUID(as_uuid=True), ForeignKey("public.tenants.id"))
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("public.tenants.id", ondelete="CASCADE"))
     role = Column(String, default="user")
     expires_at = Column(DateTime)
     
@@ -157,7 +160,7 @@ class ApiKey(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     key = Column(String, unique=True, index=True)
     name = Column(String) 
-    tenant_id = Column(UUID(as_uuid=True), ForeignKey("public.tenants.id"))
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("public.tenants.id", ondelete="CASCADE"))
     is_active = Column(Boolean, default=True)
     scopes = Column(Text, default="crm_full")
     
@@ -174,6 +177,10 @@ class ShadowBackup(Base):
     data = Column(JSONB)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
+# ... (existing imports)
+
+# ... (inside models.py)
+
 # 8. Preferences
 class UserGridPreference(Base):
     __tablename__ = "user_grid_preferences"
@@ -183,3 +190,23 @@ class UserGridPreference(Base):
     user_id = Column(UUID(as_uuid=True), ForeignKey("public.global_users.id"))
     grid_id = Column(String, index=True)
     columns_json = Column(JSONB, default=[])
+
+# 9. Cargos (Job Titles)
+from sqlalchemy.orm import backref
+class Cargo(Base):
+    __tablename__ = "cargos"
+    __table_args__ = {"schema": "public"}
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("public.tenants.id", ondelete="CASCADE"), nullable=False)
+    
+    name = Column(String, nullable=False)
+    description = Column(String, nullable=True)
+    
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    
+    # Relationships
+    tenant = relationship("Tenant", backref=backref("cargos", cascade="all, delete-orphan", passive_deletes=True))
+    memberships = relationship("Membership", back_populates="cargo")
+
+

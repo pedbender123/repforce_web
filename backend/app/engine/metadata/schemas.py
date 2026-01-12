@@ -9,6 +9,8 @@ class MetaFieldBase(BaseModel):
     field_type: str
     is_required: bool = False
     options: Optional[Any] = None
+    formula: Optional[str] = None
+    is_virtual: bool = False
 
 class MetaFieldCreate(MetaFieldBase):
     pass
@@ -18,6 +20,8 @@ class MetaFieldUpdate(BaseModel):
     # We allow renaming the column physically, so we accept 'name' but treat is as rename
     name: Optional[str] = None
     # Changing types is dangerous, but we might allow it later. For now, just label/name.
+    formula: Optional[str] = None
+    is_virtual: Optional[bool] = None
 
 class MetaFieldResponse(MetaFieldBase):
     id: UUID

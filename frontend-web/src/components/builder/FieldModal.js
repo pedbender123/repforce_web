@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import apiClient from '../../api/apiClient';
-import { Plus, Trash } from 'lucide-react';
+import { Plus, Trash, Calculator } from 'lucide-react';
+import FormulaEditorModal from './FormulaEditorModal';
 
 const FieldModal = ({ isOpen, onClose, entity, onFieldCreated, initialData }) => {
     const [fieldData, setFieldData] = useState({
@@ -12,6 +13,8 @@ const FieldModal = ({ isOpen, onClose, entity, onFieldCreated, initialData }) =>
     });
     const [entities, setEntities] = useState([]);
     const [newOption, setNewOption] = useState('');
+    const [isFormulaEditorOpen, setIsFormulaEditorOpen] = useState(false);
+    const [entityFields, setEntityFields] = useState([]);
 
     useEffect(() => {
         if (isOpen) {
@@ -40,6 +43,22 @@ const FieldModal = ({ isOpen, onClose, entity, onFieldCreated, initialData }) =>
             console.error("Failed to load entities", error);
         }
     };
+
+    const fetchFields = async () => {
+        if (!entity?.id) return;
+        try {
+            const { data } = await apiClient.get(`/api/builder/entities/${entity.id}/fields`);
+            setEntityFields(data);
+        } catch (error) {
+            console.error("Failed to load fields");
+        }
+    };
+
+    useEffect(() => {
+        if (isOpen && entity?.id) {
+            fetchFields();
+        }
+    }, [isOpen, entity]);
 
     if (!isOpen) return null;
 
@@ -186,12 +205,65 @@ const FieldModal = ({ isOpen, onClose, entity, onFieldCreated, initialData }) =>
                     <div className="flex items-center gap-2 pt-2">
                         <input
                             type="checkbox"
+                            id="virtual"
+                            checked={fieldData.is_virtual}
+                            onChange={(e) => setFieldData({ ...fieldData, is_virtual: e.target.checked, is_required: false })}
+                            disabled={!!initialData} // Changing physical to virtual is complex
+                        />
+                        <label htmlFor="virtual" className="text-sm dark:text-gray-300 font-medium text-purple-400">
+                            Coluna Virtual (Calculada)
+                        </label>
+                    </div>
+
+                    {(fieldData.is_virtual || fieldData.formula) && (
+                        <div className="bg-purple-50 dark:bg-gray-800 p-3 rounded border border-purple-200 dark:border-purple-900 group/form">
+                            <div className="flex justify-between items-center mb-1">
+                                <label className="block text-xs font-bold text-purple-600 dark:text-purple-400">
+                                    Fórmula (AppSheet Syntax)
+                                </label>
+                                <button 
+                                    onClick={() => setIsFormulaEditorOpen(true)}
+                                    className="text-[10px] bg-purple-600 text-white px-2 py-0.5 rounded flex items-center gap-1 hover:bg-purple-700 transition-colors"
+                                >
+                                    <Calculator size={10} /> Editor Completo
+                                </button>
+                            </div>
+                            <div 
+                                onClick={() => setIsFormulaEditorOpen(true)}
+                                className="w-full p-2 border border-purple-300 dark:border-purple-700 rounded bg-white dark:bg-gray-900 dark:text-white font-mono text-xs cursor-text min-h-[40px] flex items-center"
+                            >
+                                {fieldData.formula ? (
+                                    <span className="truncate">{fieldData.formula}</span>
+                                ) : (
+                                    <span className="text-gray-400 italic">Nenhuma fórmula definida...</span>
+                                )}
+                            </div>
+                            <p className="text-[10px] text-gray-400 mt-1">
+                                {fieldData.is_virtual 
+                                    ? "Calculado em tempo de execução (Compute-on-Read)."
+                                    : "Calculado ao salvar (Snapshot)."}
+                            </p>
+                        </div>
+                    )}
+
+                    <FormulaEditorModal 
+                        isOpen={isFormulaEditorOpen}
+                        onClose={() => setIsFormulaEditorOpen(false)}
+                        formula={fieldData.formula}
+                        entityId={entity?.id}
+                        fields={entityFields}
+                        onSave={(newFormula) => setFieldData({ ...fieldData, formula: newFormula })}
+                    />
+
+                    <div className="flex items-center gap-2 pt-2">
+                        <input
+                            type="checkbox"
                             id="req"
                             checked={fieldData.is_required}
                             onChange={(e) => setFieldData({ ...fieldData, is_required: e.target.checked })}
-                            disabled={!!initialData} // Disable required change for now because SchemaManager add_column handles it, but update doesn't yet (ALTER COLUMN SET NOT NULL is complex without data check)
+                            disabled={!!initialData || fieldData.is_virtual} 
                         />
-                        <label htmlFor="req" className="text-sm dark:text-gray-300">Obrigatório?</label>
+                        <label htmlFor="req" className={`text-sm ${fieldData.is_virtual ? 'text-gray-400' : 'dark:text-gray-300'}`}>Obrigatório?</label>
                     </div>
                 </div>
 
