@@ -30,6 +30,8 @@ class CompanyCreate(BaseModel):
     admin_name: str
     admin_email: str
     admin_password: str
+    template_id: Optional[str] = None # UUID of the template model
+    is_blank: bool = False
 
 @router.get("")
 def list_companies(db: Session = Depends(database.get_db), user=Depends(get_current_superuser)):
@@ -101,69 +103,39 @@ def create_company(
             conn.execute(text(f"CREATE SCHEMA IF NOT EXISTS \"{schema_name}\""))
             conn.commit()
             
-            # --- SEEDING FROM TEMPLATE ---
-            # Instead of static models, we load the dynamic template
-            import json
+            # --- SEEDING LOGIC ---
+            from app.system.services.template_service import TemplateService
             import os
-            from app.engine.metadata import models as models_meta
-            from app.system.services.schema_manager import SchemaManager
+            import json
 
-            template_path = os.path.join(os.path.dirname(__file__), "../../../engine/templates/crm_v1.json")
-            if os.path.exists(template_path):
-                print(f"Seeding CRM Template from {template_path}...")
-                with open(template_path, 'r') as f:
-                    template_data = json.load(f)
-                
-                # We need to use the 'db' session for Metadata (MetaEntity/MetaField)
-                # and SchemaManager for physical tables.
-                
-                for entity_def in template_data.get("entities", []):
-                    # 1. Create MetaEntity
-                    new_entity = models_meta.MetaEntity(
-                        tenant_id=tenant_id,
-                        slug=entity_def["slug"],
-                        display_name=entity_def["display_name"],
-                        icon=entity_def.get("icon", "Database"),
-                        is_system=False # User can delete if they want
-                    )
-                    db.add(new_entity)
-                    db.commit()     # Commit to get ID
-                    db.refresh(new_entity)
-                    
-                    # 2. Physical Table
-                    SchemaManager.create_table(schema_name, new_entity.slug)
-                    
-                    # 3. Create Fields
-                    for field_def in entity_def.get("fields", []):
-                        new_field = models_meta.MetaField(
-                            entity_id=new_entity.id,
-                            name=field_def["name"],
-                            label=field_def["label"],
-                            field_type=field_def["type"],
-                            is_required=field_def.get("is_required", False),
-                            options=field_def.get("options", [])
-                        )
-                        db.add(new_field)
-                        # Physical Column
-                        SchemaManager.add_column(
-                            schema_name, 
-                            new_entity.slug, 
-                            field_def["name"], 
-                            field_def["type"], 
-                            field_def.get("is_required", False)
-                        )
-                    
-                    db.commit() # Commit fields
-                    
-                print("CRM Template Seeded Successfully.")
-            else:
-                print("Template file not found. Skipping seed.")
+            template_data = None
 
-            # Create any remaining static tables if needed (e.g. specialized system tables not in metadata)
-            # models_tenant.BaseCrm.metadata.create_all(bind=conn) # DISABLED in favor of dynamic
+            if not payload.is_blank:
+                if payload.template_id:
+                    # Fetch from DB
+                    print(f"Applying Custom Template ID: {payload.template_id}")
+                    db_template = db.query(models_system.TenantTemplate).filter(models_system.TenantTemplate.id == payload.template_id).first()
+                    if db_template:
+                        template_data = db_template.structure_json
+                    else:
+                        print("Template not found, falling back to blank.")
+                else:
+                    # Default File Template
+                    template_path = os.path.join(os.path.dirname(__file__), "../../../engine/templates/crm_v1.json")
+                    if os.path.exists(template_path):
+                         print("Applying Default CRM Template...")
+                         with open(template_path, 'r') as f:
+                            template_data = json.load(f)
             
+            if template_data:
+                TemplateService.apply_template(db, tenant_id, template_data)
+                print("Template applied successfully.")
+            else:
+                print("Initializing BLANK tenant.")
+
             # Finalize status
             with database.engine.connect() as conn_sys:
+
                 conn_sys.execute(
                     text("UPDATE public.tenants SET status = 'active' WHERE id = :tid"),
                     {"tid": tenant_id}

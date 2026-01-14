@@ -31,6 +31,7 @@ import DynamicSidebar from '../components/navigation/DynamicSidebar';
 import apiClient from '../api/apiClient';
 import NavigationPageModal from '../components/builder/NavigationPageModal';
 import { Plus } from 'lucide-react';
+import TabManager from '../components/navigation/TabManager';
 
 // ... imports ...
 
@@ -51,9 +52,16 @@ const CrmLayout = () => {
     const fetchNavigation = async () => {
         try {
             const { data } = await apiClient.get('/api/builder/navigation');
-            setNavGroups(data);
+            console.log("Navigation Data:", data);
+            if (Array.isArray(data)) {
+                setNavGroups(data);
+            } else {
+                console.warn("Navigation API returned non-array:", data);
+                setNavGroups([]);
+            }
         } catch (error) {
             console.error("Failed to load navigation", error);
+            setNavGroups([]);
         }
     };
 
@@ -83,15 +91,15 @@ const CrmLayout = () => {
         'Layout': <Layout size={20} />
     };
 
-    // Áreas de Construção (Builder)
     const builderArea = {
         id: 'builder_core',
         name: 'Construtor',
         icon: 'Database',
         pages_json: [
             { label: 'Base de Dados', path: '/app/editor/database' },
-            { label: 'Webhooks (Saída)', path: '/app/editor/workflows' },
-            { label: 'Gestão de Botões', path: '/app/editor/actions' }
+            { label: 'Automações (Trilhas)', path: '/app/editor/trails' },
+            { label: 'Gestão de Botões', path: '/app/editor/actions' },
+            { label: 'Webhooks (Saída)', path: '/app/editor/workflows' }
         ]
     };
 
@@ -100,7 +108,7 @@ const CrmLayout = () => {
     const dynamicAreas = user?.role_obj?.areas || [];
 
     // Mapear NavGroups do Builder para o formato de "Area"
-    const builderAreas = navGroups.map(g => ({
+    const builderAreas = (Array.isArray(navGroups) ? navGroups : []).map(g => ({
         id: g.id,
         name: g.name,
         icon: g.icon,
@@ -112,10 +120,13 @@ const CrmLayout = () => {
         }))
     }));
 
-    // Se Modo Edição -> Injeta Builder no topo
+    // Se Modo Edição -> Injeta Builder no fim (ou no topo)
+    // REMOVIDO: O Construtor agora fica na área de Configurações (Separado)
     // if (isEditMode) {
-    //     userAreas.push(builderArea);
+    //    userAreas.push(builderArea);
     // }
+    
+    // Auto-enable Edit Mode for SysAdmin if needed? No, let them toggle.
 
     // Adiciona áreas dinâmicas do usuário E do Builder
     userAreas = [...userAreas, ...dynamicAreas, ...builderAreas];
@@ -200,7 +211,7 @@ const CrmLayout = () => {
                 </header>
 
                 {/* --- MENU SUPERIOR (TABS DA ÁREA ATIVA) --- */}
-                <div className="hidden md:flex bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 px-3 py-0 items-center h-12 shadow-sm z-10">
+                <div className="hidden md:flex bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 px-3 py-0 items-center h-12 shadow-sm z-40">
                     <div className="flex items-end h-full overflow-x-auto mr-auto">
                         {activeArea?.pages_json?.map((page) => {
                             const isPageActive = location.pathname.startsWith(page.path);
@@ -234,6 +245,9 @@ const CrmLayout = () => {
                     {/* Right Actions Section (NEW) */}
                     <TopHeaderActions />
                 </div>
+
+                {/* MDI TAB MANAGER */}
+                <TabManager />
 
                 {/* Mobile Menu */}
                 {isMobileMenuOpen && (

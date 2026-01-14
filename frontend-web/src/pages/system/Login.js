@@ -73,36 +73,58 @@ export default function Login() {
   return (
     <div className="flex min-h-screen transition-colors duration-300">
       <div className="absolute top-4 right-4 z-50"><ThemeToggle /></div>
-      <div className="hidden lg:flex lg:w-1/2 bg-repforce-dark dark:bg-black items-center justify-center p-12">
-        <div className="text-white max-w-md">
-          <img src="/logo_clara.png" alt="Repforce" className="mb-8 w-48 object-contain" />
-          <h1 className="text-4xl font-bold mb-4">Gestão inteligente.</h1>
-          <p className="text-gray-300">Acesse sua conta para continuar.</p>
+      <div className="hidden lg:flex lg:w-1/2 bg-black items-center justify-center p-12 shadow-inner">
+        <div className="text-white max-w-md text-center lg:text-left">
+          <img src="/logo_clara.png" alt="Repforce" className="mb-8 w-48 mx-auto lg:mx-0 object-contain shadow-sm" />
+          <h1 className="text-4xl md:text-5xl font-bold mb-4 tracking-tight">Gestão inteligente.</h1>
+          <p className="text-blue-100 text-lg opacity-80">Acesse sua conta para continuar.</p>
         </div>
       </div>
-      <div className="flex-1 flex flex-col justify-center items-center bg-gray-50 dark:bg-gray-900 p-8">
-        <div className="w-full max-w-md bg-white dark:bg-gray-800 p-8 rounded-lg shadow-lg">
-          <h2 className="text-2xl font-bold text-gray-800 dark:text-white text-center mb-6">Login</h2>
-          <form onSubmit={handleLogin} className="space-y-5">
+      <div className="flex-1 flex flex-col justify-center items-center bg-gray-50 dark:bg-gray-900 p-4 md:p-8">
+        <div className="w-full max-w-md bg-white dark:bg-gray-800 p-6 md:p-10 rounded-2xl shadow-xl border border-gray-100 dark:border-gray-700">
+          <div className="flex justify-center mb-8 lg:hidden">
+             <img src="/logo_pbpm.png" alt="Repforce" className="h-10 object-contain" />
+          </div>
+          <h2 className="text-3xl font-extrabold text-gray-900 dark:text-white text-center mb-2">Bem-vindo</h2>
+          <p className="text-center text-gray-500 dark:text-gray-400 mb-8">Faça login para gerenciar sua operação</p>
+          
+          <form onSubmit={handleLogin} className="space-y-6">
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Usuário</label>
-              <input type="text" required value={username} onChange={e => setUsername(e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white px-3 py-2" />
+              <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">Usuário ou E-mail</label>
+              <input 
+                type="text" 
+                required 
+                value={username} 
+                onChange={e => setUsername(e.target.value)} 
+                className="mt-1 block w-full rounded-xl border-gray-200 dark:border-gray-600 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white px-4 py-3 transition-all" 
+                placeholder="nome@exemplo.com"
+              />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Senha</label>
-              <input type="password" required value={password} onChange={e => setPassword(e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white px-3 py-2" />
+              <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">Senha</label>
+              <input 
+                type="password" 
+                required 
+                value={password} 
+                onChange={e => setPassword(e.target.value)} 
+                className="mt-1 block w-full rounded-xl border-gray-200 dark:border-gray-600 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white px-4 py-3 transition-all" 
+                placeholder="••••••••"
+              />
             </div>
-            <div className="flex items-center">
-              <input id="remember" type="checkbox" checked={rememberMe} onChange={e => setRememberMe(e.target.checked)} className="h-4 w-4 text-blue-600 border-gray-300 rounded" />
-              <label htmlFor="remember" className="ml-2 block text-sm text-gray-900 dark:text-gray-300">Manter conectado</label>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center">
+                <input id="remember" type="checkbox" checked={rememberMe} onChange={e => setRememberMe(e.target.checked)} className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500" />
+                <label htmlFor="remember" className="ml-2 block text-sm text-gray-600 dark:text-gray-400">Manter conectado</label>
+              </div>
+              <a href="#" className="text-sm font-medium text-blue-600 hover:text-blue-500">Esqueceu a senha?</a>
             </div>
-            {error && <p className="text-red-500 text-sm text-center bg-red-50 p-2 rounded">{error}</p>}
+            {error && <p className="text-red-500 text-sm font-medium text-center bg-red-50 dark:bg-red-900/20 p-3 rounded-lg border border-red-100 dark:border-red-900/30">{error}</p>}
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-repforce-primary hover:bg-blue-700 disabled:opacity-50 transition-colors"
+              className="w-full flex justify-center py-3 px-4 border border-transparent rounded-xl shadow-lg text-base font-bold text-white bg-[#2563eb] hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 transition-all transform active:scale-[0.98]"
             >
-              {isLoading ? 'Entrando...' : 'Entrar'}
+              {isLoading ? 'Entrando...' : 'Entrar na Conta'}
             </button>
           </form>
         </div>

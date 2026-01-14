@@ -9,7 +9,7 @@ import { useBuilder } from '../context/BuilderContext';
 
 const TopHeaderActions = () => {
     const { theme, toggleTheme } = useContext(ThemeContext);
-    const { logout, user } = useContext(AuthContext);
+    const { logout, user, isSysAdmin, tenant, exitImpersonation } = useContext(AuthContext);
     const { isEditMode, toggleEditMode } = useBuilder(); 
     const navigate = useNavigate();
     const [isProfileOpen, setIsProfileOpen] = useState(false);
@@ -27,11 +27,19 @@ const TopHeaderActions = () => {
     }, []);
 
     const handleLogout = () => {
-        logout();
-        navigate('/login');
+        if (isSysAdmin && tenant) {
+            // Impersonation Mode: Exit to SysAdmin
+            exitImpersonation();
+            navigate('/sysadmin/config');
+        } else {
+            // Regular Logout
+            logout();
+            navigate('/login');
+        }
     };
 
-    const initial = user?.name ? user.name.charAt(0).toUpperCase() : 'U';
+    const nameToDisplay = user?.full_name || user?.name || user?.username || 'User';
+    const initial = nameToDisplay.charAt(0).toUpperCase();
 
     return (
         <div className="flex items-center space-x-3 ml-auto">
@@ -52,6 +60,7 @@ const TopHeaderActions = () => {
                 <button
                     onClick={() => setIsProfileOpen(!isProfileOpen)}
                     className="flex items-center gap-2 focus:outline-none"
+                    title={nameToDisplay}
                 >
                     <div className="h-8 w-8 rounded-full bg-blue-600 text-white flex items-center justify-center text-sm font-bold shadow hover:bg-blue-700 transition-colors">
                         {initial}
@@ -62,7 +71,7 @@ const TopHeaderActions = () => {
                     <div className="absolute right-0 mt-2 w-56 bg-white dark:bg-gray-800 rounded-lg shadow-lg py-2 border border-gray-100 dark:border-gray-700 z-50 animate-in fade-in zoom-in duration-200">
                         {/* User Header */}
                         <div className="px-4 py-2 border-b border-gray-100 dark:border-gray-700">
-                            <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{user?.name}</p>
+                            <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{nameToDisplay}</p>
                             <p className="text-xs text-gray-500 truncate">{user?.email}</p>
                         </div>
 
@@ -102,7 +111,7 @@ const TopHeaderActions = () => {
                             onClick={handleLogout}
                             className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center gap-2 mt-1 border-t border-gray-100 dark:border-gray-700"
                         >
-                            <LogOut size={16} /> Sair
+                            <LogOut size={16} /> {isSysAdmin && tenant ? 'Sair do Tenant' : 'Sair'}
                         </button>
                     </div>
                 )}

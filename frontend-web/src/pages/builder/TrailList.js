@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Plus, Edit, Trash2, GitBranch, Zap, MoreHorizontal } from 'lucide-react';
 import apiClient from '../../api/apiClient';
 
-const TrailList = () => {
+const TrailList = ({ onSelectTrail }) => {
     const navigate = useNavigate();
     const [trails, setTrails] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -20,9 +20,15 @@ const TrailList = () => {
     const fetchTrails = async () => {
         try {
             const { data } = await apiClient.get('/api/builder/trails');
-            setTrails(data);
+            if (Array.isArray(data)) {
+                setTrails(data);
+            } else {
+                console.warn("API returned invalid trails data:", data);
+                setTrails([]);
+            }
         } catch (error) {
             console.error("Error fetching trails", error);
+            setTrails([]);
         } finally {
             setIsLoading(false);
         }
@@ -41,7 +47,12 @@ const TrailList = () => {
             setIsCreating(false);
             setNewTrailName('');
             setNewTrailDesc('');
-            navigate(`/app/editor/trails/${data.id}`);
+            
+            if (onSelectTrail) {
+                onSelectTrail(data);
+            } else {
+                navigate(`/app/editor/trails/${data.id}`);
+            }
         } catch (error) {
             console.error("Error creating trail", error);
         }
@@ -145,7 +156,10 @@ const TrailList = () => {
                     {trails.map(trail => (
                         <div 
                             key={trail.id}
-                            onClick={() => navigate(`/app/editor/trails/${trail.id}`)}
+                            onClick={() => {
+                                if (onSelectTrail) onSelectTrail(trail);
+                                else navigate(`/app/editor/trails/${trail.id}`);
+                            }}
                             className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-5 shadow-sm hover:shadow-md hover:border-blue-400 dark:hover:border-blue-500 transition-all cursor-pointer group relative"
                         >
                             <div className="flex justify-between items-start mb-3">

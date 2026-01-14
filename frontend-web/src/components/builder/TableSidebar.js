@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Plus, Table, Edit2, Trash2, Check, X } from 'lucide-react';
 import apiClient from '../../api/apiClient';
 
-const TableSidebar = ({ entities, selectedEntity, onSelectEntity, onEntityCreated }) => {
+const TableSidebar = ({ entities, selectedEntity, onSelectEntity, onEntityCreated, className = '' }) => {
     const [isCreating, setIsCreating] = useState(false);
     const [newEntityName, setNewEntityName] = useState('');
     
@@ -62,7 +62,7 @@ const TableSidebar = ({ entities, selectedEntity, onSelectEntity, onEntityCreate
     };
 
     return (
-        <div className="w-64 border-r border-gray-200 dark:border-gray-800 flex flex-col bg-gray-50 dark:bg-black/20 h-full">
+        <div className={`w-64 border-r border-gray-200 dark:border-gray-800 flex flex-col bg-gray-50 dark:bg-black/20 h-full ${className}`}>
             <div className="p-4 border-b border-gray-200 dark:border-gray-800 flex justify-between items-center">
                 <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">Tabelas</span>
                 <button

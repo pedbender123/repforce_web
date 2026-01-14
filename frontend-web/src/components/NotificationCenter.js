@@ -1,49 +1,54 @@
 import React, { useState, useEffect } from 'react';
-import { Bell, Check, X, Info, AlertTriangle, Package, Map } from 'lucide-react';
+import { Bell, Check, X, Info, AlertTriangle, Package, Map, Link as LinkIcon } from 'lucide-react';
 import apiClient from '../api/apiClient';
+import { useNavigate } from 'react-router-dom';
 
 const NotificationCenter = () => {
     const [isOpen, setIsOpen] = useState(false);
-    const [tasks, setTasks] = useState([]);
+    const [notifications, setNotifications] = useState([]);
     const [loading, setLoading] = useState(false);
     const [unreadCount, setUnreadCount] = useState(0);
+    const navigate = useNavigate();
 
-    const fetchTasks = async () => {
+    const fetchNotifications = async () => {
         setLoading(true);
         try {
-            const { data } = await apiClient.get('/api/system/tasks/me');
-            setTasks(data);
+            const { data } = await apiClient.get('/v1/notifications/me?unread_only=true');
+            setNotifications(data);
             setUnreadCount(data.length);
         } catch (error) {
-            console.error("Failed to fetch tasks", error);
+            console.error("Failed to fetch notifications", error);
         } finally {
             setLoading(false);
         }
     };
 
     useEffect(() => {
-        // Poll every 30s or just once on mount
-        fetchTasks();
-        const interval = setInterval(fetchTasks, 30000);
+        // Poll every 60s
+        fetchNotifications();
+        const interval = setInterval(fetchNotifications, 60000);
         return () => clearInterval(interval);
     }, []);
 
-    const handleComplete = async (taskId) => {
+    const markAsRead = async (notifId) => {
         try {
-            await apiClient.put(`/api/system/tasks/${taskId}/complete`);
-            setTasks(tasks.filter(t => t.id !== taskId));
+            await apiClient.put(`/v1/notifications/${notifId}/read`);
+            setNotifications(notifications.filter(n => n.id !== notifId));
             setUnreadCount(prev => Math.max(0, prev - 1));
         } catch (error) {
-            console.error("Failed to complete task", error);
+            console.error("Failed to mark as read", error);
         }
     };
 
-    const getIcon = (type) => {
-        switch (type) {
-            case 'error': return <AlertTriangle size={16} className="text-red-500" />;
-            case 'order': return <Package size={16} className="text-blue-500" />;
-            case 'route': return <Map size={16} className="text-green-500" />;
-            default: return <Info size={16} className="text-gray-500" />;
+    const handleLinkClick = (resourceLink) => {
+        if (!resourceLink) return;
+        
+        // Simple Link handling
+        if (resourceLink.type === 'url') {
+            window.open(resourceLink.path, '_blank');
+        } else if (resourceLink.path) {
+            navigate(resourceLink.path);
+            setIsOpen(false);
         }
     };
 
@@ -52,6 +57,7 @@ const NotificationCenter = () => {
             <button
                 onClick={() => setIsOpen(!isOpen)}
                 className="relative p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
+                title="Notificações"
             >
                 <Bell size={20} />
                 {unreadCount > 0 && (
@@ -67,26 +73,38 @@ const NotificationCenter = () => {
                     </div>
 
                     <div className="max-h-96 overflow-y-auto">
-                        {loading && tasks.length === 0 ? (
+                        {loading && notifications.length === 0 ? (
                             <div className="p-4 text-center text-xs text-gray-500">Carregando...</div>
-                        ) : tasks.length === 0 ? (
-                            <div className="p-4 text-center text-xs text-gray-500">Nenhuma notificação pendente.</div>
+                        ) : notifications.length === 0 ? (
+                            <div className="p-4 text-center text-xs text-gray-500">Nenhuma notificação nova.</div>
                         ) : (
                             <ul>
-                                {tasks.map(task => (
-                                    <li key={task.id} className="p-3 border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors flex items-start gap-3">
+                                {notifications.map(notif => (
+                                    <li key={notif.id} className="p-3 border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors flex items-start gap-3 group">
                                         <div className="mt-1 flex-shrink-0">
-                                           <Info size={16} className="text-gray-500" />
+                                            {notif.resource_link ? <LinkIcon size={16} className="text-blue-500" /> : <Info size={16} className="text-gray-500" />}
                                         </div>
-                                        <div className="flex-1">
-                                            <p className="text-sm font-medium text-gray-800 dark:text-gray-200">{task.title}</p>
-                                            {task.description && <p className="text-xs text-gray-500 mt-1">{task.description}</p>}
-                                            <p className="text-[10px] text-gray-400 mt-1">{new Date(task.created_at).toLocaleString()}</p>
+                                        <div className="flex-1 cursor-default">
+                                            <p className="text-sm font-medium text-gray-800 dark:text-gray-200 flex items-center gap-2">
+                                                {notif.title}
+                                            </p>
+                                            {notif.description && <p className="text-xs text-gray-500 mt-1 line-clamp-2">{notif.description}</p>}
+                                            
+                                            {notif.resource_link && (
+                                                <button 
+                                                    onClick={() => handleLinkClick(notif.resource_link)}
+                                                    className="mt-2 text-xs text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1"
+                                                >
+                                                    Acessar Recurso <LinkIcon size={10} />
+                                                </button>
+                                            )}
+                                            
+                                            <p className="text-[10px] text-gray-400 mt-1">{new Date(notif.created_at).toLocaleString()}</p>
                                         </div>
                                         <button
-                                            onClick={() => handleComplete(task.id)}
-                                            className="text-green-500 hover:bg-green-100 p-1 rounded transition-colors"
-                                            title="Marcar como feito"
+                                            onClick={() => markAsRead(notif.id)}
+                                            className="text-gray-400 hover:text-green-500 p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                                            title="Marcar como lido"
                                         >
                                             <Check size={16} />
                                         </button>

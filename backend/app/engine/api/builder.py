@@ -98,6 +98,8 @@ def update_entity(
         entity.display_name = payload.display_name
     if payload.icon:
         entity.icon = payload.icon
+    if payload.layout_config is not None:
+        entity.layout_config = payload.layout_config
         
     db.commit()
     db.refresh(entity)
@@ -414,6 +416,24 @@ def list_all_pages(request: Request, db: Session = Depends(database.get_db)):
         .filter(models_meta.MetaNavigationGroup.tenant_id == tenant_id)\
         .all()
     return pages
+
+@router.get("/pages/{page_id}", response_model=schemas_meta.MetaPageResponse)
+def get_page(
+    request: Request,
+    page_id: str,
+    db: Session = Depends(database.get_db)
+):
+    tenant_id = request.state.tenant_id
+    page = db.query(models_meta.MetaPage)\
+        .join(models_meta.MetaNavigationGroup)\
+        .filter(
+            models_meta.MetaPage.id == page_id,
+            models_meta.MetaNavigationGroup.tenant_id == tenant_id
+        ).first()
+
+    if not page:
+        raise HTTPException(status_code=404, detail="Pagina nao encontrada.")
+    return page
 
 # --- Endpoints: Workflows ---
 

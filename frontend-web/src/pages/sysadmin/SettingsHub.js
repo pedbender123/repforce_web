@@ -1,164 +1,179 @@
 import React, { useState, useEffect } from 'react';
-import { User, Activity, CheckSquare, Server } from 'lucide-react';
+import { User, Activity, CheckSquare, Server, Settings, Play, CheckCircle, AlertTriangle, XCircle, Code, DollarSign, Layout } from 'lucide-react';
 import { BuildingOfficeIcon } from '@heroicons/react/24/outline';
 import apiClient from '../../api/apiClient';
 import UserManagement from './components/UserManagement';
 import RoleManagement from './components/RoleManagement';
+import TenantManagement from './components/TenantManagement';
 
-// Sub-components (could be separate files, consolidated here for now)
+// --- SUB-COMPONENTS ---
+
 const GeneralSettings = () => (
     <div className="space-y-6">
         <div>
-            <h3 className="text-lg font-medium leading-6 text-gray-900 dark:text-white">Geral</h3>
+            <h3 className="text-xl font-bold dark:text-white">Geral</h3>
             <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                Informações globais do sistema.
+                Informações globais da plataforma Repforce.
             </p>
         </div>
         <div className="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-6">
             <div className="sm:col-span-3">
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Nome do Sistema</label>
+                <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-1">Nome do Sistema</label>
                 <div className="mt-1">
-                    <input type="text" disabled value="RepForce SaaS" className="block w-full rounded-md border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm dark:text-white" />
+                    <input type="text" disabled value="RepForce SaaS v2.1" className="block w-full rounded-xl border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 shadow-sm sm:text-sm dark:text-white p-3 border" />
                 </div>
             </div>
         </div>
     </div>
 );
 
-const ProfileSettings = () => (
+const BillingModule = () => (
     <div className="space-y-6">
         <div>
-            <h3 className="text-lg font-medium leading-6 text-gray-900 dark:text-white">Meu Perfil</h3>
+            <h3 className="text-xl font-bold dark:text-white">Faturamento & Planos</h3>
             <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                Gerencie suas credenciais de superusuário.
+                Gestão de assinaturas e créditos globais.
             </p>
         </div>
-        <div className="bg-yellow-50 dark:bg-yellow-900/20 p-4 rounded-md">
-            <div className="flex">
-                <div className="flex-shrink-0">
-                    <User className="h-5 w-5 text-yellow-400" aria-hidden="true" />
-                </div>
-                <div className="ml-3">
-                    <h3 className="text-sm font-medium text-yellow-800 dark:text-yellow-200">Atenção</h3>
-                    <div className="mt-2 text-sm text-yellow-700 dark:text-yellow-300">
-                        <p>Alterações aqui afetam o acesso global ao sistema.</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-        {/* Change Password Form Mockup */}
-        <div className="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-6">
-            <div className="sm:col-span-4">
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Nova Senha</label>
-                <div className="mt-1">
-                    <input type="password" className="block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm dark:bg-gray-700 dark:text-white" />
-                </div>
-            </div>
-            <div className="sm:col-span-4">
-                <button className="bg-blue-600 text-white px-4 py-2 rounded shadow hover:bg-blue-700">Salvar Alterações</button>
-            </div>
+        <div className="bg-blue-50 dark:bg-blue-900/20 p-8 rounded-2xl border border-blue-100 dark:border-blue-800 text-center">
+            <DollarSign className="mx-auto h-12 w-12 text-blue-600 mb-4" />
+            <h4 className="text-lg font-bold text-blue-900 dark:text-blue-100">Módulo de Faturamento Integrado</h4>
+            <p className="text-blue-700 dark:text-blue-300 text-sm max-w-md mx-auto mt-2">
+                A gestão de faturamento agora será centralizada via engine de Stripe. 
+                Configure suas chaves API no `.env` para habilitar a automação.
+            </p>
         </div>
     </div>
 );
 
-const SystemDiagnostics = () => (
-    <div className="space-y-6">
-        <div>
-            <h3 className="text-lg font-medium leading-6 text-gray-900 dark:text-white">Diagnóstico do Sistema</h3>
-            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                Status dos serviços vitais.
-            </p>
-        </div>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <div className="bg-green-50 dark:bg-green-900/20 p-4 rounded-lg border border-green-200 dark:border-green-800">
-                <div className="flex items-center">
-                    <div className="flex-shrink-0">
-                        <Server className="h-6 w-6 text-green-600 dark:text-green-400" />
+const RealDiagnostics = () => {
+    const [logs, setLogs] = useState([]);
+    const [isRunning, setIsRunning] = useState(false);
+    const [stats, setStats] = useState({ ok: 0, warn: 0, error: 0 });
+
+    const runDiagnostics = async () => {
+        setIsRunning(true);
+        setLogs([]);
+        setStats({ ok: 0, warn: 0, error: 0 });
+        try {
+            const response = await apiClient.post('/v1/sysadmin/diagnostics/run', {});
+            const results = response.data;
+            setLogs(results);
+            const newStats = results.reduce((acc, log) => {
+                if (log.status === 'OK') acc.ok++;
+                else if (log.status === 'WARN') acc.warn++;
+                else acc.error++;
+                return acc;
+            }, { ok: 0, warn: 0, error: 0 });
+            setStats(newStats);
+        } catch (error) {
+            console.error("Diagnostic Failed", error);
+            setLogs([{ category: "System", status: "CRITICAL", message: "Failed to execute diagnostics", details: error.message }]);
+            setStats({ ok: 0, warn: 0, error: 1 });
+        } finally {
+            setIsRunning(false);
+        }
+    };
+
+    const getStatusIcon = (status) => {
+        if (status === 'OK') return <CheckCircle className="h-5 w-5 text-green-500" />;
+        if (status === 'WARN') return <AlertTriangle className="h-5 w-5 text-yellow-500" />;
+        return <XCircle className="h-5 w-5 text-red-500" />;
+    };
+
+    return (
+        <div className="space-y-6">
+            <div className="flex justify-between items-center">
+                <div>
+                    <h3 className="text-xl font-bold dark:text-white flex items-center gap-2">
+                        <Activity className="h-5 w-5 text-blue-600" />
+                        Saúde do Sistema
+                    </h3>
+                    <p className="text-sm text-gray-500">Varredura profunda de infraestrutura.</p>
+                </div>
+                <button
+                    onClick={runDiagnostics}
+                    disabled={isRunning}
+                    className="flex items-center gap-2 px-6 py-2 bg-[#2563eb] hover:bg-blue-700 text-white rounded-xl font-bold transition-all shadow-lg active:scale-95 disabled:opacity-50"
+                >
+                    {isRunning ? <Loader2 className="animate-spin h-5 w-5" /> : <Play className="h-5 w-5" />}
+                    {isRunning ? 'Verificando...' : 'Iniciar Scan'}
+                </button>
+            </div>
+
+            {logs.length > 0 && (
+                <div className="grid grid-cols-3 gap-4">
+                    <div className="p-4 bg-green-50 dark:bg-green-900/20 rounded-xl border border-green-100 dark:border-green-800 flex justify-between items-center">
+                        <span className="text-green-700 font-bold">OK</span>
+                        <span className="text-2xl font-black text-green-800">{stats.ok}</span>
                     </div>
-                    <div className="ml-3 w-0 flex-1">
-                        <dl>
-                            <dt className="text-sm font-medium text-green-900 dark:text-green-300 truncate">API Backend</dt>
-                            <dd>
-                                <div className="text-lg font-medium text-green-900 dark:text-green-100">Operacional</div>
-                            </dd>
-                        </dl>
+                    <div className="p-4 bg-yellow-50 dark:bg-yellow-900/20 rounded-xl border border-yellow-100 dark:border-yellow-800 flex justify-between items-center">
+                        <span className="text-yellow-700 font-bold">Alertas</span>
+                        <span className="text-2xl font-black text-yellow-800">{stats.warn}</span>
+                    </div>
+                    <div className="p-4 bg-red-50 dark:bg-red-900/20 rounded-xl border border-red-100 dark:border-red-800 flex justify-between items-center">
+                        <span className="text-red-700 font-bold">Erros</span>
+                        <span className="text-2xl font-black text-red-800">{stats.error}</span>
                     </div>
                 </div>
-            </div>
-            <div className="bg-green-50 dark:bg-green-900/20 p-4 rounded-lg border border-green-200 dark:border-green-800">
-                <div className="flex items-center">
-                    <div className="flex-shrink-0">
-                        <Activity className="h-6 w-6 text-green-600 dark:text-green-400" />
-                    </div>
-                    <div className="ml-3 w-0 flex-1">
-                        <dl>
-                            <dt className="text-sm font-medium text-green-900 dark:text-green-300 truncate">Database (PostgreSQL)</dt>
-                            <dd>
-                                <div className="text-lg font-medium text-green-900 dark:text-green-100">Conectado</div>
-                            </dd>
-                        </dl>
-                    </div>
+            )}
+
+            <div className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-2xl overflow-hidden shadow-sm">
+                <div className="divide-y divide-gray-50 dark:divide-gray-700">
+                    {logs.length === 0 ? (
+                        <div className="p-12 text-center text-gray-400">
+                            <Code className="mx-auto h-12 w-12 mb-4 opacity-10" />
+                            Aguardando comando de varredura...
+                        </div>
+                    ) : (
+                        logs.map((log, i) => (
+                            <div key={i} className="p-4 flex items-start gap-4 hover:bg-gray-50 transition-colors">
+                                {getStatusIcon(log.status)}
+                                <div>
+                                    <div className="flex items-center gap-2 mb-1">
+                                        <span className="text-[10px] font-black uppercase text-gray-400">{log.category}</span>
+                                    </div>
+                                    <p className="text-sm font-semibold text-gray-800 dark:text-gray-100">{log.message}</p>
+                                    {log.details && <p className="text-xs font-mono text-gray-500 mt-1">{log.details}</p>}
+                                </div>
+                            </div>
+                        ))
+                    )}
                 </div>
             </div>
         </div>
-    </div>
-);
+    );
+};
 
 const CompletedTasks = () => {
     const [tasks, setTasks] = useState([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        const fetchCompleted = async () => {
-            try {
-                const { data } = await apiClient.get('/v1/sysadmin/tasks?completed=true');
-                setTasks(data);
-            } catch (error) {
-                console.error(error);
-            } finally {
-                setLoading(false);
-            }
-        };
-        fetchCompleted();
+        apiClient.get('/v1/sysadmin/tasks?completed=true')
+            .then(res => setTasks(res.data))
+            .catch(console.error)
+            .finally(() => setLoading(false));
     }, []);
 
-    if (loading) return <div className="text-center">Carregando histórico...</div>;
+    if (loading) return <div className="text-center p-12 text-gray-400"><Loader2 className="animate-spin inline mr-2"/> Carregando histórico...</div>;
 
     return (
         <div className="space-y-6">
-            <div>
-                <h3 className="text-lg font-medium leading-6 text-gray-900 dark:text-white">Histórico de Tarefas</h3>
-                <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                    Tarefas marcadas como concluídas.
-                </p>
-            </div>
-            <div className="bg-white dark:bg-gray-800 overflow-hidden sm:rounded-md border border-gray-200 dark:border-gray-700">
-                <ul className="divide-y divide-gray-200 dark:divide-gray-700">
+            <h3 className="text-xl font-bold dark:text-white">Tarefas Concluídas</h3>
+            <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 overflow-hidden">
+                <ul className="divide-y divide-gray-50 dark:divide-gray-700">
                     {tasks.length === 0 ? (
-                        <li className="p-4 text-center text-gray-500 text-sm">Nenhuma tarefa concluída encontrada.</li>
+                        <li className="p-12 text-center text-gray-400">Nenhum histórico disponível.</li>
                     ) : (
                         tasks.map((task) => (
-                            <li key={task.id} className="px-4 py-4 sm:px-6">
-                                <div className="flex items-center justify-between">
-                                    <p className="text-sm font-medium text-blue-600 truncate">{task.title}</p>
-                                    <div className="ml-2 flex-shrink-0 flex">
-                                        <p className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
-                                            Concluída
-                                        </p>
-                                    </div>
+                            <li key={task.id} className="p-6 hover:bg-gray-50 transition-colors">
+                                <div className="flex items-center justify-between mb-2">
+                                    <h4 className="font-bold text-gray-800 dark:text-white">{task.title}</h4>
+                                    <span className="px-3 py-1 bg-green-50 text-green-700 text-[10px] font-black uppercase rounded-full border border-green-100">Finalizada</span>
                                 </div>
-                                <div className="mt-2 sm:flex sm:justify-between">
-                                    <div className="sm:flex">
-                                        <p className="flex items-center text-sm text-gray-500 dark:text-gray-400">
-                                            {task.description}
-                                        </p>
-                                    </div>
-                                    <div className="mt-2 flex items-center text-sm text-gray-500 sm:mt-0">
-                                        <p>
-                                            Em {new Date(task.created_at).toLocaleDateString()}
-                                        </p>
-                                    </div>
-                                </div>
+                                <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">{task.description}</p>
+                                <span className="text-[10px] text-gray-400 font-medium tracking-widest">{new Date(task.created_at).toLocaleDateString()}</span>
                             </li>
                         ))
                     )}
@@ -169,65 +184,59 @@ const CompletedTasks = () => {
 };
 
 export default function SettingsHub() {
-    const [activeTab, setActiveTab] = useState('users');
+    const [activeTab, setActiveTab] = useState('tenants');
 
     const tabs = [
-        { id: 'users', name: 'Usuários Globais', icon: User },
-        { id: 'roles', name: 'Controle de Acesso', icon: CheckSquare },
-        { id: 'general', name: 'Geral', icon: BuildingOfficeIcon },
-        { id: 'profile', name: 'Meu Perfil', icon: User },
-        { id: 'diagnostics', name: 'Diagnóstico', icon: Activity },
-        { id: 'tasks', name: 'Histórico de Tarefas', icon: CheckSquare },
+        { id: 'tenants', name: 'Controle de Clientes', icon: BuildingOfficeIcon },
+        { id: 'users', name: 'Usuários Mestres', icon: User },
+        { id: 'roles', name: 'Níveis de Acesso', icon: CheckSquare },
+        { id: 'billing', name: 'Faturamento SaaS', icon: DollarSign },
+        { id: 'diagnostics', name: 'Saúde & Logs', icon: Activity },
+        { id: 'tasks', name: 'Task History', icon: CheckSquare },
+        { id: 'general', name: 'Configurações', icon: Settings },
     ];
 
     return (
-        <div className="space-y-6">
-            <div className="md:flex md:items-center md:justify-between">
-                <div className="min-w-0 flex-1">
-                    <h2 className="text-2xl font-bold leading-7 text-gray-900 dark:text-white sm:truncate sm:text-3xl sm:tracking-tight">
-                        Configurações
-                    </h2>
-                </div>
-            </div>
-
-            <div className="lg:grid lg:grid-cols-12 lg:gap-x-5">
-                <aside className="py-6 px-2 sm:px-6 lg:col-span-3 lg:py-0 lg:px-0 bg-white dark:bg-gray-800 rounded-lg shadow min-h-[500px]">
-                    <nav className="space-y-1">
+        <div className="max-w-7xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
+            {/* Header Removed */}
+            
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+                {/* Navigation Sidebar */}
+                <aside className="lg:col-span-3">
+                    <nav className="flex flex-col gap-1">
                         {tabs.map((tab) => (
                             <button
                                 key={tab.id}
                                 onClick={() => setActiveTab(tab.id)}
                                 className={`
-                                    group flex items-center w-full px-3 py-2 text-sm font-medium border-l-4 transition-colors
+                                    flex items-center gap-3 px-4 py-3 text-sm font-bold rounded-xl transition-all
                                     ${activeTab === tab.id
-                                        ? 'bg-blue-50 border-blue-600 text-blue-700 dark:bg-blue-900/20 dark:border-blue-500 dark:text-blue-100'
-                                        : 'border-transparent text-gray-900 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white'}
+                                        ? 'bg-[#2563eb] text-white shadow-lg shadow-blue-200 dark:shadow-none'
+                                        : 'text-gray-500 hover:bg-white dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white'}
                                 `}
                             >
-                                <tab.icon
-                                    className={`
-                                        flex-shrink-0 -ml-1 mr-3 h-6 w-6 
-                                        ${activeTab === tab.id ? 'text-blue-500 dark:text-blue-400' : 'text-gray-400 group-hover:text-gray-500 dark:group-hover:text-gray-300'}
-                                    `}
-                                    aria-hidden="true"
-                                />
-                                <span className="truncate">{tab.name}</span>
+                                <tab.icon className={`h-5 w-5 ${activeTab === tab.id ? 'text-white' : 'text-gray-400'}`} />
+                                {tab.name}
                             </button>
                         ))}
                     </nav>
                 </aside>
 
-                <div className="space-y-6 sm:px-6 lg:col-span-9 lg:px-0">
-                    <div className="bg-white dark:bg-gray-800 shadow sm:rounded-md p-6 min-h-[500px]">
+                {/* Dynamic Content Panel */}
+                <div className="lg:col-span-9">
+                    <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700 p-8 min-h-[600px]">
+                        {activeTab === 'tenants' && <TenantManagement />}
                         {activeTab === 'users' && <UserManagement />}
                         {activeTab === 'roles' && <RoleManagement />}
-                        {activeTab === 'general' && <GeneralSettings />}
-                        {activeTab === 'profile' && <ProfileSettings />}
-                        {activeTab === 'diagnostics' && <SystemDiagnostics />}
+                        {activeTab === 'billing' && <BillingModule />}
+                        {activeTab === 'diagnostics' && <RealDiagnostics />}
                         {activeTab === 'tasks' && <CompletedTasks />}
+                        {activeTab === 'general' && <GeneralSettings />}
                     </div>
                 </div>
             </div>
         </div>
     );
 }
+
+const Loader2 = ({ className }) => <Activity className={className} />;

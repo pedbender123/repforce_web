@@ -1,10 +1,16 @@
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
-import os 
+import logging
+import os
 from .core.middleware import TenantMiddleware
+from .core.config import settings
 from app.shared import database, security, schemas
 from app.system import models as models_system
+
+# Configure Logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 # --- ENGINE ROUTERS (CRM Motor) ---
 from app.engine.metadata import models as models_meta # REFAC: Metadata Engine Models
@@ -19,7 +25,7 @@ from app.engine.services.seeder import seed_tenant_defaults
 # --- SYSTEM ROUTERS (OS Core) ---
 from app.system.api import auth as v1_auth
 from app.system.api.sysadmin import companies
-from app.system.api import tasks_v2 # Tasks V2 IMPORT
+from app.system.api import notifications # REFAC: Notifications API
 
 # --- ENGINE ROUTERS (CRM Motor) ---
 from app.engine.api import builder # REFAC: Builder API
@@ -31,7 +37,6 @@ from app.engine.api import analytics # REFAC: Analytics API
 # --- LEGACY / SHARED ROUTERS ---
 # Reduced for Stability Protocol
 from .api import admin, manager, diagnostics
-# from .api import catalog, orders, webhooks, crm, routes, analytics, custom_fields, tasks, demo
 
 app = FastAPI(title="Repforce API", version="0.4.0 (SaaS Lite)")
 
@@ -48,13 +53,13 @@ def serve_upload(file_path: str):
 
 @app.on_event("startup")
 def startup_event():
-    print("Initializing Global Tables (Public Schema)...")
+    logger.info("Initializing Global Tables (Public Schema)...")
     try:
         models_system.Base.metadata.create_all(bind=database.engine)
         # Ensure Metadata models are also created (since they share Base but are in different file)
         # SQLAlchemy creates all tables for Base subclass imported.
     except Exception as e:
-        print(f"Schema Init Error (Ensure Postgres is up): {e}")
+        logger.error(f"Schema Init Error (Ensure Postgres is up): {e}")
     
     # 2. Seed SysAdmin (Global)
     db = database.SessionSys()
@@ -63,8 +68,8 @@ def startup_event():
         # Note: SessionSys is bound to engine, default search_path=public usually
         sysadmin_user = db.query(models_system.GlobalUser).filter(models_system.GlobalUser.username == "pbrandon").first()
         if not sysadmin_user:
-            print("Seeding SysAdmin...")
-            hashed_pw = security.get_password_hash("1asdfgh.")
+            logger.info("Seeding SysAdmin...")
+            hashed_pw = security.get_password_hash(settings.SYSADMIN_DEFAULT_PASSWORD)
             sysadmin_user = models_system.GlobalUser(
                 username="pbrandon",
                 recovery_email="pedro.p.bender.randon@gmail.com", 
@@ -75,13 +80,13 @@ def startup_event():
             )
             db.add(sysadmin_user)
             db.commit()
-            print("SysAdmin created: pbrandon / 1asdfgh.")
+            logger.info("SysAdmin created: pbrandon")
 
         # Check for 'admin' user
         admin_user = db.query(models_system.GlobalUser).filter(models_system.GlobalUser.username == "admin").first()
         if not admin_user:
-            print("Seeding Admin...")
-            hashed_pw = security.get_password_hash("12345678")
+            logger.info("Seeding Admin...")
+            hashed_pw = security.get_password_hash(settings.ADMIN_DEFAULT_PASSWORD)
             admin_user = models_system.GlobalUser(
                 username="admin",
                 recovery_email="admin@repforce.com", 
@@ -92,7 +97,7 @@ def startup_event():
             )
             db.add(admin_user)
             db.commit()
-            print("Admin created: admin / 12345678")
+            logger.info("Admin created: admin")
         
         # 3. Seed "Rotas" Entity (Default for first tenant)
         # Assuming the first tenant is the default one created by system or manual request
@@ -100,7 +105,7 @@ def startup_event():
         if first_tenant:
              seed_tenant_defaults(db, first_tenant.id)
     except Exception as e:
-        print(f"Startup Seeding Error: {e}")
+        logger.error(f"Startup Seeding Error: {e}")
     finally:
         db.close()
 
@@ -124,8 +129,8 @@ def read_root():
 app.include_router(manager.router, prefix="/manager", tags=["Manager (Provisioning)"])
 app.include_router(admin.router, prefix="/admin", tags=["Admin Tenant"])
 app.include_router(v1_auth.router, prefix="/v1", tags=["V1 Auth"])
-# User Tasks System
-app.include_router(tasks_v2.router, prefix="/api/system/tasks", tags=["System Tasks (User)"])
+# User Notifications System
+app.include_router(notifications.router, prefix="/v1/notifications", tags=["System Notifications"])
 # Builder API (No-Code Engine)
 app.include_router(builder.router, prefix="/api/builder", tags=["Builder"])
 app.include_router(metadata.router, prefix="/api/engine", tags=["Engine Runtime"])
@@ -133,4 +138,8 @@ app.include_router(data.router, prefix="/api/engine", tags=["Universal Data"])
 app.include_router(actions.router, prefix="/api/engine", tags=["Engine Actions"])
 app.include_router(analytics.router, prefix="/api/engine/analytics", tags=["Engine Analytics"])
 app.include_router(companies.router, prefix="/v1/sysadmin/companies", tags=["SysAdmin Companies"])
-app.include_router(diagnostics.router, prefix="/sysadmin/diagnostics", tags=["SysAdmin Diagnostics"])
+app.include_router(diagnostics.router, prefix="/v1/sysadmin/diagnostics", tags=["SysAdmin Diagnostics"])
+
+# Templates API
+from app.system.api.sysadmin import templates
+app.include_router(templates.router, prefix="/v1/sysadmin/templates", tags=["SysAdmin Templates"])

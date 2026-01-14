@@ -65,6 +65,29 @@ const GenericListPage = ({ pageId, entityId, entitySlug, entityName, layoutConfi
                 setListAction(null);
             }
 
+            // 1.5 Fetch Trails (Manual List Context)
+            try {
+                // Filter client side or if API supports it. Assuming API supports filtering.
+                // Or fetching all trails and filtering.
+                const { data: trails } = await apiClient.get('/api/builder/trails'); 
+                // Filter for this page
+                const validTrail = trails.find(t => 
+                    t.trigger_type === 'MANUAL' && 
+                    t.trigger_config?.context === 'LIST' && 
+                    String(t.trigger_config?.page_id) === String(pageId) &&
+                    t.is_active
+                );
+
+                if (validTrail) {
+                    setListAction({
+                        action_type: 'RUN_TRAIL',
+                        config: { trail_id: validTrail.id, name: validTrail.name }
+                    });
+                }
+            } catch (err) {
+                console.error("Error checking trails", err);
+            }
+
             // 2. Custom Header Buttons (if list_custom)
             if (pageType === 'list_custom') {
                  const { data: headerActs } = await apiClient.get(`/api/builder/actions?trigger_context=${pageId}&trigger_source=UI_BUTTON`);

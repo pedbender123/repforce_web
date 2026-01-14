@@ -33,29 +33,33 @@ class GlobalUser(Base):
     is_active = Column(Boolean, default=True)
     is_superuser = Column(Boolean, default=False) # Replaces is_sysadmin
     
+    # UI Persistence (MDI Tabs)
+    ui_state = Column(JSONB, default={}) 
+    
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     
     # Relationships
     memberships = relationship("Membership", back_populates="user")
     
     # Legacy/Direct Links (Optional but useful for simple setups)
-    role_id = Column(UUID(as_uuid=True), ForeignKey("public.roles.id"), nullable=True)
-    role_obj = relationship("Role", foreign_keys=[role_id])
+    # role_id = Column(UUID(as_uuid=True), ForeignKey("public.roles.id"), nullable=True)
+    # role_obj = relationship("Role", foreign_keys=[role_id])
     
-    tasks = relationship("GlobalTask", back_populates="assignee")
+    notifications = relationship("Notification", back_populates="assignee")
 
-class GlobalTask(Base):
-    __tablename__ = "global_tasks"
+class Notification(Base):
+    __tablename__ = "notifications"
     __table_args__ = {"schema": "public"}
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     title = Column(String, index=True)
     description = Column(String, nullable=True)
-    is_completed = Column(Boolean, default=False)
+    resource_link = Column(JSONB, nullable=True) # { "type": "record", "entity": "clientes", "id": "..." }
+    is_read = Column(Boolean, default=False)     # Replaces is_completed logic for notifs
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     
     assignee_id = Column(UUID(as_uuid=True), ForeignKey("public.global_users.id"), nullable=True)
-    assignee = relationship("GlobalUser", back_populates="tasks")
+    assignee = relationship("GlobalUser", back_populates="notifications")
 
 # 2. Tenants (SaaS Units)
 class Tenant(Base):
@@ -212,3 +216,16 @@ class Cargo(Base):
     memberships = relationship("Membership", back_populates="cargo")
 
 
+
+# 10. Tenant Templates (Snapshots)
+class TenantTemplate(Base):
+    __tablename__ = "tenant_templates"
+    __table_args__ = {"schema": "public"}
+    
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    name = Column(String, index=True)
+    description = Column(String, nullable=True)
+    structure_json = Column(JSONB, nullable=False) # Full JSON dump of entities, pages, etc.
+    
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    is_public = Column(Boolean, default=True)

@@ -9,7 +9,7 @@ import GenericRecordPage from '../../components/builder/GenericRecordPage';
 import GenericForm from '../../components/builder/GenericForm';
 import GenericFormPage from '../../components/builder/GenericFormPage';
 import DashboardPage from '../../components/builder/DashboardPage';
-import EntityPage from '../EntityPage';
+import GenericLayout360 from '../../components/engine/GenericLayout360';
 
 
 // Placeholders for Real Components (List, Form, etc)
@@ -143,12 +143,12 @@ const DynamicPageLoader = () => {
                 layoutConfig={page.layout_config}
                 entitySlug={page.entitySlug}
             />}
-            {page.type === 'split_view' && <EntityPage 
-                page={page} 
+            {page.type === 'split_view' && <GenericLayout360 
                 pageId={page.id}
                 entityId={page.entity_id}
                 entitySlug={page.entitySlug}
                 entityName={page.entityName}
+                layoutConfig={page.layout_config}
             />}
             {page.type === 'blank' && (
                 <div className="p-6">

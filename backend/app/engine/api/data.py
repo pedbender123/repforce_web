@@ -10,6 +10,8 @@ from sqlalchemy import cast, String, or_
 from fastapi import BackgroundTasks
 from app.engine.services.workflow_service import WorkflowService
 
+from app.services.shadow_service import create_shadow_backup
+
 def apply_snapshot_formulas(db: Session, tenant_id: str, entity_id: str, record_data: Dict[str, Any], user_context: Optional[Dict[str, Any]]) -> Dict[str, Any]:
     """
     Calculates and persists formulas for non-virtual fields (Snapshots).
@@ -181,8 +183,11 @@ def list_records(
     )
     
     # Apply Filters from Query Params
-    reserved = ['limit', 'offset', 'sort_by', 'sort_dir', 'q']
+    reserved = ['limit', 'offset', 'sort_by', 'sort_dir', 'q', 'context_id']
     
+    # Context ID from params (for dynamic filtering)
+    context_id = request.query_params.get('context_id')
+
     # Global Search (q)
     q = request.query_params.get('q')
     if q:
@@ -193,9 +198,14 @@ def list_records(
     for key, value in request.query_params.items():
         if key not in reserved and value:
              processed_value = value
-             # Simple Context Substitution
-             if isinstance(value, str) and "{me}" in value:
-                 processed_value = value.replace("{me}", user_context.get('id', ''))
+             
+             # Context Substitution
+             if isinstance(value, str):
+                 if "{me}" in value:
+                     processed_value = value.replace("{me}", user_context.get('id', ''))
+                 
+                 if "{context.id}" in value and context_id:
+                     processed_value = value.replace("{context.id}", context_id)
              
              query = query.filter(data_models.EntityRecord.data[key].astext == processed_value)
             
@@ -270,6 +280,19 @@ def update_record(
     if not record:
         raise HTTPException(status_code=404, detail="Record not found.")
 
+    # --- SNAPSHOT BEFORE UPDATE ---
+    try:
+        if record.data:
+            create_shadow_backup(
+                db=db,
+                tenant_slug=request.state.tenant_slug if hasattr(request.state, 'tenant_slug') else str(tenant_id), # Fallback ID if slug missing
+                table_name=entity.display_name or entity.slug,
+                record_id=str(record.id),
+                data=record.data
+            )
+    except Exception as e:
+        pass # Don't block update on snapshot failure for now
+
     # 3. Update Data (Merge or Replace? Usually merge)
     old_data = record.data.copy()
     merged_data = {**old_data, **payload}
@@ -327,6 +350,18 @@ def delete_record(
 
     deleted_data = record.data.copy()
     deleted_id = str(record.id)
+
+    # --- SNAPSHOT BEFORE DELETE ---
+    try:
+        create_shadow_backup(
+            db=db,
+            tenant_slug=request.state.tenant_slug if hasattr(request.state, 'tenant_slug') else str(tenant_id),
+            table_name=entity.display_name or entity.slug,
+            record_id=str(record.id),
+            data=deleted_data
+        )
+    except Exception:
+        pass
 
     db.delete(record)
     db.commit()

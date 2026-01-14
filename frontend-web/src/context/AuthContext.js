@@ -107,6 +107,11 @@ export const AuthProvider = ({ children }) => {
     const activeMembership = user?.memberships?.find(m => m.tenant.slug === tenant);
     const profile = user?.is_superuser ? 'sysadmin' : (activeMembership?.role || 'representante');
 
+    const exitImpersonation = () => {
+        setTenant(null);
+        localStorage.removeItem('tenantSlug');
+    };
+
     return (
         <AuthContext.Provider value={{
             status,
@@ -120,6 +125,7 @@ export const AuthProvider = ({ children }) => {
             selectTenant,
             login,
             logout,
+            exitImpersonation, // New function for SysAdmin
             refreshUser: () => hydrateUserData(token)
         }}>
             {children}

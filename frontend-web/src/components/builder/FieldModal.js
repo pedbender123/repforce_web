@@ -124,7 +124,9 @@ const FieldModal = ({ isOpen, onClose, entity, onFieldCreated, initialData }) =>
                             <option value="select">Seleção (Dropdown)</option>
                             <option value="whatsapp">WhatsApp</option>
                             <option value="email">Email</option>
+                            <option value="section">Seção (Divisor)</option>
                             <option value="ref">Referência (Outra Tabela)</option>
+                            <option value="list_ref">Lista Referência (Multi-Select)</option>
                         </select>
                         {initialData && <p className="text-xs text-yellow-600 mt-1">O tipo não pode ser alterado após criação.</p>}
                     </div>
@@ -185,7 +187,7 @@ const FieldModal = ({ isOpen, onClose, entity, onFieldCreated, initialData }) =>
                     )}
 
                     {/* Target Entity for Ref */}
-                    {fieldData.field_type === 'ref' && (
+                    {(fieldData.field_type === 'ref' || fieldData.field_type === 'list_ref') && (
                         <div className="bg-gray-50 dark:bg-gray-800 p-3 rounded border border-gray-200 dark:border-gray-700">
                              <label className="block text-xs font-medium text-gray-500 mb-1">Tabela de Origem</label>
                              <select

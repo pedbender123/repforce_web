@@ -59,6 +59,15 @@ class FormulaEngine:
             
             processed_formula = re.sub(deref_pattern, replace_deref, processed_formula)
 
+            # 1.5. Tratamento de Variáveis Mustache: {{variavel}} -> variables.get('variavel')
+            # Usado principalmente em Trilhas e Templates
+            def replace_mustache(match):
+                var_name = match.group(1)
+                safe_var = var_name.replace("'", "\\'")
+                return f"variables.get('{safe_var}')"
+            
+            processed_formula = re.sub(r'\{\{([^\}]+)\}\}', replace_mustache, processed_formula)
+
             # 2. Tratamento de Colunas: [Coluna] -> variables.get('Coluna')
             # Cuidado para não quebrar strings que contem colchetes. Assumimos sintaxe valida.
             def replace_column(match):
@@ -125,35 +134,42 @@ class FormulaEngine:
                 return self._lookup(lookup_val, table_slug, lookup_col, return_col)
             
             def app_deref(ref_col_name, target_col_name):
-                # Função mágica para [Ref].[Col]
-                # Precisa descobrir qual tabela a ref_col_name aponta.
-                # Requer entity_id atual.
-                if not current_entity_id:
-                    return None
+                # Função mágica para [Ref].[Col] ou [Table].[Col]
                 
-                # Buscar metadados do campo
-                # Otimização: Cachear isso seria ideal.
+                # 1. Tentar resolver como Referência do Contexto (Dereference)
                 ref_val = context.get(ref_col_name)
-                if not ref_val:
-                    return None
+                
+                if ref_val:
+                    # É um campo do registro atual. Descobrir tabela alvo.
+                    if not current_entity_id: return None
                     
-                field_meta = self.db.execute(text("""
-                    SELECT f.options 
-                    FROM meta_fields f
-                    WHERE f.entity_id = :ent_id AND f.name = :fname
-                """), {"ent_id": current_entity_id, "fname": ref_col_name}).fetchone()
-                
-                if not field_meta or not field_meta[0]:
-                    return None
-                
-                options = field_meta[0] # JSON
-                target_table = options.get('target') # Slug da tabela alvo
-                
-                if not target_table:
-                    return None
+                    field_meta = self.db.execute(text("""
+                        SELECT f.options 
+                        FROM meta_fields f
+                        WHERE f.entity_id = :ent_id AND f.name = :fname
+                    """), {"ent_id": current_entity_id, "fname": ref_col_name}).fetchone()
                     
-                # Agora faz o lookup: PK (id) = ref_val, retorna target_col_name
-                return self._lookup(ref_val, target_table, 'id', target_col_name)
+                    if field_meta and field_meta[0]:
+                        options = field_meta[0]
+                        target_table = options.get('target')
+                        if target_table:
+                            return self._lookup(ref_val, target_table, 'id', target_col_name)
+
+                # 2. Tentar resolver como Tabela Global (List Select)
+                # Se [Nome] não está no contexto, pode ser o nome de uma Tabela.
+                # Ex: [StatusConfig].[ValidStatus] -> Retorna Lista de valores
+                
+                # Tenta buscar entidade por slug OU display_name
+                target_entity = self.db.query(MetaEntity).filter(
+                    (MetaEntity.slug == ref_col_name) | (MetaEntity.display_name == ref_col_name),
+                    MetaEntity.tenant_id == self.tenant_id
+                ).first()
+                
+                if target_entity:
+                    # Retorna lista de valores da coluna
+                    return self._select(target_entity.slug, target_col_name, None, user_context)
+
+                return None
 
             def app_select(table_slug, return_col, filter_expr=None):
                 return self._select(table_slug, return_col, filter_expr, user_context)

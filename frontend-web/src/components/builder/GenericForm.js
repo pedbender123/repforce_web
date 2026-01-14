@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import apiClient from '../../api/apiClient';
 import { Loader2, Save } from 'lucide-react';
+import DynamicFieldRenderer from '../DynamicFieldRenderer';
 
 const GenericForm = ({ entityId, layoutConfig, recordId, onSuccess }) => {
     const [fields, setFields] = useState([]);
@@ -30,7 +31,7 @@ const GenericForm = ({ entityId, layoutConfig, recordId, onSuccess }) => {
             setEntities(allEntities);
 
             // 3. Resolve Ref Options
-            const refFields = fieldsData.filter(f => f.field_type === 'ref');
+            const refFields = fieldsData.filter(f => f.field_type === 'ref' || f.field_type === 'list_ref');
             const newRefOptions = {};
 
             for (const field of refFields) {
@@ -53,26 +54,17 @@ const GenericForm = ({ entityId, layoutConfig, recordId, onSuccess }) => {
             const initial = {};
             fieldsData.forEach(f => {
                 if (f.field_type === 'boolean') initial[f.name] = false;
+                else if (f.field_type === 'list_ref') initial[f.name] = []; // Initialize list_ref as empty array
                 else initial[f.name] = '';
             });
             setFormData(initial);
 
             // 4. If Edit Mode (recordId), fetch data
             if (recordId) {
-                // We need entity slug from somewhere. 
-                // We have it in `currentEntity` in handle submit, but here we need it.
-                // We fetched allEntities above.
                 const currentEntity = allEntities.find(e => e.id === entityId);
                 if (currentEntity) {
                     try {
-                        const { data: recordData } = await apiClient.get(`/api/engine/object/${currentEntity.slug}`);
-                        // The endpoint returns a LIST. We need to filter or get single.
-                        // Actually, our engine might list all.
-                        // Ideally GET /object/{slug}/{id} should exist.
-                        // Let's assume we need to filter if list returned, or implement get single.
-                        // Standard REST usually has GET /resource/:id.
-                        // Let's try GET /api/engine/object/{slug}?id={recordId} or similar.
-                        // Checking `data.py`... list_records supports filtering by ID via query param!
+                        // Attempt to fetch record. Assuming filter by ID works as seen before or standard Get
                          const { data: searchResult } = await apiClient.get(`/api/engine/object/${currentEntity.slug}?id=${recordId}`);
                          if (searchResult && searchResult.length > 0) {
                              setFormData(searchResult[0]);
@@ -90,9 +82,8 @@ const GenericForm = ({ entityId, layoutConfig, recordId, onSuccess }) => {
         }
     };
 
-    const handleChange = (e, field) => {
-        const val = field.field_type === 'boolean' ? e.target.checked : e.target.value;
-        setFormData(prev => ({ ...prev, [field.name]: val }));
+    const handleFieldChange = (key, value) => {
+        setFormData(prev => ({ ...prev, [key]: value }));
     };
 
     const handleSubmit = async (e) => {
@@ -132,66 +123,23 @@ const GenericForm = ({ entityId, layoutConfig, recordId, onSuccess }) => {
             </h2>
             
             <div className="space-y-4">
-                {fields.map(field => (
-                    <div key={field.id}>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                            {field.label} {field.is_required && <span className="text-red-500">*</span>}
-                        </label>
-                        
-                        {/* Text / Number / Date */}
-                        {['text', 'long_text', 'number', 'currency', 'date', 'email', 'whatsapp'].includes(field.field_type) && (
-                            <input 
-                                type={field.field_type === 'number' || field.field_type === 'currency' ? 'number' : (field.field_type === 'date' ? 'date' : 'text')}
-                                className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
-                                value={formData[field.name] || ''}
-                                onChange={e => handleChange(e, field)}
-                                required={field.is_required}
-                            />
-                         )}
+                {fields.map(field => {
+                    const fieldConfig = {
+                        ...field,
+                        key: field.name,
+                        options: (field.field_type === 'ref' || field.field_type === 'list_ref') ? refOptions[field.name] : field.options,
+                        type: field.field_type // Renderer uses 'type', DB uses 'field_type'
+                    };
 
-                         {/* Boolean */}
-                         {field.field_type === 'boolean' && (
-                             <input 
-                                type="checkbox"
-                                className="w-5 h-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                                checked={!!formData[field.name]}
-                                onChange={e => handleChange(e, field)}
-                             />
-                         )}
-
-                         {/* Select (Static) */}
-                         {field.field_type === 'select' && (
-                             <select
-                                className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                                value={formData[field.name] || ''}
-                                onChange={e => handleChange(e, field)}
-                                required={field.is_required}
-                             >
-                                 <option value="">Selecione...</option>
-                                 {(Array.isArray(field.options) ? field.options : []).map((opt, idx) => (
-                                     <option key={idx} value={opt}>{opt}</option>
-                                 ))}
-                             </select>
-                         )}
-
-                         {/* Ref (Dynamic) */}
-                         {field.field_type === 'ref' && (
-                             <select
-                                className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                                value={formData[field.name] || ''}
-                                onChange={e => handleChange(e, field)}
-                                required={field.is_required}
-                             >
-                                 <option value="">Selecione...</option>
-                                 {(refOptions[field.name] || []).map(rec => (
-                                     <option key={rec.id} value={rec.id}>
-                                         {rec.nome || rec.name || rec.title || rec.id}
-                                     </option>
-                                 ))}
-                             </select>
-                         )}
-                    </div>
-                ))}
+                    return (
+                        <DynamicFieldRenderer
+                            key={field.id}
+                            fieldConfig={fieldConfig}
+                            value={formData[field.name]}
+                            onChange={handleFieldChange}
+                        />
+                    );
+                })}
             </div>
 
             <div className="mt-8 pt-4 border-t border-gray-100 dark:border-gray-700 flex justify-end">
