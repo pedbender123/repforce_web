@@ -61,6 +61,26 @@ const GenericFormModal = ({ isOpen, onClose, entitySlug, fields, onSuccess }) =>
                                             <option key={opt} value={opt}>{opt}</option>
                                         ))}
                                     </select>
+                                ) : field.field_type === 'list_ref' ? (
+                                    <div className="space-y-1">
+                                        <select
+                                            multiple
+                                            className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-md bg-transparent dark:text-white focus:ring-2 focus:ring-blue-500 focus:outline-none transition-shadow h-32"
+                                            value={Array.isArray(formData[field.name]) ? formData[field.name] : []}
+                                            onChange={(e) => {
+                                                const selected = Array.from(e.target.selectedOptions, option => option.value);
+                                                handleChange(field.name, selected);
+                                            }}
+                                            required={field.is_required && (!formData[field.name] || formData[field.name].length === 0)}
+                                        >
+                                            {field.options?.map((opt, idx) => {
+                                                const optLab = typeof opt === 'object' ? (opt.label || opt.name || opt.nome) : opt;
+                                                const optVal = typeof opt === 'object' ? (opt.value || opt.id) : opt;
+                                                return <option key={idx} value={optVal}>{optLab}</option>;
+                                            })}
+                                        </select>
+                                        <p className="text-xs text-gray-400">Segure Ctrl (ou Cmd) para selecionar múltiplos.</p>
+                                    </div>
                                 ) : (
                                     <input
                                         type={field.field_type === 'number' ? 'number' : field.field_type === 'password' ? 'password' : 'text'}

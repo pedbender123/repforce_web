@@ -53,7 +53,7 @@ const TrailsManager = () => {
   const [isLoading, setIsLoading] = useState(true);
 
   // Variables State
-  const [isVariablesModalOpen, setIsVariablesModalOpen] = useState(false);
+
 
   // Creation State
   const [isCreating, setIsCreating] = useState(false);
@@ -73,6 +73,36 @@ const TrailsManager = () => {
   // Action Configuration State
   const [entityFieldsCache, setEntityFieldsCache] = useState({}); // { entityId: [fields] }
 
+
+  // --- COMPUTED VARIABLES ---
+  const computedVariables = useMemo(() => {
+      if (!activeTrail) return [];
+      const vars = [];
+
+      // 1. Trigger Variables
+      if (activeTrail.type === 'MANUAL' && activeTrail.original.trigger_config?.context === 'LIST') {
+          vars.push({ name: 'id', label: 'ID do Item Clicado', type: 'ID' });
+          // vars.push({ name: 'trigger.table_id', label: 'ID da Tabela Base', type: 'ID' }); // Not usually present in row
+          // vars.push({ name: 'trigger.user_id', label: 'Usuário Executor', type: 'ID' });
+      }
+      if (activeTrail.type === 'WEBHOOK') {
+          vars.push({ name: 'trigger.body', label: 'Webhook Body (JSON)', type: 'JSON' });
+          vars.push({ name: 'trigger.query', label: 'Webhook Query', type: 'JSON' });
+      }
+
+      // 2. Node Outputs
+      Object.values(activeTrail.original.nodes || {}).forEach(node => {
+        const safeName = `[${node.name || node.id}]`;
+        if (node.action_type === 'DB_CREATE') {
+            vars.push({ name: `${safeName}.new_id`, label: `Novo ID (${node.name})`, type: 'ID' });
+        }
+        else if (node.action_type === 'WEBHOOK_OUT') {
+             vars.push({ name: `${safeName}.response`, label: `Resposta API (${node.name})`, type: 'JSON' });
+             vars.push({ name: `${safeName}.status`, label: `Status Code (${node.name})`, type: 'NUMBER' });
+        }
+      });
+      return vars;
+  }, [activeTrail]);
 
   // --- EFFECTS ---
 
@@ -260,16 +290,35 @@ const TrailsManager = () => {
     } catch (e) { alert("Erro ao adicionar nó"); }
   };
 
-  const handleUpdateVariable = async (newVars) => {
-      try {
-          const { data } = await apiClient.put(`/api/builder/trails/${activeTrail.id}`, {
-            local_variables: newVars // Assuming backend supports this field now
-          });
-          const updated = { ...activeTrail, original: data, local_variables: newVars };
-          setActiveTrail(updated);
-          setTrails(prev => prev.map(t => t.id === updated.id ? updated : t));
-      } catch (e) { console.error("Error saving vars", e); }
+  const handleDeleteNode = async (nodeId) => {
+    if (!window.confirm("Tem certeza que deseja excluir este nó?")) return;
+
+    const currentNodes = { ...activeTrail.original.nodes };
+    
+    // 1. Remove Node
+    delete currentNodes[nodeId];
+
+    // 2. Cleanup References (pointers to this node)
+    Object.keys(currentNodes).forEach(id => {
+        const node = currentNodes[id];
+        if (node.next_node_id === nodeId) node.next_node_id = null;
+        if (node.next_true === nodeId) node.next_true = null;
+        if (node.next_false === nodeId) node.next_false = null;
+    });
+
+    try {
+        const { data } = await apiClient.put(`/api/builder/trails/${activeTrail.id}`, {
+            nodes: currentNodes
+        });
+        
+        const updated = { ...activeTrail, original: data, steps: Object.keys(data.nodes).length };
+        setActiveTrail(updated);
+        setTrails(prev => prev.map(t => t.id === updated.id ? updated : t));
+        setSelectedNode(null); // Close sidebar
+    } catch (e) { alert("Erro ao excluir nó"); }
   };
+
+
 
   // --- SUB-COMPONENTS ---
 
@@ -584,21 +633,16 @@ const TrailsManager = () => {
                         </div>
                     </div>
                     
-                    <button 
-                        onClick={() => setIsVariablesModalOpen(true)}
-                        className="flex items-center gap-2 px-3 py-1.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 rounded-lg text-xs font-bold text-slate-600 dark:text-slate-300 transition-colors"
-                    >
-                        <ListTree size={16}/> Variáveis ({activeTrail.original.local_variables?.length || 0})
-                    </button>
+
                  </header>
-                 <div className="min-w-full min-h-full p-16 flex flex-col items-center justify-start">
+                 <div className="min-w-full min-h-full p-4 md:p-16 flex flex-col items-center justify-start">
                     {renderFlow()}
                  </div>
             </div>
             
             {/* OVERLAY SIDEBAR */}
             <div 
-                className={`fixed inset-y-0 right-0 w-[500px] bg-white dark:bg-slate-900 shadow-2xl transform transition-transform duration-300 ease-out z-[50] ${selectedNode ? 'translate-x-0' : 'translate-x-full'}`}
+                className={`fixed inset-y-0 right-0 w-full md:w-[500px] bg-white dark:bg-slate-900 shadow-2xl transform transition-transform duration-300 ease-out z-[50] ${selectedNode ? 'translate-x-0' : 'translate-x-full'}`}
             >
                 {selectedNode && (
                      <div className="h-full flex flex-col">
@@ -734,15 +778,35 @@ const TrailsManager = () => {
 
                                               <div className="space-y-2">
                                                 <label className="text-xs font-bold text-slate-500 uppercase">ID do Registro (Fórmula)</label>
-                                                <div 
-                                                    onClick={() => {
-                                                        setIsFormulaEditorOpen(true);
-                                                        setFormulaFieldTarget({ path: 'config.record_id', label: 'ID do Registro' });
+ 
+                                                <select 
+                                                    className="w-full p-3 bg-slate-50 rounded-xl text-sm font-bold border border-slate-200 outline-none"
+                                                    value={selectedNode.original.config.record_id || ''}
+                                                    onChange={e => {
+                                                        setSelectedNode(prev => ({
+                                                             ...prev,
+                                                             original: { ...prev.original, config: { ...prev.original.config, record_id: e.target.value } }
+                                                        }));
                                                     }}
-                                                    className="w-full p-3 bg-white rounded-xl border border-slate-200 text-sm font-mono text-blue-600 cursor-pointer hover:border-blue-400"
                                                 >
-                                                    {selectedNode.original.config.record_id || 'Clique para definir ID...'}
-                                                </div>
+                                                    <option value="">Selecione ou deixe vazio...</option>
+                                                    {computedVariables.map(v => (
+                                                        <option key={v.name} value={`{{${v.name}}}`}>{v.label} ({v.type})</option>
+                                                    ))}
+                                                    <option value="MANUAL">Digitar ID manualmente...</option>
+                                                </select>
+                                                {selectedNode.original.config.record_id === 'MANUAL' && (
+                                                     <input 
+                                                         className="mt-2 w-full p-3 bg-white border border-slate-200 rounded-xl text-sm"
+                                                         placeholder="Digite o ID..."
+                                                         onBlur={e => {
+                                                             setSelectedNode(prev => ({
+                                                                 ...prev,
+                                                                 original: { ...prev.original, config: { ...prev.original.config, record_id: e.target.value } }
+                                                            }));
+                                                         }}
+                                                     />
+                                                )}
                                               </div>
                                               
                                               {selectedNode.original.config.table_id && (
@@ -796,15 +860,22 @@ const TrailsManager = () => {
                                             </div>
                                             <div className="space-y-2">
                                                 <label className="text-xs font-bold text-slate-500 uppercase">ID do Registro para Deletar</label>
-                                                <div 
-                                                    onClick={() => {
-                                                        setIsFormulaEditorOpen(true);
-                                                        setFormulaFieldTarget({ path: 'config.record_id', label: 'ID do Registro' });
+ 
+                                                <select 
+                                                    className="w-full p-3 bg-slate-50 rounded-xl text-sm font-bold border border-slate-200 outline-none"
+                                                    value={selectedNode.original.config.record_id || ''}
+                                                    onChange={e => {
+                                                        setSelectedNode(prev => ({
+                                                             ...prev,
+                                                             original: { ...prev.original, config: { ...prev.original.config, record_id: e.target.value } }
+                                                        }));
                                                     }}
-                                                    className="w-full p-3 bg-white rounded-xl border border-slate-200 text-sm font-mono text-red-500 cursor-pointer hover:border-red-400"
                                                 >
-                                                    {selectedNode.original.config.record_id || 'Clique para definir ID...'}
-                                                </div>
+                                                    <option value="">Selecione...</option>
+                                                    {computedVariables.map(v => (
+                                                        <option key={v.name} value={`{{${v.name}}}`}>{v.label} ({v.type})</option>
+                                                    ))}
+                                                </select>
                                             </div>
                                         </div>
                                     )}
@@ -830,15 +901,22 @@ const TrailsManager = () => {
                                             </div>
                                             <div className="space-y-2">
                                                 <label className="text-xs font-bold text-slate-500 uppercase">ID do Registro (Opcional - Para abrir Detalhes)</label>
-                                                <div 
-                                                    onClick={() => {
-                                                        setIsFormulaEditorOpen(true);
-                                                        setFormulaFieldTarget({ path: 'config.record_id', label: 'ID do Registro' });
+ 
+                                                <select 
+                                                    className="w-full p-3 bg-slate-50 rounded-xl text-sm font-bold border border-slate-200 outline-none"
+                                                    value={selectedNode.original.config.record_id || ''}
+                                                    onChange={e => {
+                                                        setSelectedNode(prev => ({
+                                                             ...prev,
+                                                             original: { ...prev.original, config: { ...prev.original.config, record_id: e.target.value } }
+                                                        }));
                                                     }}
-                                                    className="w-full p-3 bg-white rounded-xl border border-slate-200 text-sm font-mono text-blue-600 cursor-pointer hover:border-blue-400"
                                                 >
-                                                    {selectedNode.original.config.record_id || 'Vazio (Nenhum Filtro)'}
-                                                </div>
+                                                    <option value="">Vazio (Nenhum Filtro)</option>
+                                                    {computedVariables.map(v => (
+                                                        <option key={v.name} value={`{{${v.name}}}`}>{v.label} ({v.type})</option>
+                                                    ))}
+                                                </select>
                                             </div>
                                         </div>
                                     )}
@@ -866,15 +944,41 @@ const TrailsManager = () => {
                                             </div>
                                             <div className="space-y-2">
                                                 <label className="text-xs font-bold text-slate-500 uppercase">URL de Destino</label>
-                                                <div 
-                                                    onClick={() => {
-                                                        setIsFormulaEditorOpen(true);
-                                                        setFormulaFieldTarget({ path: 'config.url', label: 'URL' });
+                                                <select 
+                                                    className="w-full p-3 bg-slate-50 rounded-xl text-sm font-bold border border-slate-200 outline-none"
+                                                    value={selectedNode.original.config.url || ''}
+                                                    onChange={e => {
+                                                        setSelectedNode(prev => ({
+                                                             ...prev,
+                                                             original: { ...prev.original, config: { ...prev.original.config, url: e.target.value } }
+                                                        }));
                                                     }}
-                                                    className="w-full p-3 bg-white rounded-xl border border-slate-200 text-sm font-mono text-purple-600 cursor-pointer hover:border-purple-400 break-all"
                                                 >
-                                                    {selectedNode.original.config.url || 'https://api.exemplo.com/...'}
-                                                </div>
+                                                    <option value="">Selecione ou deixe vazio...</option>
+                                                    {computedVariables.map(v => (
+                                                        <option key={v.name} value={`{{${v.name}}}`}>{v.label} ({v.type})</option>
+                                                    ))}
+                                                    <option value="MANUAL">Digitar URL manualmente...</option>
+                                                </select>
+                                                {selectedNode.original.config.url === 'MANUAL' && (
+                                                     <input 
+                                                         className="mt-2 w-full p-3 bg-white border border-slate-200 rounded-xl text-sm"
+                                                         placeholder="https://..."
+                                                         onBlur={e => {
+                                                             setSelectedNode(prev => ({
+                                                                 ...prev,
+                                                                 original: { ...prev.original, config: { ...prev.original.config, url: e.target.value } }
+                                                            }));
+                                                         }}
+                                                     />
+                                                )}
+                                                {/* Fallback for viewing manual if not matching 'MANUAL' select option but existing */}
+                                                {selectedNode.original.config.url && !selectedNode.original.config.url.startsWith('{{') && selectedNode.original.config.url !== 'MANUAL' && (
+                                                    <div className="mt-2 text-xs text-slate-500">
+                                                        Valor atual: {selectedNode.original.config.url} 
+                                                        <button className="ml-2 text-blue-500 underline" onClick={()=>setSelectedNode(prev => ({...prev, original: {...prev.original, config: {...prev.original.config, url: 'MANUAL'}} }))}>Editar</button>
+                                                    </div>
+                                                )}
                                             </div>
                                             
                                             <div className="space-y-2">
@@ -916,15 +1020,31 @@ const TrailsManager = () => {
                                                                     className="text-red-400 opacity-0 group-hover:opacity-100"
                                                                 ><Trash2 size={12}/></button>
                                                             </div>
-                                                            <div 
-                                                                onClick={() => {
-                                                                    setIsFormulaEditorOpen(true);
-                                                                    setFormulaFieldTarget({ path: `config.body.${key}`, label: key });
+                                                            <select 
+                                                                className="w-full p-2 bg-white rounded-lg border border-slate-200 text-xs text-blue-600 font-mono outline-none"
+                                                                value={val || ''}
+                                                                onChange={e => {
+                                                                    const newVal = e.target.value;
+                                                                    const newBody = { ...selectedNode.original.config.body, [key]: newVal };
+                                                                    setSelectedNode(prev => ({
+                                                                        ...prev,
+                                                                        original: { ...prev.original, config: { ...prev.original.config, body: newBody } }
+                                                                    }));
                                                                 }}
-                                                                className="w-full p-2 bg-white rounded-lg border border-slate-200 text-xs text-blue-600 font-mono cursor-pointer hover:border-blue-400"
                                                             >
-                                                                {val || 'Definir Valor...'}
-                                                            </div>
+                                                                <option value="">Vazio...</option>
+                                                                {computedVariables.map(v => (
+                                                                    <option key={v.name} value={`{{${v.name}}}`}>{v.label} ({v.type})</option>
+                                                                ))}
+                                                                 <option value="MANUAL">Valor Fixo...</option>
+                                                            </select>
+                                                            {val === 'MANUAL' && <input className="mt-1 w-full text-xs p-1 border rounded" placeholder="Valor..." onBlur={e => {
+                                                                 const newBody = { ...selectedNode.original.config.body, [key]: e.target.value };
+                                                                    setSelectedNode(prev => ({
+                                                                        ...prev,
+                                                                        original: { ...prev.original, config: { ...prev.original.config, body: newBody } }
+                                                                    }));
+                                                            }}/>}
                                                         </div>
                                                     ))}
                                                     {Object.keys(selectedNode.original.config.body || {}).length === 0 && (
@@ -940,27 +1060,65 @@ const TrailsManager = () => {
                                         <div className="space-y-4 animate-fade-in">
                                             <div className="space-y-2">
                                                 <label className="text-xs font-bold text-slate-500 uppercase">Responsável (ID ou Email)</label>
-                                                <div 
-                                                    onClick={() => {
-                                                        setIsFormulaEditorOpen(true);
-                                                        setFormulaFieldTarget({ path: 'config.assignee', label: 'Responsável' });
+                                                <select 
+                                                    className="w-full p-3 bg-slate-50 rounded-xl text-sm font-bold border border-slate-200 outline-none"
+                                                    value={selectedNode.original.config.assignee || ''}
+                                                    onChange={e => {
+                                                        setSelectedNode(prev => ({
+                                                             ...prev,
+                                                             original: { ...prev.original, config: { ...prev.original.config, assignee: e.target.value } }
+                                                        }));
                                                     }}
-                                                    className="w-full p-3 bg-white rounded-xl border border-slate-200 text-sm font-mono text-blue-600 cursor-pointer hover:border-blue-400"
                                                 >
-                                                    {selectedNode.original.config.assignee || 'Clique para definir responsável...'}
-                                                </div>
+                                                    <option value="">Selecione...</option>
+                                                    {computedVariables.map(v => (
+                                                        <option key={v.name} value={`{{${v.name}}}`}>{v.label}</option>
+                                                    ))}
+                                                    <option value="MANUAL">Digitar ID/Email...</option>
+                                                </select>
+                                                 {selectedNode.original.config.assignee === 'MANUAL' && (
+                                                     <input 
+                                                         className="mt-2 w-full p-3 bg-white border border-slate-200 rounded-xl text-sm"
+                                                         placeholder="ID ou Email..."
+                                                         onBlur={e => {
+                                                             setSelectedNode(prev => ({
+                                                                 ...prev,
+                                                                 original: { ...prev.original, config: { ...prev.original.config, assignee: e.target.value } }
+                                                            }));
+                                                         }}
+                                                     />
+                                                )}
                                             </div>
                                             <div className="space-y-2">
                                                 <label className="text-xs font-bold text-slate-500 uppercase">Título da Tarefa</label>
-                                                 <div 
-                                                    onClick={() => {
-                                                        setIsFormulaEditorOpen(true);
-                                                        setFormulaFieldTarget({ path: 'config.title', label: 'Título' });
+                                                 <select 
+                                                    className="w-full p-3 bg-slate-50 rounded-xl text-sm font-bold border border-slate-200 outline-none"
+                                                    value={selectedNode.original.config.title || ''}
+                                                    onChange={e => {
+                                                        setSelectedNode(prev => ({
+                                                             ...prev,
+                                                             original: { ...prev.original, config: { ...prev.original.config, title: e.target.value } }
+                                                        }));
                                                     }}
-                                                    className="w-full p-3 bg-white rounded-xl border border-slate-200 text-sm font-mono text-blue-600 cursor-pointer hover:border-blue-400"
                                                 >
-                                                    {selectedNode.original.config.title || 'Clique para definir título...'}
-                                                </div>
+                                                    <option value="">Selecione...</option>
+                                                    {computedVariables.map(v => (
+                                                        <option key={v.name} value={`{{${v.name}}}`}>{v.label}</option>
+                                                    ))}
+                                                    <option value="MANUAL">Digitar Título...</option>
+                                                </select>
+                                                {selectedNode.original.config.title === 'MANUAL' && (
+                                                     <input 
+                                                         className="mt-2 w-full p-3 bg-white border border-slate-200 rounded-xl text-sm"
+                                                         placeholder="Título da Tarefa..."
+                                                         onBlur={e => {
+                                                             setSelectedNode(prev => ({
+                                                                 ...prev,
+                                                                 original: { ...prev.original, config: { ...prev.original.config, title: e.target.value } }
+                                                            }));
+                                                         }}
+                                                     />
+                                                )}
                                             </div>
                                         </div>
                                     )}
@@ -993,6 +1151,16 @@ const TrailsManager = () => {
                                     </p>
                                 </div>
                             )}
+
+                            <div className="pt-8 mt-8 border-t border-slate-100 dark:border-slate-800">
+                                <button 
+                                    onClick={() => handleDeleteNode(selectedNode.id)}
+                                    className="w-full py-3 flex items-center justify-center gap-2 bg-red-50 text-red-600 rounded-xl font-bold text-xs hover:bg-red-100 transition-colors"
+                                >
+                                    <Trash2 size={16} />
+                                    EXCLUIR ESTE NÓ
+                                </button>
+                            </div>
 
                         </div>
 
@@ -1029,64 +1197,9 @@ const TrailsManager = () => {
                 )}
             </div>
             
-            {/* VARIABLES MODAL */}
-            {isVariablesModalOpen && (
-                <div className="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center backdrop-blur-sm">
-                    <div className="bg-white dark:bg-slate-900 w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden p-6 animate-fade-in-up">
-                        <div className="flex justify-between items-center mb-6">
-                            <h3 className="text-lg font-black dark:text-white">Variáveis Locais</h3>
-                            <button onClick={() => setIsVariablesModalOpen(false)}><X size={20}/></button>
-                        </div>
-                        
-                        <div className="space-y-3 mb-6">
-                            {(activeTrail.local_variables || []).map((v, i) => (
-                                <div key={i} className="flex items-center gap-2 p-3 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-100 dark:border-slate-700">
-                                    <div className="p-2 bg-purple-100 text-purple-600 rounded-lg font-mono text-xs font-bold">{v.type}</div>
-                                    <div className="flex-1 font-bold text-sm text-slate-700 dark:text-slate-300">{v.name}</div>
-                                    <button 
-                                        onClick={() => {
-                                            const newVars = [...(activeTrail.local_variables || [])];
-                                            newVars.splice(i, 1);
-                                            handleUpdateVariable(newVars);
-                                        }}
-                                        className="text-slate-400 hover:text-red-500"
-                                    ><Trash2 size={16}/></button>
-                                </div>
-                            ))}
-                            {(activeTrail.local_variables || []).length === 0 && (
-                                <p className="text-center text-slate-400 text-sm py-4">Nenhuma variável criada.</p>
-                            )}
-                        </div>
 
-                        <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-xl border-2 border-dashed border-slate-200 dark:border-slate-700">
-                            <h4 className="text-xs font-black uppercase text-slate-400 mb-3">Nova Variável</h4>
-                            <form 
-                                onSubmit={e => {
-                                    e.preventDefault();
-                                    const name = e.target.name.value;
-                                    const type = e.target.type.value;
-                                    if(name && type) {
-                                        const newVars = [...(activeTrail.local_variables || []), { name, type }];
-                                        handleUpdateVariable(newVars);
-                                        e.target.reset();
-                                    }
-                                }}
-                                className="flex gap-2"
-                            >
-                                <input name="name" placeholder="Nome (ex: total_vendas)" className="flex-1 p-2 rounded-lg border border-slate-200 text-sm font-bold outline-none" required/>
-                                <select name="type" className="p-2 rounded-lg border border-slate-200 text-xs font-bold outline-none">
-                                    <option value="TEXT">Texto</option>
-                                    <option value="NUMBER">Número</option>
-                                    <option value="DATE">Data</option>
-                                </select>
-                                <button type="submit" className="p-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"><Plus size={18}/></button>
-                            </form>
-                        </div>
-                    </div>
-                </div>
-            )}
             
-            {/* FORMULA EDITOR */}
+
             {isFormulaEditorOpen && selectedNode && formulaFieldTarget && (
                 <FormulaEditorModal
                     isOpen={true}
@@ -1102,7 +1215,6 @@ const TrailsManager = () => {
                         : selectedNode.original.config?.[formulaFieldTarget.path] || ''
                     }
                     onSave={(newFormula) => {
-                         // Deep set value
                          const deepSet = (obj, path, value) => {
                              const keys = path.split('.');
                              const last = keys.pop();
@@ -1120,13 +1232,17 @@ const TrailsManager = () => {
                         }));
                     }}
                     entityId={activeTrail.trigger_config?.entity_id}
-                    fields={activeTrail.local_variables?.map(v => ({ name: v.name, label: `(Var) ${v.name}` })) || []} // Passing vars as fields
+                    fields={computedVariables} 
+                    availableEntities={availableEntities} 
+                    onFetchEntityFields={fetchEntityFields} 
                 />
             )}
         </div>
     );
   };
 
+
+  
   const ListView = () => (
     <div className="max-w-6xl mx-auto p-6 md:p-12">
       <div className="flex items-center justify-between mb-8">

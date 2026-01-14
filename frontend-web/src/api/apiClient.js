@@ -1,6 +1,15 @@
 import axios from 'axios';
 
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8100';
+// Configuração da URL da API
+// Em produção, REACT_APP_API_URL deve estar definido.
+// Em desenvolvimento local, fallback para localhost:8100.
+// Em desenvolvimento local, fallback para localhost:8100.
+// FIX: Always use relative path to ensure Vite Proxy handles routing correctly (avoids /api/v1 doubles)
+const API_URL = '';
+
+if (process.env.NODE_ENV === 'production' && !process.env.REACT_APP_API_URL) {
+    console.warn("AVISO: REACT_APP_API_URL não está definida em ambiente de produção. Usando fallback localhost.");
+}
 
 const apiClient = axios.create({
   baseURL: API_URL,
@@ -11,6 +20,7 @@ const apiClient = axios.create({
 
 // Interceptor for Request: Injection
 apiClient.interceptors.request.use((config) => {
+  console.log(`[API REQUEST] ${config.method.toUpperCase()} ${config.url}`, config);
   const token = localStorage.getItem('token');
   const tenantSlug = localStorage.getItem('tenantSlug');
 
@@ -32,8 +42,12 @@ apiClient.interceptors.request.use((config) => {
 
 // Interceptor for Response: Anti-Loop & Session Management
 apiClient.interceptors.response.use(
-  (response) => response,
+  (response) => {
+      console.log(`[API SUCCESS] ${response.config.url}`, response.status);
+      return response;
+  },
   (error) => {
+    console.error(`[API ERROR] ${error.config?.url}`, error.response || error);
     // We avoid aggressive localStorage purge here to prevent AuthContext-Redirect loops.
     // AuthContext's hydrateUserData will handle 401s during boot or manual refreshes.
     if (error.response?.status === 401) {

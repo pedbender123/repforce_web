@@ -17,8 +17,10 @@ def login(
     # email_regex = r"^[\w\.-]+@[\w\.-]+\.\w+$"
     # if re.match(email_regex, username): ...
 
-    # 2. Fetch User
-    user = db.query(models.GlobalUser).filter(models.GlobalUser.username == username).first()
+    # 2. Fetch User (Email or Username)
+    user = db.query(models.GlobalUser).filter(
+        (models.GlobalUser.username == username) | (models.GlobalUser.recovery_email == username)
+    ).first()
     
     # 3. Verify
     if not user or not verify_password(password, user.password_hash):

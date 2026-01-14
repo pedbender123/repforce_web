@@ -115,23 +115,30 @@ const nodeTypes = {
 
 // --- MAIN BUILDER COMPONENT ---
 
-const TrailBuilder = ({ trailId }) => {
+import TrailNodeEditor from './TrailNodeEditor';
+
+// --- MAIN BUILDER COMPONENT ---
+
+const TrailBuilder = ({ trailId, onBack }) => {
     const [nodes, setNodes] = useState([]);
     const [edges, setEdges] = useState([]);
     const [trailData, setTrailData] = useState(null);
-    const [isFormulaModalOpen, setIsFormulaModalOpen] = useState(false);
-    const [editingNodeId, setEditingNodeId] = useState(null);
-    const [editingProperty, setEditingProperty] = useState(null); // 'config.data' or 'condition'
     
-    // Editor State
+    // Editor States
+    const [isFormulaModalOpen, setIsFormulaModalOpen] = useState(false);
+    const [isNodeEditorOpen, setIsNodeEditorOpen] = useState(false);
+    
+    const [editingNodeId, setEditingNodeId] = useState(null);
+    const [editingNodeData, setEditingNodeData] = useState(null); // Full node object for Editor
     const [currentFormula, setCurrentFormula] = useState('');
-
+    const [editingProperty, setEditingProperty] = useState(null); // 'condition' only for Decision
+    
     useEffect(() => {
         loadTrail();
     }, [trailId]);
 
     const loadTrail = async () => {
-        if (!trailId) return; // Create mode?
+        if (!trailId) return; 
         try {
             const { data } = await apiClient.get(`/api/builder/trails/${trailId}`);
             setTrailData(data);
@@ -142,10 +149,7 @@ const TrailBuilder = ({ trailId }) => {
     };
 
     const reconstructGraph = (nodesMap) => {
-        // Transform Backend Node Map -> ReactFlow Nodes/Edges
-        // Default Vertical Layout Algorithm (Simplified)
         if (!nodesMap) {
-            // Default Trigger
             const triggerId = 'trigger_0';
             setNodes([{ 
                 id: triggerId, 
@@ -160,29 +164,25 @@ const TrailBuilder = ({ trailId }) => {
         const flowEdges = [];
         const yGap = 150;
         
-        // Recursive Layout? Or just flattening.
-        // For existing map, we need to trace from start.
-        // Assuming 'trigger_0' is start.
-        
         const traverse = (nodeId, x, y) => {
             const nodeData = nodesMap[nodeId];
             if (!nodeData) return;
 
             const existing = flowNodes.find(n => n.id === nodeId);
-            if (existing) return; // Loop prevention
+            if (existing) return;
 
-            let label = nodeData.name || nodeData.type;
-            
+            // We pass the FULL node data to the visualization so it can pass it back to editor
             flowNodes.push({
                 id: nodeId,
                 type: nodeData.type.toLowerCase(),
                 position: { x, y },
                 data: { 
-                    label, 
+                    label: nodeData.name || nodeData.type,
                     actionType: nodeData.action_type,
                     condition: nodeData.config?.condition,
-                    config: nodeData.config,
-                    onEdit: () => openEditor(nodeId, nodeData),
+                    config: nodeData.config || {}, // Ensure config object exists
+                    // Pass wrapper function that sends ID and current Node State
+                    onEdit: () => openEditor(nodeId, nodeData), // We'll need to fetch latest state from `nodes` state in openEditor really, but this works for init
                     onAddNext: () => addNode(nodeId)
                 }
             });
@@ -204,7 +204,6 @@ const TrailBuilder = ({ trailId }) => {
             }
         };
 
-        // Find Start
         let startId = Object.keys(nodesMap).find(k => nodesMap[k].type === 'TRIGGER') || Object.keys(nodesMap)[0];
         if (startId) traverse(startId, 250, 50);
 
@@ -212,46 +211,79 @@ const TrailBuilder = ({ trailId }) => {
         setEdges(flowEdges);
     };
 
-    const openEditor = (nodeId, nodeData) => {
+    const openEditor = (nodeId, initialData) => {
+        // Find the LATEST node data from state, as initialData in closure might be stale
+        const liveNode = nodes.find(n => n.id === nodeId);
+        const nodeToEdit = liveNode || { id: nodeId, data: initialData }; // Fallback
+        
         setEditingNodeId(nodeId);
-        // Identify what to edit based on type
-        if (nodeData.type === 'DECISION') {
+        setEditingNodeData(nodeToEdit);
+
+        if (initialData.type === 'DECISION') {
+            // Decision uses Formula Editor directly for Condition
             setEditingProperty('condition');
-            setCurrentFormula(nodeData.config?.condition || '');
-        } else if (nodeData.type === 'ACTION') {
-            const current = JSON.stringify(nodeData.config || {}, null, 2);
-            setCurrentFormula(current); // Here we might need a JSON editor or specific field editor, reusing Formula Modal for now as generic text
-             setEditingProperty('config');
+            setCurrentFormula(liveNode?.data?.condition || initialData.config?.condition || '');
+            setIsFormulaModalOpen(true);
+        } else if (initialData.type === 'ACTION') {
+            // Actions use the new Node Editor
+            setIsNodeEditorOpen(true);
         }
-        setIsFormulaModalOpen(true);
+    };
+
+    const handleSaveNode = (nodeId, newData) => {
+        setNodes(nds => nds.map(n => {
+            if (n.id === nodeId) {
+                return { ...n, data: { ...n.data, ...newData } };
+            }
+            return n;
+        }));
+        setIsNodeEditorOpen(false);
     };
 
     const handleSaveFormula = (newVal) => {
-        // Update Local State Graph
-        // Re-saving to backend logic needed here
-        console.log("Saving", editingNodeId, newVal);
-        // Minimal update for demo
+         setNodes(nds => nds.map(n => {
+            if (n.id === editingNodeId) {
+                return { ...n, data: { ...n.data, condition: newVal } };
+            }
+            return n;
+        }));
         setIsFormulaModalOpen(false);
     };
 
     const addNode = (parentId) => {
-        console.log("Add node after:", parentId);
-        // TODO: Implement node addition logic (modifying backend JSON structure)
+        // Placeholder
     };
 
     const onNodesChange = useCallback((changes) => setNodes((nds) => applyNodeChanges(changes, nds)), []);
     const onEdgesChange = useCallback((changes) => setEdges((eds) => applyEdgeChanges(changes, eds)), []);
 
+    // Helper to get previous nodes for the Source Selector
+    // In a tree, this is tricky, just linear for now or all nodes
+    // Ideally we traverse graph backwards. For MVP, we just pass ALL nodes except self.
+    const getPotentialContextNodes = () => {
+        return nodes.filter(n => n.id !== editingNodeId && n.type === 'action'); // Only actions produce IDs typically
+    };
+
     return (
         <div className="h-full flex flex-col bg-slate-50 dark:bg-slate-900">
             {/* Header */}
-            <div className="h-16 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex items-center justify-between px-6">
-                <div>
-                    <h1 className="text-lg font-bold text-slate-800 dark:text-white flex items-center gap-2">
-                        <GitBranch size={20} className="text-blue-500" />
-                        {trailData?.name || "Nova Trilha"}
-                    </h1>
-                    <p className="text-xs text-slate-400">Editor Visual de Fluxo</p>
+            <div className="h-16 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex items-center justify-between px-6 shrink-0">
+                <div className="flex items-center gap-4">
+                    {onBack && (
+                        <button 
+                            onClick={onBack}
+                            className="p-2 -ml-2 text-slate-400 hover:text-slate-800 dark:hover:text-white rounded-full transition-colors"
+                        >
+                             <ArrowDown className="rotate-90" size={20} />
+                        </button>
+                    )}
+                    <div>
+                        <h1 className="text-lg font-bold text-slate-800 dark:text-white flex items-center gap-2">
+                            <GitBranch size={20} className="text-blue-500" />
+                            {trailData?.name || "Nova Trilha"}
+                        </h1>
+                        <p className="text-xs text-slate-400">Editor Visual de Fluxo</p>
+                    </div>
                 </div>
                 <div className="flex gap-2">
                     <button className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-bold text-sm shadow-lg shadow-blue-500/20 transition-all">
@@ -281,12 +313,22 @@ const TrailBuilder = ({ trailId }) => {
             </div>
 
             {/* Modals */}
+            
+            {/* 1. Formula Editor for Decisions */}
             <FormulaEditorModal 
                 isOpen={isFormulaModalOpen}
                 onClose={() => setIsFormulaModalOpen(false)}
                 formula={currentFormula}
-                entityId={null} // Pass generic if needed
                 onSave={handleSaveFormula}
+            />
+
+            {/* 2. New Node Editor for Actions */}
+            <TrailNodeEditor 
+                isOpen={isNodeEditorOpen}
+                onClose={() => setIsNodeEditorOpen(false)}
+                node={editingNodeData}
+                previousNodes={getPotentialContextNodes()} // Passing all actions as candidates for now
+                onSave={handleSaveNode}
             />
         </div>
     );

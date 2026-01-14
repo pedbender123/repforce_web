@@ -118,6 +118,7 @@ class MetaEntityBase(BaseModel):
     display_name: str
     icon: Optional[str] = "Database"
     is_system: bool = False
+    layout_config: Optional[Dict[str, Any]] = {}
 
 class MetaEntityCreate(MetaEntityBase):
     pass
@@ -126,6 +127,7 @@ class MetaEntityUpdate(BaseModel):
     display_name: Optional[str] = None
     slug: Optional[str] = None
     icon: Optional[str] = None
+    layout_config: Optional[Dict[str, Any]] = None
 
 class MetaEntityResponse(MetaEntityBase):
     id: UUID

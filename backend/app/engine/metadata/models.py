@@ -16,6 +16,7 @@ class MetaEntity(Base):
     display_name = Column(String, nullable=False) # Nome visual (ex: "Visitas Técnicas")
     is_system = Column(Boolean, default=False) # Tabelas nativas não deletáveis
     icon = Column(String, default="Database")
+    layout_config = Column(JSON, default={}) # 360 View Config (Tabs, Widgets)
     
     created_at = Column(DateTime, default=datetime.utcnow)
     

@@ -9,8 +9,8 @@ module.exports = {
     extend: {
       colors: {
         // Cores da Identidade Visual PBPM
-        'repforce-primary': '#8B5CF6',       // Roxo (Violet 500)
-        'repforce-dark': '#4C1D95',        // Indigo (Violet 900)
+        'repforce-primary': '#2563eb',       // Royal Blue (Blue 600)
+        'repforce-dark': '#1e3a8a',        // Dark Blue (Blue 900)
         'repforce-light': '#020617',       // Navy (Slate 950 - Fundo)
       },
       fontFamily: {

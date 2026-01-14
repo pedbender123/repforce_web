@@ -1,133 +1,200 @@
 import { useNavigate } from 'react-router-dom';
 import apiClient from '../api/apiClient';
+import { useTabs } from '../context/TabContext';
 
 const useActionExecutor = () => {
     const navigate = useNavigate();
+    const { openSubPage } = useTabs();
 
     const executeAction = async (action, contextData = {}) => {
         if (!action) return;
 
-        console.log("Executing Action:", action, "Context:", contextData);
+        // --- Helper: Interpolation Logic ---
+        const resolveString = (val) => {
+            if (!val || typeof val !== 'string') return val;
+            let resolved = val;
+            Object.keys(contextData).forEach(key => {
+                const value = contextData[key] !== undefined && contextData[key] !== null ? contextData[key] : '';
+                // Replace {{key}}
+                resolved = resolved.replace(new RegExp(`{{\\s*${key}\\s*}}`, 'g'), value);
+                // Replace :key (legacy path param style)
+                resolved = resolved.replace(new RegExp(`:${key}\\b`, 'g'), value);
+            });
+            return resolved;
+        };
+
+        const resolveConfigRecursive = (obj) => {
+            if (typeof obj === 'string') return resolveString(obj);
+            if (Array.isArray(obj)) return obj.map(item => resolveConfigRecursive(item));
+            if (obj && typeof obj === 'object') {
+                const resolved = {};
+                for (const key in obj) {
+                    resolved[key] = resolveConfigRecursive(obj[key]);
+                }
+                return resolved;
+            }
+            return obj;
+        };
+
+        // Pre-resolve the entire config
+        const resolvedConfig = resolveConfigRecursive(action.config || {});
+        
+        // --- ID CHAINING & CONTEXT PROPAGATION STRATEGY ---
+        // 1. Explicit Chain Checkbox
+        if (resolvedConfig.chain_id && contextData.id) {
+            resolvedConfig.record_id = contextData.id;
+        }
+        
+        // 2. Fallback: Legacy "id" string match
+        if (action.config.record_id === 'id' && !resolvedConfig.record_id?.match(/^\d+$/) && contextData.id) {
+             resolvedConfig.record_id = contextData.id;
+        }
 
         try {
             switch (action.action_type) {
-                case 'NAVIGATE':
-                    const path = action.config.path;
-                    if (path) {
-                        // Replace variables like :id in path
-                        let finalPath = path;
-                        Object.keys(contextData).forEach(key => {
-                            finalPath = finalPath.replace(`:${key}`, contextData[key]);
+                // --- NEW MDI ACTION ---
+                case 'OPEN_SUBPAGE':
+                    if (resolvedConfig.path) {
+                        // Determine Title (Try to find page name or use ID)
+                        // Ideally we fetch page info or use label from config if exists
+                        const pageIdMatch = resolvedConfig.path.match(/\/app\/page\/([a-zA-Z0-9-]+)/);
+                        const pageId = pageIdMatch ? pageIdMatch[1] : 'unknown';
+                        
+                        openSubPage({
+                            title: resolvedConfig.title || `Aba ${pageId.substr(0,4)}`, // Fallback title
+                            path: resolvedConfig.path,
+                            template: resolvedConfig.template || 'FICHA',
+                            id: resolvedConfig.path, // Use path as unique ID for now unless specific
+                            data: {
+                                record_id: resolvedConfig.record_id, // Pass chained ID to draft
+                                mode: resolvedConfig.mode || 'view'
+                            }
                         });
+                    }
+                    else {
+                        console.warn("OPEN_SUBPAGE missing path");
+                    }
+                    break;
 
-                        // Check for include_record_id
-                        if (action.config.include_record_id && contextData.id) {
-                            const separator = finalPath.includes('?') ? '&' : '?';
-                            finalPath += `${separator}record_id=${contextData.id}`;
-                        }
+                case 'NAVIGATE':
+                    let path = resolvedConfig.path;
+                    
+                    // Support page_id (fetch path)
+                    if (!path && resolvedConfig.page_id) {
+                        path = `/app/page/${resolvedConfig.page_id}`; 
+                    }
 
-                        // Check for Ref Filter
-                        if (action.config.ref_filter_enabled && action.config.ref_filter_field && contextData.id) {
-                             const separator = finalPath.includes('?') ? '&' : '?';
-                             // We use generic 'filter_field' and 'filter_value' params that ListPage understands
-                             finalPath += `${separator}filter_field=${action.config.ref_filter_field}&filter_value=${contextData.id}`;
+                    if (path) {
+                        path = resolveString(path); // Double check
+
+                        // Append Record ID if exists
+                        if (resolvedConfig.record_id && resolvedConfig.record_id !== 'MANUAL') {
+                             const separator = path.includes('?') ? '&' : '?';
+                             path += `${separator}record_id=${resolvedConfig.record_id}`;
                         }
                         
-                        navigate(finalPath);
+                        // Ref Filter Support
+                        if (resolvedConfig.ref_filter_enabled && resolvedConfig.ref_filter_field && contextData.id) {
+                             const separator = path.includes('?') ? '&' : '?';
+                             path += `${separator}filter_field=${resolvedConfig.ref_filter_field}&filter_value=${contextData.id}`;
+                        }
+                        
+                        navigate(path);
                     }
                     break;
 
                 case 'FETCH_FIRST':
                     // Need entitySlug from context
                     const slug = contextData.entitySlug;
-                    if (!slug) {
-                        console.warn('FETCH_FIRST requires entitySlug in context');
-                        return;
-                    }
-                    // Fetch first
-                    // We can use the object list endpoint with limit=1
-                    const { data } = await apiClient.get(`/api/engine/object/${slug}?limit=1`);
-                    if (data && data.length > 0) {
-                        const firstId = data[0].id;
-                        // Reload current page with record_id param, or just trigger callback?
-                        // Usually this runs on PageLoad. 
-                        // We can just Navigate to self with query param.
-                        const currentPath = window.location.pathname;
-                        navigate(`${currentPath}?record_id=${firstId}`, { replace: true });
+                    if (!slug) { console.warn('FETCH_FIRST requires entitySlug'); return; }
+                    const { data: dataFirst } = await apiClient.get(`/api/engine/object/${slug}?limit=1`);
+                    if (dataFirst && dataFirst.length > 0) {
+                        navigate(`${window.location.pathname}?record_id=${dataFirst[0].id}`, { replace: true });
                     }
                     break;
 
                 case 'URL':
-                    const url = action.config.url;
-                    if (url) {
-                        window.open(url, '_blank');
+                    if (resolvedConfig.url) {
+                        window.open(resolvedConfig.url, '_blank');
                     }
                     break;
 
                 case 'WEBHOOK':
-                    // We send to our backend proxy to handle the actual external call (avoids CORS)
-                    // Or call directly if configured. Ideally backend.
-                    // For now, let's try direct call, if fails fallback to backend? 
-                    // Actually, safer to assume it's an external webhook, so CORS might block.
-                    // Better to have a "Trigger Proxy" endpoint.
-                    // But for "Virtual Buttons" we already have server action.
-                    // Let's implement a simple fire-and-forget or await via backend.
-                    if (action.config.url) {
+                case 'WEBHOOK_OUT': 
+                    if (resolvedConfig.url) {
                         await apiClient.post('/api/engine/actions/proxy', {
-                            url: action.config.url,
-                            data: contextData
+                            url: resolvedConfig.url,
+                            method: resolvedConfig.method || 'POST',
+                            body: resolvedConfig.body || {}, 
+                            data: contextData 
                         });
-                        alert("Ação disparada com sucesso!");
                     }
                     break;
                 
                 case 'CREATE_ITEM':
-                case 'EDIT_ITEM':
-                case 'DELETE_ITEM':
-                    // These are server-side actions usually. 
-                    // We can reuse the "Virtual Action" endpoint logic but trigger it from UI.
-                    // Or simply call the generic Proxy that decides?
-                    // Let's call the `execute_virtual_action` endpoint logic but via a new `execute_ui_action` endpoint?
-                    // Or just handle them here if we have code. 
-                    // Simpler: Trigger the action ID via backend.
-                    await apiClient.post(`/api/engine/actions/${action.id}/execute`, contextData);
-                    alert("Operação realizada!");
-                    // Refresh data?
+                case 'DB_CREATE':
+                    await apiClient.post(`/api/engine/actions/${action.id}/execute`, { ...contextData, ...resolvedConfig });
+                    alert("Criado com sucesso!");
                     break;
 
+                case 'DB_UPDATE':
+                case 'EDIT_ITEM':
+                     await apiClient.post(`/api/engine/actions/${action.id}/execute`, { ...contextData, ...resolvedConfig });
+                     alert("Atualizado com sucesso!");
+                     break;
+
+                case 'DB_DELETE':
+                case 'DELETE_ITEM':
+                      await apiClient.post(`/api/engine/actions/${action.id}/execute`, { customConfig: resolvedConfig, ...contextData  });
+                      alert("Deletado com sucesso!");
+                      break;
+
                 case 'CREATE_TASK':
-                    await apiClient.post('/api/system/tasks', {
-                        title: action.config.title,
-                        description: action.config.description,
-                        assignee_id: action.config.assignee_id
+                    await apiClient.post('/v1/notifications', { // UPDATED API
+                        title: resolvedConfig.title,
+                        description: resolvedConfig.description,
+                        assignee_id: resolvedConfig.assignee_id || resolvedConfig.assignee, // Support both
+                        resource_link: resolvedConfig.link 
                     });
-                    alert("Tarefa criada com sucesso!");
+                    alert("Tarefa/Notificação criada!");
                     break;
 
                 case 'RUN_FLOW':
-                    if (action.config.flow_actions && action.config.flow_actions.length > 0) {
-                        for (const flowActionId of action.config.flow_actions) {
+                    if (resolvedConfig.flow_actions?.length > 0) {
+                        for (const flowActionId of resolvedConfig.flow_actions) {
                             try {
-                                // Fetch the full action config
                                 const { data: flowAction } = await apiClient.get(`/api/builder/actions/${flowActionId}`);
-                                if (flowAction) {
-                                    // Execute recursively
-                                    await executeAction(flowAction, contextData);
-                                }
-                            } catch (err) {
-                                console.error(`Failed to execute flow action ${flowActionId}`, err);
-                                // Continue or break? Let's continue.
-                            }
+                                if (flowAction) await executeAction(flowAction, contextData);
+                            } catch (e) { console.error(e); }
+                        }
+                    }
+                    break;
+
+                case 'RUN_TRAIL':
+                    if (resolvedConfig.trail_id) {
+                        const { data: runRes } = await apiClient.post(`/api/engine/trails/run`, {
+                            trail_id: resolvedConfig.trail_id,
+                            context: contextData
+                        });
+                        
+                        if (runRes && runRes.instruction) {
+                             const instructionAction = {
+                                 action_type: runRes.instruction.type,
+                                 config: runRes.instruction.config
+                             };
+                             await executeAction(instructionAction, contextData);
+                        } else {
+                            if (runRes.message) alert(runRes.message);
                         }
                     }
                     break;
 
                 default:
-                    console.warn("Action type not supported in frontend yet:", action.action_type);
+                    console.warn("Action type not supported:", action.action_type);
             }
         } catch (error) {
             console.error("Action Failed:", error);
-            alert("Erro ao executar ação: " + error.message);
+            alert("Erro ao executar ação: " + (error.response?.data?.detail || error.message));
         }
     };
 
