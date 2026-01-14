@@ -7,6 +7,9 @@ const TabManager = () => {
 
     // User req: "Menu horizontal... que vai ficar posicionado na parte inferior ao que já existe"
     // Showing always to reinforce the MDI concept.
+    
+    // Hide if only one tab (cleaner UI)
+    if (tabs.length <= 1) return null;
 
     const getIcon = (tab) => {
         if (tab.isFixed) return <Layers size={14} />;

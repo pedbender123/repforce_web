@@ -75,7 +75,8 @@ const TopHeaderActions = () => {
                             <p className="text-xs text-gray-500 truncate">{user?.email}</p>
                         </div>
 
-                        {/* Edit Mode Toggle */}
+                        {/* Edit Mode Toggle - Hidden for Demo/Compasso */}
+                        {!['demo', 'compasso'].includes(tenant?.slug) && (
                         <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-700">
                             <div className="flex items-center justify-between">
                                 <span className="text-sm text-gray-700 dark:text-gray-300 flex items-center gap-2">
@@ -91,6 +92,7 @@ const TopHeaderActions = () => {
                                 </button>
                             </div>
                         </div>
+                        )}
 
                         {/* Menu Items */}
                         <button

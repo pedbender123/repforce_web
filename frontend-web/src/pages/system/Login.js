@@ -22,29 +22,27 @@ export default function Login() {
       if (from && from !== '/login') {
         navigate(from, { replace: true });
       } else {
-        // Default redirects
+        // Default redirects - MODO MOCK: sempre vai para /app
         if (isSysAdmin) {
           navigate('/sysadmin', { replace: true });
         } else if (user?.memberships && user.memberships.length > 0) {
-          // If no tenant selected but has memberships, pick the first one
           const firstMembership = user.memberships[0];
           const role = firstMembership.role;
-          const target = (role === 'owner' || role === 'admin') ? '/admin' : '/app';
+          const target = (role === 'owner' || role === 'admin') ? '/app' : '/app';
 
-          // Select tenant if not already selected
           if (!localStorage.getItem('tenantSlug')) {
             localStorage.setItem('tenantSlug', firstMembership.tenant.slug);
           }
 
           navigate(target, { replace: true });
         } else {
-          // No memberships and not sysadmin? This shouldn't happen for valid users, 
-          // but we logout to be safe or redirect to login.
-          navigate('/login', { replace: true });
+          // MOCK: Vai para /app direto
+          localStorage.setItem('tenantSlug', 'compasso');
+          navigate('/app', { replace: true });
         }
       }
     }
-  }, [status, isSysAdmin, userProfile, navigate, location]);
+  }, [status, isSysAdmin, user, navigate, location]);
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -86,7 +84,10 @@ export default function Login() {
              <img src="/logo_pbpm.png" alt="Repforce" className="h-10 object-contain" />
           </div>
           <h2 className="text-3xl font-extrabold text-gray-900 dark:text-white text-center mb-2">Bem-vindo</h2>
-          <p className="text-center text-gray-500 dark:text-gray-400 mb-8">Faça login para gerenciar sua operação</p>
+          <p className="text-center text-gray-500 dark:text-gray-400 mb-4">Faça login para gerenciar sua operação</p>
+          <div className="bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded-lg p-3 mb-6 text-center">
+            <p className="text-sm text-blue-700 dark:text-blue-300 font-medium">🔐 Demo: <code className="bg-blue-100 dark:bg-blue-800 px-2 py-0.5 rounded">compasso</code> / <code className="bg-blue-100 dark:bg-blue-800 px-2 py-0.5 rounded">123456</code></p>
+          </div>
           
           <form onSubmit={handleLogin} className="space-y-6">
             <div>

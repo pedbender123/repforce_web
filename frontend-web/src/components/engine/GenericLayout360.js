@@ -137,7 +137,9 @@ const GenericLayout360 = ({ pageId, entityId, entitySlug, entityName, layoutConf
             ]);
             
             setFields(fieldsRes.data);
-            const record = recordRes.data.find(r => r.id === recordId);
+            // FIX: Convert recordId to number for correct comparison
+            const numericId = parseInt(recordId);
+            const record = recordRes.data.find(r => r.id === numericId || r.id === recordId);
             
             if (record) {
                 setData(record);

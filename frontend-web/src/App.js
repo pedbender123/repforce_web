@@ -14,23 +14,18 @@ import AdminDashboard from './pages/system/AdminDashboard';
 import TenantSettingsHub from './pages/admin/TenantSettingsHub';
 
 // SysAdmin Pages (Global Admin)
-
 import CRMDesigner from './pages/sysadmin/CRMDesigner';
 import SettingsHub from './pages/sysadmin/SettingsHub';
 
 // Core Modules (Dynamic)
-import { BuilderProvider } from './context/BuilderContext'; // Builder / Engine
-import DatabaseEditor from './pages/editor/DatabaseEditor'; // REFAC: New Editor
-import NavigationEditor from './pages/editor/NavigationEditor'; // REFAC: New Nav Editor
+import { BuilderProvider } from './context/BuilderContext';
+import DatabaseEditor from './pages/editor/DatabaseEditor';
+import NavigationEditor from './pages/editor/NavigationEditor';
 import WorkflowManager from './pages/builder/WorkflowManager';
-
-import MainDashboardWrapper from './pages/app/MainDashboardWrapper'; // NEW: Dynamic Dashboard
-import DynamicPageLoader from './pages/app/DynamicPageLoader'; // NEW: Dynamic Page
-import GroupPlaceholder from './pages/app/GroupPlaceholder';
-import RedirectWrapper from './components/navigation/RedirectWrapper';
 import TrailsManager from './pages/builder/TrailsManager';
 import TrailBuilder from './components/builder/trail/TrailBuilder';
 import { TabProvider } from './context/TabContext';
+import AppWorkspace from './pages/app/AppWorkspace'; // Keep-Alive Workspace
 
 function App() {
   return (
@@ -44,35 +39,24 @@ function App() {
             {/* Root Redirect */}
             <Route path="/" element={<Navigate to="/app" replace />} />
 
-            {/* APP ROUTES (Sales Rep & Tenant Admin) - REDUCED (Redirects to Admin or Dashboard) */}
+            {/* APP ROUTES (Sales Rep & Tenant Admin) */}
             <Route path="/app" element={<PrivateRoute><CrmLayout /></PrivateRoute>}>
-              {/* Dashboard */}
-              <Route path="dashboard" element={<MainDashboardWrapper />} />
-
-              {/* NEW: URL Driven Architecture */}
-              <Route path=":tenantId/:groupId/:pageId" element={<RedirectWrapper />} />
-              <Route path=":tenantId/:groupId/:pageId/:subPageId" element={<DynamicPageLoader />} />
-
-              {/* Legacy / Direct Builder Routes (Migration Phasing) */}
-              <Route path="page/:pageId" element={<DynamicPageLoader />} />
-              <Route path="group/:groupId" element={<GroupPlaceholder />} />
-              
-              <Route path="editor/database" element={<DatabaseEditor />} />
-              <Route path="editor/navigation" element={<NavigationEditor />} />
-              <Route path="editor/workflows" element={<WorkflowManager />} />
-              {/* ActionManager moved to SettingsHub */}
-              <Route path="editor/trails" element={<TrailsManager />} />
-              
-              <Route index element={<Navigate to="dashboard" replace />} />
+               {/* Unified Workspace (Handles Dashboard, Pages, Lists, Tabs) */}
+               <Route path="*" element={<AppWorkspace />} />
+               
+               <Route path="editor/database" element={<DatabaseEditor />} />
+               <Route path="editor/navigation" element={<NavigationEditor />} />
+               <Route path="editor/workflows" element={<WorkflowManager />} />
+               <Route path="editor/trails" element={<TrailsManager />} />
             </Route>
 
-            {/* ADMIN ROUTES (Tenant Owner) - REDUCED */}
+            {/* ADMIN ROUTES (Tenant Owner) */}
             <Route path="/admin" element={<PrivateRoute><CrmLayout /></PrivateRoute>}>
               <Route path="dashboard" element={<AdminDashboard />} />
               <Route index element={<Navigate to="dashboard" replace />} />
             </Route>
 
-            {/* SEPARATE CONFIGURATION HUB (No standard CrmLayout, using its own sidebar) */}
+            {/* SEPARATE CONFIGURATION HUB */}
             <Route path="/admin/config" element={<PrivateRoute><TenantSettingsHub /></PrivateRoute>} />
 
             {/* SYSADMIN ROUTES (Platform Owner) */}

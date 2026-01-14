@@ -21,12 +21,13 @@ import GenericLayout360 from '../../components/engine/GenericLayout360';
 import PageSettingsModal from '../../components/builder/PageSettingsModal'; // Import Modal
 import { useNavigate } from 'react-router-dom';
 
-const DynamicPageLoader = ({ pageId: propPageId, embedded = false }) => {
+const DynamicPageLoader = ({ pageId: propPageId, subPageId: propSubPageId, recordId: propRecordId, embedded = false }) => {
     const params = useParams();
     const [searchParams] = useSearchParams();
+    // Priority: Props (Workspace) > Params (Router)
     const pageId = propPageId || params.pageId;
-    const subPageId = params.subPageId; // NEW: SubPage ID from URL
-    const recordId = searchParams.get('id'); // Record ID from query params
+    const subPageId = propSubPageId || params.subPageId;
+    const recordId = propRecordId || searchParams.get('id');
     const draftId = searchParams.get('draft_id'); // Draft ID for new records
     
     const { isEditMode } = useBuilder();
