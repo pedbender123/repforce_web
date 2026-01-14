@@ -1,5 +1,5 @@
 import React, { useContext, useState, useEffect } from 'react';
-import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom';
+import { Outlet, Link, useNavigate, useLocation, useParams } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 import { ThemeContext } from '../context/ThemeContext';
 import {
@@ -108,17 +108,25 @@ const CrmLayout = () => {
     const dynamicAreas = user?.role_obj?.areas || [];
 
     // Mapear NavGroups do Builder para o formato de "Area"
-    const builderAreas = (Array.isArray(navGroups) ? navGroups : []).map(g => ({
-        id: g.id,
-        name: g.name,
-        icon: g.icon,
-        is_dynamic: true, // Flag to identify mutable areas
-        pages_json: g.pages.map(p => ({
-            id: p.id, // Keep ID for reference
-            label: p.name,
-            path: `/app/page/${p.id}`
-        }))
-    }));
+    const builderAreas = (Array.isArray(navGroups) ? navGroups : []).map(g => {
+        // Resolve Tenant Slug (fallback to context)
+        // If we are in "app/:tenantId/...", we could parse it, but user.tenant is reliable
+        const tenantSlug = user?.tenant?.slug || 'default';
+        
+        return {
+            id: g.id,
+            name: g.name,
+            icon: g.icon,
+            is_dynamic: true, // Flag to identify mutable areas
+            pages_json: g.pages.map(p => ({
+                id: p.id, // Keep ID for reference
+                label: p.name,
+                // Changed to Absolute Path: /app/:tenant/:group/:page
+                // RedirectWrapper will handle the subpage
+                path: `/app/${tenantSlug}/${g.id}/${p.id}` 
+            }))
+        };
+    });
 
     // Se Modo Edição -> Injeta Builder no fim (ou no topo)
     // REMOVIDO: O Construtor agora fica na área de Configurações (Separado)
@@ -141,19 +149,36 @@ const CrmLayout = () => {
     const [activeArea, setActiveArea] = useState(userAreas.length > 0 ? userAreas[0] : null);
 
     // Auto-select area based on URL
+    // We can also use useParams();
+    const params = useParams(); // Need to import useParams in component or use logic
+    
     useEffect(() => {
         if (userAreas.length > 0) {
-            const foundArea = userAreas.find(area =>
-                (area.is_dynamic && location.pathname.startsWith(`/app/group/${area.id}`)) ||
-                area.pages_json?.some(page => location.pathname.startsWith(page.path))
-            );
+            let foundArea = null;
+            
+            // Priority 1: Check by GroupId in URL
+            if (params.groupId) {
+                foundArea = userAreas.find(a => a.id === params.groupId);
+            }
+            // Priority 2: Check by PageId (Legacy or Direct match)
+            else if (params.pageId) {
+                 foundArea = userAreas.find(a => a.pages_json?.some(p => p.id === params.pageId));
+            }
+            // Priority 3: Path Prefix (Legacy)
+            if (!foundArea) {
+                 foundArea = userAreas.find(area =>
+                    (area.is_dynamic && location.pathname.startsWith(`/app/group/${area.id}`)) ||
+                    area.pages_json?.some(page => location.pathname.startsWith(page.path))
+                );
+            }
+
             if (foundArea) {
-                setActiveArea(foundArea);
+                if (foundArea.id !== activeArea?.id) setActiveArea(foundArea);
             } else if (!activeArea) {
                 setActiveArea(userAreas[0]);
             }
         }
-    }, [location.pathname, userAreas, activeArea]);
+    }, [location.pathname, userAreas, activeArea, params.groupId, params.pageId]);
 
     const handleLogout = () => {
         logout();

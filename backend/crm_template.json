@@ -1,0 +1,18 @@
+{
+  "tenant": "Demo CRM",
+  "groups": [
+    {
+      "name": "Principal",
+      "pages": [
+        "Clientes",
+        "Produtos",
+        "Vendas"
+      ]
+    }
+  ],
+  "entities": [
+    "Clientes",
+    "Produtos",
+    "Vendas"
+  ]
+}

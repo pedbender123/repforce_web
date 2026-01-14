@@ -99,6 +99,7 @@ const TrailsManager = () => {
 
       // 2. Node Outputs
       Object.values(activeTrail.original.nodes || {}).forEach(node => {
+        if (!node) return;
         const safeName = `[${node.name || node.id}]`;
         if (node.action_type === 'DB_CREATE') {
             vars.push({ name: `${safeName}.new_id`, label: `Novo ID (${node.name})`, type: 'ID' });
@@ -118,18 +119,24 @@ const TrailsManager = () => {
     loadAuxData();
   }, []);
 
+  const [automationDefinitions, setAutomationDefinitions] = useState({});
+
   const loadAuxData = async () => {
     try {
-        const [entRes, actRes, pageRes] = await Promise.all([
+        const [entRes, actRes, pageRes, defRes] = await Promise.all([
             apiClient.get('/api/builder/entities'),
             apiClient.get('/api/builder/actions'),
-            apiClient.get('/api/builder/pages')
+            apiClient.get('/api/builder/pages'),
+            apiClient.get('/api/engine/automation/definitions') 
         ]);
         setAvailableEntities(entRes.data);
         setAvailableActions(actRes.data);
         setAvailablePages(pageRes.data);
+        setAutomationDefinitions(defRes.data || {});
     } catch (e) { console.error(e); }
   };
+
+
 
   const fetchTrails = async () => {
     try {
@@ -587,15 +594,19 @@ const TrailsManager = () => {
   );
 
   const TrailNode = ({ node, selected, onSelect }) => {
-      // Safeguard: Ensure node exists
+      // Safeguard: Ensure node exists and has basic props
       if (!node) return null;
+      // Default type if missing
+      const safeType = node.type || 'ACTION'; 
+      const safeActionType = node.action_type || 'UNKNOWN';
+
       return (
           <div onClick={() => onSelect(node)} className={`p-4 rounded-xl border-2 cursor-pointer transition-all ${selected ? 'border-blue-500 bg-white shadow-lg' : 'border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 hover:border-blue-300'}`}>
               <div className="flex items-center gap-3">
-                  <div className={`p-2 rounded-lg ${mapNodeColor(node.type)} text-white`}>{mapNodeIcon(node.type, node.action_type)}</div>
+                  <div className={`p-2 rounded-lg ${mapNodeColor(safeType)} text-white`}>{mapNodeIcon(safeType, safeActionType)}</div>
                   <div>
                       <span className="block text-xs font-black uppercase text-slate-700 dark:text-slate-300">{node.name || 'Sem Nome'}</span>
-                      <span className="block text-[10px] text-slate-400 font-bold">{node.type}</span>
+                      <span className="block text-[10px] text-slate-400 font-bold">{safeType}</span>
                   </div>
               </div>
           </div>
@@ -622,6 +633,7 @@ const TrailsManager = () => {
         // Node Outputs
         if(activeTrail.original.nodes) {
              Object.values(activeTrail.original.nodes).forEach(node => {
+                  if (!node) return;
                   if(node.id === selectedNode?.id) return; 
                   
                   if (node.action_type === 'DB_CREATE' || node.action_type === 'DB_UPDATE' || node.action_type === 'DB_DELETE') {
@@ -700,35 +712,27 @@ const TrailsManager = () => {
                                     <div className="space-y-2">
                                         <label className="text-xs font-bold text-slate-500 uppercase">Tipo de Ação</label>
                                         <div className="grid grid-cols-2 gap-2">
-                                            {[
-                                                { id: 'DB_CREATE', label: 'Criar Item', icon: <Plus size={14}/> },
-                                                { id: 'DB_UPDATE', label: 'Editar Item', icon: <Database size={14}/> },
-                                                { id: 'DB_DELETE', label: 'Deletar Item', icon: <Trash2 size={14}/> },
-                                                { id: 'DB_FETCH_FIELD', label: 'Ler Campo', icon: <Search size={14}/> },
-                                                { id: 'MATH_OP', label: 'Cálculo', icon: <Code2 size={14}/> },
-                                                { id: 'NAVIGATE', label: 'Ir para Página', icon: <ChevronRight size={14}/> },
-                                                { id: 'GENERATE_CSV', label: 'Gerar CSV', icon: <ListTree size={14}/> },
-                                                { id: 'GENERATE_PDF', label: 'Gerar PDF', icon: <ListTree size={14}/> },
-                                                { id: 'SEND_NOTIFICATION', label: 'Notificação', icon: <MessageSquare size={14}/> },
-                                                { id: 'OPEN_SUBPAGE', label: 'Abrir Subpágina', icon: <Layout size={14}/> },
-                                                { id: 'WEBHOOK_OUT', label: 'Webhook (API)', icon: <Webhook size={14}/> },
-                                                { id: 'CREATE_TASK', label: 'Criar Tarefa', icon: <CheckCircle2 size={14}/> },
-                                            ].map(opt => (
-                                                <button
-                                                    key={opt.id}
-                                                    onClick={() => {
-                                                         // Reset config when type changes
-                                                         setSelectedNode(prev => ({ 
-                                                             ...prev, 
-                                                             type: `ACTION: ${opt.id}`,
-                                                             original: { ...prev.original, action_type: opt.id, config: {} }
-                                                         }));
-                                                    }}
-                                                    className={`p-3 rounded-xl flex items-center gap-2 text-xs font-bold border-2 transition-all ${selectedNode.original.action_type === opt.id ? 'border-blue-500 bg-blue-50 text-blue-600' : 'border-slate-100 bg-white text-slate-400 hover:border-slate-200'}`}
-                                                >
-                                                    {opt.icon} {opt.label}
-                                                </button>
-                                            ))}
+                                            {Object.keys(automationDefinitions).length > 0 ? (
+                                                Object.entries(automationDefinitions).map(([key, def]) => (
+                                                    <button
+                                                        key={key}
+                                                        onClick={() => {
+                                                             setSelectedNode(prev => ({ 
+                                                                 ...prev, 
+                                                                 type: `ACTION`,
+                                                                 original: { ...prev.original, action_type: key, config: {} }
+                                                             }));
+                                                        }}
+                                                        className={`p-3 rounded-xl flex items-center gap-2 text-xs font-bold border-2 transition-all ${selectedNode.original.action_type === key ? 'border-blue-500 bg-blue-50 text-blue-600' : 'border-slate-100 bg-white text-slate-400 hover:border-slate-200'}`}
+                                                        title={def.description}
+                                                    >
+                                                        {mapNodeIcon('ACTION', key)} {def.label}
+                                                    </button>
+                                                ))
+                                            ) : (
+                                                // Fallback if not loaded yet
+                                                <p className="col-span-2 text-xs text-slate-400 text-center animate-pulse">Carregando ações...</p>
+                                            )}
                                         </div>
                                     </div>
                                     

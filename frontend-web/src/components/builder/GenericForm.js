@@ -1,9 +1,13 @@
 import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import apiClient from '../../api/apiClient';
 import { Loader2, Save } from 'lucide-react';
 import DynamicFieldRenderer from '../DynamicFieldRenderer';
 
 const GenericForm = ({ entityId, layoutConfig, recordId, onSuccess }) => {
+    const [searchParams] = useSearchParams();
+    const draftId = searchParams.get('draft_id');
+    
     const [fields, setFields] = useState([]);
     const [formData, setFormData] = useState({});
     const [loading, setLoading] = useState(true);
@@ -67,9 +71,7 @@ const GenericForm = ({ entityId, layoutConfig, recordId, onSuccess }) => {
                         // Attempt to fetch record. Assuming filter by ID works as seen before or standard Get
                          const { data: searchResult } = await apiClient.get(`/api/engine/object/${currentEntity.slug}?id=${recordId}`);
                          if (searchResult && searchResult.length > 0) {
-                         if (searchResult && searchResult.length > 0) {
                              setFormData({ ...initial, ...searchResult[0] });
-                         }
                          }
                     } catch (e) {
                          console.error("Failed to load record", e);
@@ -83,6 +85,36 @@ const GenericForm = ({ entityId, layoutConfig, recordId, onSuccess }) => {
             setLoading(false);
         }
     };
+
+    // Draft Recovery: Load from localStorage if draft_id exists
+    useEffect(() => {
+        if (draftId && !recordId && fields.length > 0) {
+            const draftKey = `draft_${draftId}`;
+            const savedDraft = localStorage.getItem(draftKey);
+            if (savedDraft) {
+                try {
+                    const parsedDraft = JSON.parse(savedDraft);
+                    setFormData(prev => ({ ...prev, ...parsedDraft }));
+                    console.log('Draft recovered:', draftKey);
+                } catch (e) {
+                    console.error('Failed to parse draft', e);
+                }
+            }
+        }
+    }, [draftId, recordId, fields]);
+
+    // Auto-save to localStorage (debounced)
+    useEffect(() => {
+        if (!draftId || recordId) return; // Only for drafts, not edits
+        
+        const timer = setTimeout(() => {
+            const draftKey = `draft_${draftId}`;
+            localStorage.setItem(draftKey, JSON.stringify(formData));
+            console.log('Draft auto-saved:', draftKey);
+        }, 3000); // 3 second debounce
+        
+        return () => clearTimeout(timer);
+    }, [formData, draftId, recordId]);
 
     const handleFieldChange = (key, value) => {
         setFormData(prev => ({ ...prev, [key]: value }));
@@ -105,6 +137,13 @@ const GenericForm = ({ entityId, layoutConfig, recordId, onSuccess }) => {
                  await apiClient.post(`/api/engine/object/${currentEntity.slug}`, formData);
                  alert("Registro criado!");
                  setFormData({}); 
+            }
+            
+            // Clear draft from localStorage if it was a draft creation
+            if (draftId && !recordId) {
+                const draftKey = `draft_${draftId}`;
+                localStorage.removeItem(draftKey);
+                console.log('Draft cleared:', draftKey);
             }
             
             if (onSuccess) onSuccess();

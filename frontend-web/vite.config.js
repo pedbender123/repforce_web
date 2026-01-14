@@ -30,7 +30,12 @@ export default defineConfig({
         changeOrigin: true,
         secure: false,
       },
-       '/admin': {
+      '/admin': {
+        target: 'http://backend:8000',
+        changeOrigin: true,
+        secure: false,
+      },
+      '/uploads': {
         target: 'http://backend:8000',
         changeOrigin: true,
         secure: false,

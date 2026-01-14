@@ -95,12 +95,16 @@ class MetaPage(Base):
     tabs_config = Column(JSON, default={})
     order = Column(Integer, default=0)
     
+    # Default Subpage Templates (Phase 3: Unified Page Concept)
+    default_detail_subpage_id = Column(UUID(as_uuid=True), ForeignKey("public.meta_subpages.id", ondelete="SET NULL"), nullable=True)
+    default_form_subpage_id = Column(UUID(as_uuid=True), ForeignKey("public.meta_subpages.id", ondelete="SET NULL"), nullable=True)
+    
     created_at = Column(DateTime, default=datetime.utcnow)
     
     # Relationships
     group = relationship("MetaNavigationGroup", back_populates="pages")
     entity = relationship("MetaEntity")
-    subpages = relationship("MetaSubPage", back_populates="page", cascade="all, delete-orphan", order_by="MetaSubPage.order, MetaSubPage.created_at")
+    subpages = relationship("MetaSubPage", back_populates="page", cascade="all, delete-orphan", order_by="MetaSubPage.order, MetaSubPage.created_at", foreign_keys="MetaSubPage.page_id")
 
 class MetaSubPage(Base):
     __tablename__ = "meta_subpages"
@@ -118,7 +122,7 @@ class MetaSubPage(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     
     # Relationships
-    page = relationship("MetaPage", back_populates="subpages")
+    page = relationship("MetaPage", back_populates="subpages", foreign_keys="[MetaSubPage.page_id]")
 
 class MetaWorkflow(Base):
     __tablename__ = "meta_workflows"

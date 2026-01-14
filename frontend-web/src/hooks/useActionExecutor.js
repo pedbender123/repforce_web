@@ -98,8 +98,22 @@ const useActionExecutor = () => {
                              const separator = path.includes('?') ? '&' : '?';
                              path += `${separator}filter_field=${resolvedConfig.ref_filter_field}&filter_value=${contextData.id}`;
                         }
-                        
-                        navigate(path);
+
+                        // Check Open Mode (FICHA/MODAL)
+                        if (resolvedConfig.open_mode && ['FICHA', 'MODAL'].includes(resolvedConfig.open_mode)) {
+                            openSubPage({
+                                title: resolvedConfig.title || `Visualização`,
+                                path: path,
+                                template: resolvedConfig.open_mode,
+                                id: path, // Unique key
+                                data: {
+                                    record_id: resolvedConfig.record_id,
+                                    mode: 'view'
+                                }
+                            });
+                        } else {
+                            navigate(path);
+                        }
                     }
                     break;
 
@@ -172,19 +186,22 @@ const useActionExecutor = () => {
 
                 case 'RUN_TRAIL':
                     if (resolvedConfig.trail_id) {
-                        const { data: runRes } = await apiClient.post(`/api/engine/trails/run`, {
-                            trail_id: resolvedConfig.trail_id,
-                            context: contextData
-                        });
-                        
-                        if (runRes && runRes.instruction) {
-                             const instructionAction = {
-                                 action_type: runRes.instruction.type,
-                                 config: runRes.instruction.config
-                             };
-                             await executeAction(instructionAction, contextData);
-                        } else {
-                            if (runRes.message) alert(runRes.message);
+                        try {
+                            const { data: runRes } = await apiClient.post(`/api/engine/automation/run`, {
+                                trail_id: resolvedConfig.trail_id,
+                                context: contextData
+                            });
+                            
+                            // Handle direct instruction output if automation returns client-side commands (future proof)
+                            if (runRes && runRes.client_instruction) {
+                                 const instructionAction = runRes.client_instruction;
+                                 await executeAction(instructionAction, contextData);
+                            } else {
+                                if (runRes.message && runRes.success !== false) alert(runRes.message);
+                                if (runRes.success === false) throw new Error(runRes.message || "Falha na automação");
+                            }
+                        } catch (e) {
+                             throw e; // Repass to catch block
                         }
                     }
                     break;
