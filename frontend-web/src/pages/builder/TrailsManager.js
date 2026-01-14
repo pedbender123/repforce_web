@@ -22,7 +22,8 @@ import {
   Filter,
   Save,
   X,
-  ListTree
+  ListTree,
+  Layout
 } from 'lucide-react';
 import apiClient from '../../api/apiClient';
 import FormulaEditorModal from '../../components/builder/FormulaEditorModal';
@@ -80,10 +81,16 @@ const TrailsManager = () => {
       const vars = [];
 
       // 1. Trigger Variables
-      if (activeTrail.type === 'MANUAL' && activeTrail.original.trigger_config?.context === 'LIST') {
-          vars.push({ name: 'id', label: 'ID do Item Clicado', type: 'ID' });
-          // vars.push({ name: 'trigger.table_id', label: 'ID da Tabela Base', type: 'ID' }); // Not usually present in row
-          // vars.push({ name: 'trigger.user_id', label: 'Usuário Executor', type: 'ID' });
+      const triggerConfig = activeTrail.original.trigger_config || {};
+      
+      // Always add ID for MANUAL triggers to allow flexibility, but label it based on context
+      if (activeTrail.type === 'MANUAL') {
+          if (triggerConfig.context === 'LIST') {
+             vars.push({ name: 'id', label: 'ID do Item Clicado', type: 'ID (Lista)' });
+          } else {
+             // Generic fallback, sometimes useful
+             vars.push({ name: 'id', label: 'ID do Contexto (Se houver)', type: 'ID (Opcional)' });
+          }
       }
       if (activeTrail.type === 'WEBHOOK') {
           vars.push({ name: 'trigger.body', label: 'Webhook Body (JSON)', type: 'JSON' });
@@ -210,7 +217,7 @@ const TrailsManager = () => {
         setIsCreating(false);
         setNewTrailName('');
     } catch (e) {
-        alert('Erro ao criar trilha');
+        alert('Erro ao criar trilha: ' + (e.response?.data?.detail || e.message));
     }
   };
 
@@ -220,7 +227,7 @@ const TrailsManager = () => {
     try {
         await apiClient.delete(`/api/builder/trails/${id}`);
         fetchTrails();
-    } catch (e) { alert("Erro ao deletar"); }
+    } catch (e) { alert("Erro ao deletar: " + (e.response?.data?.detail || e.message)); }
   };
 
   const handleUpdateTrigger = async (type, config) => {
@@ -233,7 +240,7 @@ const TrailsManager = () => {
         setActiveTrail(updated);
         setTrails(prev => prev.map(t => t.id === updated.id ? updated : t));
         setTriggerSelectionOpen(false);
-    } catch (e) { alert("Erro ao salvar gatilho"); }
+    } catch (e) { alert("Erro ao salvar gatilho: " + (e.response?.data?.detail || e.message)); }
   };
   
   const fetchEntityFields = async (entityId) => {
@@ -243,6 +250,28 @@ const TrailsManager = () => {
           setEntityFieldsCache(prev => ({ ...prev, [entityId]: data }));
           return data;
       } catch (e) { return []; }
+  };
+
+  const handleCreateAction = async (name, source, contextId) => {
+      try {
+          const payload = {
+              name: name,
+              trigger_source: source,
+              trigger_context: contextId,
+              action_type: 'TRIGGER',
+              style_variant: 'primary',
+              icon: 'Zap',
+              config: {}
+          };
+          const { data } = await apiClient.post('/api/builder/actions', payload);
+          // Refresh list
+          const { data: allActions } = await apiClient.get('/api/builder/actions');
+          setAvailableActions(allActions);
+          return data;
+      } catch (e) {
+           alert("Erro ao criar gatilho: " + (e.response?.data?.detail || e.message));
+           return null;
+      }
   };
 
   const handleAddNode = async (type) => {
@@ -287,7 +316,7 @@ const TrailsManager = () => {
         setTrails(prev => prev.map(t => t.id === updated.id ? updated : t));
         setAddingNodeTo(null);
         setSelectedNode({ ...newNode, original: newNode, expression: '' }); 
-    } catch (e) { alert("Erro ao adicionar nó"); }
+    } catch (e) { alert("Erro ao adicionar nó: " + (e.response?.data?.detail || e.message)); }
   };
 
   const handleDeleteNode = async (nodeId) => {
@@ -315,7 +344,7 @@ const TrailsManager = () => {
         setActiveTrail(updated);
         setTrails(prev => prev.map(t => t.id === updated.id ? updated : t));
         setSelectedNode(null); // Close sidebar
-    } catch (e) { alert("Erro ao excluir nó"); }
+    } catch (e) { alert("Erro ao excluir nó: " + (e.response?.data?.detail || e.message)); }
   };
 
 
@@ -331,17 +360,19 @@ const TrailsManager = () => {
     return (
         <div className="flex-1 flex flex-col items-center justify-center p-10 animate-fade-in">
             <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border-2 border-slate-100 dark:border-slate-800 w-full max-w-4xl overflow-hidden">
-                <div className="bg-slate-50 dark:bg-slate-950 p-6 border-b border-slate-100 dark:border-slate-800">
+                <div className="bg-slate-50 dark:bg-slate-950 p-6 border-b border-slate-100 dark:border-slate-800 relative">
+                    <button onClick={() => setTriggerSelectionOpen(false)} className="absolute top-6 right-6 text-slate-400 hover:text-red-500"><X size={24}/></button>
                     <h2 className="text-xl font-black tracking-tight text-center">Gatilho Inicial</h2>
                     <p className="text-center text-slate-400 text-xs font-bold uppercase tracking-widest mt-2">Como esta trilha deve começar?</p>
                 </div>
                 
-                <div className="grid grid-cols-4 border-b border-slate-100 dark:border-slate-800 divide-x divide-slate-100 dark:divide-slate-800">
+                <div className="grid grid-cols-5 border-b border-slate-100 dark:border-slate-800 divide-x divide-slate-100 dark:divide-slate-800">
                     {[
                         { id: 'list_action', label: 'Ação em Lista', icon: <Search size={18}/> },
                         { id: 'manual', label: 'Botão', icon: <MousePointer2 size={18}/> },
                         { id: 'db_event', label: 'Evento DB', icon: <Database size={18}/> },
                         { id: 'webhook', label: 'Webhook', icon: <Webhook size={18}/> },
+                        { id: 'scheduler', label: 'Agendamento', icon: <Clock size={18}/> },
                     ].map(t => (
                         <button 
                            key={t.id}
@@ -357,19 +388,69 @@ const TrailsManager = () => {
                 <div className="p-8 min-h-[300px] flex flex-col items-center justify-center">
                     {tab === 'manual' && (
                         <div className="w-full max-w-md space-y-4">
-                            <select className="w-full p-3 bg-slate-50 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-xl font-bold text-sm outline-none focus:border-blue-500"
-                               value={selAction} onChange={e => setSelAction(e.target.value)}
-                            >
-                                <option value="">Selecione um Botão...</option>
-                                {availableActions.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
-                            </select>
-                            <button 
-                               onClick={() => handleUpdateTrigger('MANUAL', { action_id: selAction })}
-                               disabled={!selAction}
-                               className="w-full py-4 bg-blue-600 text-white rounded-xl font-black text-sm hover:bg-blue-700 disabled:opacity-50 transition-all shadow-xl shadow-blue-500/20"
-                            >
-                                DEFINIR GATILHO
-                            </button>
+                            <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-lg mb-4">
+                                <button
+                                    onClick={() => setSelAction('EXISTING')}
+                                    className={`flex-1 py-1.5 text-xs font-bold rounded-md transition-colors ${selAction !== 'NEW' ? 'bg-white shadow text-blue-600' : 'text-slate-500'}`}
+                                >
+                                    Selecionar Existente
+                                </button>
+                                <button
+                                    onClick={() => setSelAction('NEW')}
+                                    className={`flex-1 py-1.5 text-xs font-bold rounded-md transition-colors ${selAction === 'NEW' ? 'bg-white shadow text-blue-600' : 'text-slate-500'}`}
+                                >
+                                    Criar Novo
+                                </button>
+                            </div>
+
+                            {selAction === 'NEW' ? (
+                                <div className="space-y-3 animate-fade-in">
+                                    <input
+                                        placeholder="Nome do Botão (Ex: Aprovar Pedido)"
+                                        className="w-full p-3 bg-white border-2 border-slate-200 rounded-xl font-bold text-sm outline-none focus:border-blue-500"
+                                        id="newActionName"
+                                    />
+                                    <select 
+                                        className="w-full p-3 bg-white border-2 border-slate-200 rounded-xl font-bold text-sm outline-none focus:border-blue-500"
+                                        id="newActionPage"
+                                    >
+                                        <option value="">Onde será exibido?</option>
+                                        {availablePages.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                                    </select>
+                                    <button 
+                                        onClick={async () => {
+                                            const name = document.getElementById('newActionName').value;
+                                            const pageId = document.getElementById('newActionPage').value;
+                                            if(!name || !pageId) return alert("Preencha nome e página");
+                                            
+                                            const newAct = await handleCreateAction(name, 'UI_BUTTON', pageId);
+                                            if(newAct) {
+                                                handleUpdateTrigger('MANUAL', { action_id: newAct.id });
+                                            }
+                                        }}
+                                        className="w-full py-3 bg-green-600 text-white rounded-xl font-black text-xs hover:bg-green-700 transition-all shadow-lg shadow-green-500/20"
+                                    >
+                                        SALVAR E VINCULAR
+                                    </button>
+                                </div>
+                            ) : (
+                                <>
+                                    <select className="w-full p-3 bg-white dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-xl font-bold text-sm outline-none focus:border-blue-500"
+                                       value={selAction === 'EXISTING' ? '' : selAction} 
+                                       onChange={e => setSelAction(e.target.value)}
+                                    >
+                                        <option value="">Selecione um Botão...</option>
+                                        {availableActions.filter(a => a.trigger_source === 'UI_BUTTON').map(a => <option key={a.id} value={a.id}>{a.name} ({availablePages.find(p=>p.id===a.trigger_context)?.name})</option>)}
+                                    </select>
+                                    <button 
+                                       onClick={() => handleUpdateTrigger('MANUAL', { action_id: selAction })}
+                                       disabled={!selAction || selAction === 'EXISTING'}
+                                       className="w-full py-4 bg-blue-600 text-white rounded-xl font-black text-sm hover:bg-blue-700 disabled:opacity-50 transition-all shadow-xl shadow-blue-500/20"
+                                    >
+                                        DEFINIR GATILHO
+                                    </button>
+                                </>
+                            )}
                         </div>
                     )}
                      {tab === 'db_event' && (
@@ -380,10 +461,35 @@ const TrailsManager = () => {
                                  <option value="">Selecione a Tabela...</option>
                                  {availableEntities.map(e => <option key={e.id} value={e.id}>{e.display_name}</option>)}
                              </select>
+                             
+                             <div className="grid grid-cols-3 gap-2">
+                               {['ON_CREATE', 'ON_UPDATE', 'ON_DELETE'].map(evt => (
+                                 <button
+                                    key={evt}
+                                    id={`btn_evt_${evt}`}
+                                    onClick={() => {
+                                        document.querySelectorAll('[id^="btn_evt_"]').forEach(b => b.classList.remove('bg-blue-100', 'border-blue-500', 'text-blue-600'));
+                                        document.getElementById(`btn_evt_${evt}`).classList.add('bg-blue-100', 'border-blue-500', 'text-blue-600');
+                                        document.getElementById(`btn_evt_${evt}`).dataset.selected = "true";
+                                    }}
+                                    className="p-3 border-2 border-slate-200 rounded-xl text-[10px] font-black uppercase text-slate-400 hover:border-blue-300"
+                                 >
+                                    {evt === 'ON_CREATE' && 'Novo Item'}
+                                    {evt === 'ON_UPDATE' && 'Item Editado'}
+                                    {evt === 'ON_DELETE' && 'Item Apagado'}
+                                 </button>
+                               ))}
+                             </div>
+
                              <button 
                                 onClick={() => {
                                     const ent = availableEntities.find(e => e.id === selEntity);
-                                    handleUpdateTrigger('DB_EVENT', { entity_id: selEntity, entity_name: ent?.display_name, event: 'ALL' });
+                                    let evt = 'ALL';
+                                    if(document.getElementById('btn_evt_ON_CREATE')?.dataset.selected) evt = 'ON_CREATE';
+                                    if(document.getElementById('btn_evt_ON_UPDATE')?.dataset.selected) evt = 'ON_UPDATE';
+                                    if(document.getElementById('btn_evt_ON_DELETE')?.dataset.selected) evt = 'ON_DELETE';
+                                    
+                                    handleUpdateTrigger('DB_EVENT', { entity_id: selEntity, entity_name: ent?.display_name, event: evt });
                                 }}
                                 disabled={!selEntity}
                                 className="w-full py-4 bg-blue-600 text-white rounded-xl font-black text-sm hover:bg-blue-700 disabled:opacity-50 transition-all shadow-xl shadow-blue-500/20"
@@ -392,6 +498,30 @@ const TrailsManager = () => {
                              </button>
                          </div>
                      )}
+                     {tab === 'scheduler' && (
+                        <div className="w-full max-w-md space-y-4 text-center">
+                            <div className="bg-slate-50 dark:bg-slate-800 p-6 rounded-2xl border-2 border-slate-100 dark:border-slate-800">
+                                <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Intervalo (Minutos)</label>
+                                <input 
+                                    className="text-4xl font-black text-center bg-transparent outline-none w-full text-blue-600"
+                                    placeholder="60"
+                                    defaultValue="60"
+                                    id="schedulerInterval"
+                                    type="number"
+                                />
+                                <p className="text-xs text-slate-400 font-bold mt-2">Executar a cada X minutos</p>
+                            </div>
+                            <button 
+                                onClick={() => {
+                                    const interval = document.getElementById('schedulerInterval').value;
+                                    handleUpdateTrigger('SCHEDULER', { interval: interval });
+                                }}
+                                className="w-full py-4 bg-blue-600 text-white rounded-xl font-black text-sm hover:bg-blue-700 transition-all shadow-xl shadow-blue-500/20"
+                             >
+                                 ATIVAR AGENDAMENTO
+                             </button>
+                        </div>
+                    )}
                      {tab === 'webhook' && (
                         <div className="w-full max-w-md text-center space-y-6">
                            <div className="mx-auto w-16 h-16 bg-purple-100 text-purple-600 rounded-2xl flex items-center justify-center mb-2">
@@ -434,12 +564,12 @@ const TrailsManager = () => {
 
 
   const NodePicker = () => (
-      <div className="absolute z-50 top-full mt-2 bg-white dark:bg-slate-900 rounded-xl shadow-2xl border border-slate-200 dark:border-slate-800 p-2 flex flex-col gap-1 w-48 animate-fade-in-up">
+      <div className="absolute z-50 top-full mt-2 bg-white dark:bg-slate-900 rounded-xl shadow-2xl border border-slate-200 dark:border-slate-800 p-2 flex flex-col gap-1 w-56 animate-fade-in-up max-h-80 overflow-y-auto">
           <button onClick={() => handleAddNode('ACTION')} className="flex items-center gap-3 p-3 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg text-left transition-colors">
               <div className="p-1.5 bg-blue-100 text-blue-600 rounded-lg"><Zap size={14}/></div>
               <div>
                   <span className="block text-xs font-black uppercase tracking-wide text-slate-700 dark:text-slate-300">Ação de Sistema</span>
-                  <span className="block text-[9px] text-slate-400 font-bold">Executar script, etc.</span>
+                  <span className="block text-[9px] text-slate-400 font-bold">Automações (DB, PDF, Email)</span>
               </div>
           </button>
           <button onClick={() => handleAddNode('DECISION')} className="flex items-center gap-3 p-3 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg text-left transition-colors">
@@ -452,222 +582,119 @@ const TrailsManager = () => {
       </div>
   );
 
-  const AddButton = ({ parentId, branch = 'next' }) => (
-      <div className="flex flex-col items-center relative">
-        <div className="w-0.5 h-10 bg-slate-200 dark:bg-slate-800"></div>
-        <button 
-          onClick={() => setAddingNodeTo(addingNodeTo?.parentId === parentId && addingNodeTo?.branch === branch ? null : { parentId, branch })}
-          className={`bg-white dark:bg-slate-800 border-2 ${addingNodeTo?.parentId === parentId && addingNodeTo?.branch === branch ? 'border-blue-500 text-blue-500' : 'border-slate-200 dark:border-slate-700 text-slate-400'} p-1 rounded-full hover:text-blue-500 hover:border-blue-500 transition-all -my-2 z-10 shadow-sm`}
-        >
-          <Plus size={16} className={addingNodeTo?.parentId === parentId && addingNodeTo?.branch === branch ? 'rotate-45 transition-transform' : 'transition-transform'}/>
-        </button>
-        {addingNodeTo?.parentId === parentId && addingNodeTo?.branch === branch && <NodePicker />}
-      </div>
+  const AddButton = ({ onClick }) => (
+      <button onClick={onClick} className="p-2 bg-blue-50 text-blue-600 rounded-full hover:bg-blue-100 transition-colors"><Plus size={16}/></button>
   );
 
-  const TrailNode = ({ node, isLast = false, isSelected = false, onClick }) => (
-    <div className="flex flex-col items-center">
-      <div 
-        onClick={onClick}
-        className={`group relative w-72 bg-white dark:bg-slate-900 border-2 rounded-2xl p-4 shadow-sm transition-all cursor-pointer ${
-          isSelected ? 'border-blue-500 ring-4 ring-blue-500/10' : 'border-slate-200 dark:border-slate-800 hover:border-slate-400'
-        }`}
-      >
-        <div className="flex items-center gap-3 mb-3">
-          <div className={`p-2 rounded-xl ${node.color} bg-opacity-15`}>
-            {node.icon}
+  const TrailNode = ({ node, selected, onSelect }) => {
+      // Safeguard: Ensure node exists
+      if (!node) return null;
+      return (
+          <div onClick={() => onSelect(node)} className={`p-4 rounded-xl border-2 cursor-pointer transition-all ${selected ? 'border-blue-500 bg-white shadow-lg' : 'border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 hover:border-blue-300'}`}>
+              <div className="flex items-center gap-3">
+                  <div className={`p-2 rounded-lg ${mapNodeColor(node.type)} text-white`}>{mapNodeIcon(node.type, node.action_type)}</div>
+                  <div>
+                      <span className="block text-xs font-black uppercase text-slate-700 dark:text-slate-300">{node.name || 'Sem Nome'}</span>
+                      <span className="block text-[10px] text-slate-400 font-bold">{node.type}</span>
+                  </div>
+              </div>
           </div>
-          <div className="flex-1 overflow-hidden">
-            <h4 className="text-sm font-bold truncate">{node.title}</h4>
-            <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest">{node.type}</p>
-          </div>
-        </div>
-        
-        <div className="bg-slate-50 dark:bg-slate-950 rounded-lg p-2 border border-slate-100 dark:border-slate-800">
-          <div className="flex items-center gap-1.5 mb-1">
-            <Code2 size={10} className="text-blue-500" />
-            <span className="text-[9px] font-bold text-slate-400 uppercase">Lógica</span>
-          </div>
-          <p className="text-[11px] font-mono text-slate-700 dark:text-slate-300 break-all leading-tight truncate">
-            {node.expression || "{}"}
-          </p>
-        </div>
-      </div>
-    </div>
-  );
+      );
+  };
 
   const EditorView = () => {
-    // Check Config
-    const isUnconfigured = activeTrail.type === 'MANUAL' && (!activeTrail.original.trigger_config || Object.keys(activeTrail.original.trigger_config).length === 0) && activeTrail.steps === 0;
+    // Computed Variables (Design Time)
+    const computedVariables = useMemo(() => {
+        const vars = [];
+        // Global
+        vars.push({ name: 'user.id', label: 'ID Usuário (Sistema)', type: 'system' });
+        vars.push({ name: 'user.email', label: 'Email Usuário (Sistema)', type: 'system' });
+        vars.push({ name: 'user.name', label: 'Nome Usuário (Sistema)', type: 'system' });
 
-    if (triggerSelectionOpen || isUnconfigured) {
-        return (
-            <div className="h-full flex flex-col bg-slate-50 dark:bg-slate-950">
-                <header className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-8 py-4 flex items-center justify-between">
-                     <button onClick={() => setView('list')} className="flex items-center gap-2 text-slate-500 hover:text-slate-800 font-bold text-xs uppercase tracking-wider">
-                        <ArrowDown className="rotate-90" size={16}/> Voltar
-                     </button>
-                     <h2 className="text-sm font-black text-slate-800 dark:text-white">{activeTrail?.name}</h2>
-                     <div className="w-8"></div>
-                </header>
-                <TriggerSelector />
-            </div>
-        );
-    }
-    
-    // Recursive Graph Rendering
-    const renderSequence = (nodeId, nodesMap) => {
-        if (!nodeId || !nodesMap[nodeId]) {
-            return null;
-        }
-        
-        const node = nodesMap[nodeId];
-        const uiNode = {
-            id: nodeId,
-            title: node.name || node.type,
-            type: `${node.type}${node.action_type ? `: ${node.action_type}` : ''}`,
-            icon: mapNodeIcon(node.type, node.action_type),
-            color: mapNodeColor(node.type),
-            expression: typeof node.config?.expression === 'string' ? node.config.expression : JSON.stringify(node.config || {}),
-            original: node
-        };
-
-        if (node.type === 'DECISION') {
-            return (
-                <div key={nodeId} className="flex flex-col items-center w-full">
-                     <TrailNode 
-                        node={uiNode} 
-                        isSelected={selectedNode?.id === nodeId}
-                        onClick={() => setSelectedNode(uiNode)}
-                    />
-                    
-                     <div className="relative w-full max-w-5xl flex justify-center pt-10">
-                        {/* Connecting Lines Simplified */}
-                        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[50%] h-10 border-t-2 border-slate-300 dark:border-slate-800 rounded-t-[3rem] border-x-2"></div>
-                        
-                        <div className="grid grid-cols-2 gap-16 w-full px-4 pt-10">
-                            <div className="flex flex-col items-center relative">
-                                <Badge color="green">VERDADEIRO</Badge>
-                                {node.next_true ? renderSequence(node.next_true, nodesMap) : <AddButton parentId={nodeId} branch="true"/>}
-                            </div>
-                            <div className="flex flex-col items-center relative">
-                                <Badge color="amber">FALSO</Badge>
-                                {node.next_false ? renderSequence(node.next_false, nodesMap) : <AddButton parentId={nodeId} branch="false"/>}
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            );
+        // Trigger Context
+        if(activeTrail.original.trigger_type === 'DB_EVENT') {
+             vars.push({ name: 'id', label: 'ID do Registro (Gatilho)', type: 'trigger' });
+             // vars.push({ name: 'data.field', ... }); // Could iterate entityFieldsCache if available
+        } else if (activeTrail.original.trigger_type === 'WEBHOOK') {
+             vars.push({ name: 'body.field', label: 'Campo do Webhook (Ex: body.email)', type: 'webhook' });
         }
 
-        return (
-            <React.Fragment key={nodeId}>
-                <TrailNode 
-                    node={uiNode} 
-                    isSelected={selectedNode?.id === nodeId}
-                    onClick={() => setSelectedNode(uiNode)}
-                />
-                {node.next_node_id ? renderSequence(node.next_node_id, nodesMap) : <AddButton parentId={nodeId} branch="next" />}
-            </React.Fragment>
-        );
-    };
+        // Node Outputs
+        if(activeTrail.original.nodes) {
+             Object.values(activeTrail.original.nodes).forEach(node => {
+                  if(node.id === selectedNode?.id) return; 
+                  
+                  if (node.action_type === 'DB_CREATE' || node.action_type === 'DB_UPDATE' || node.action_type === 'DB_DELETE') {
+                      vars.push({ name: `${node.id}.id`, label: `ID Afetado (${node.name})`, type: 'id' });
+                  }
+                  if (node.action_type === 'DB_FETCH_FIELD') {
+                      vars.push({ name: `${node.id}.value`, label: `Valor Lido (${node.name})`, type: 'value' });
+                  }
+                  if (node.action_type === 'MATH_OP') {
+                      vars.push({ name: `${node.id}.result`, label: `Resultado (${node.name})`, type: 'number' });
+                  }
+                  if (node.action_type === 'GENERATE_CSV' || node.action_type === 'GENERATE_PDF') {
+                      vars.push({ name: `${node.id}.url`, label: `URL Arquivo (${node.name})`, type: 'url' });
+                  }
+                  if (node.action_type === 'AI_CLASSIFY') {
+                      vars.push({ name: `${node.id}.tag`, label: `Tag IA (${node.name})`, type: 'text' });
+                  }
+             });
+        }
+        return vars;
+    }, [activeTrail, selectedNode]);
 
-    const renderFlow = () => {
-        // ... (same implementation of renderFlow)
-        // Empty State (ROOT)
-        const nodesMap = activeTrail.original.nodes || {};
-        const hasNodes = Object.keys(nodesMap).length > 0;
-
-        // Find Start Node: Node not referenced by others
-        const allTargetIds = new Set();
-        Object.values(nodesMap).forEach(n => {
-            if(n.next_node_id) allTargetIds.add(n.next_node_id);
-            if(n.next_true) allTargetIds.add(n.next_true);
-            if(n.next_false) allTargetIds.add(n.next_false);
-        });
-        const startNodeId = Object.keys(nodesMap).find(id => !allTargetIds.has(id));
-
-        return (
-            <div className="flex flex-col items-center pb-96"> {/* Added padding bottom for scrol */}
-                 <div className="flex flex-col items-center mb-10">
-                    <div className="bg-slate-900 dark:bg-white text-white dark:text-black rounded-2xl px-8 py-5 shadow-2xl flex items-center gap-4 border-2 border-slate-800 dark:border-slate-200">
-                        {mapIconForType(activeTrail.type)}
-                        <div>
-                            <p className="text-[10px] font-black uppercase opacity-60 tracking-[0.2em]">Ponto de Partida</p>
-                            <h3 className="text-lg font-bold leading-tight">{activeTrail.triggerDisplay}</h3>
-                        </div>
-                    </div>
-                    <div className="w-0.5 h-12 bg-slate-300 dark:bg-slate-700"></div>
-                </div>
-                {hasNodes && startNodeId ? renderSequence(startNodeId, nodesMap) : (
-                    <div className="relative">
-                        <button 
-                            onClick={() => setAddingNodeTo(addingNodeTo?.parentId === 'ROOT' ? null : { parentId: 'ROOT', branch: 'next' })}
-                            className="group relative flex flex-col items-center gap-2 text-slate-400 hover:text-blue-500 transition-colors"
-                        >
-                            <div className="w-12 h-12 rounded-full bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 group-hover:border-blue-500 flex items-center justify-center shadow-lg transition-all group-hover:scale-110">
-                                <Plus size={24} />
-                            </div>
-                            <span className="text-[10px] font-black uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-opacity absolute top-full mt-2">Adicionar Nó</span>
-                        </button>
-                        {addingNodeTo?.parentId === 'ROOT' && <NodePicker />}
-                    </div>
-                )}
-            </div>
-        );
-    };
+    if (triggerSelectionOpen) return <TriggerSelector />;
 
     return (
-        <div className="h-full flex overflow-hidden bg-slate-50 dark:bg-slate-950 relative">
-            <div className="flex-1 overflow-auto bg-slate-50 dark:bg-slate-950">
-                 <header className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-8 py-4 flex items-center justify-between sticky top-0 z-20 shadow-sm">
-                    <div className="flex items-center gap-4">
-                        <button onClick={() => setView('list')} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors">
-                        <ArrowDown className="rotate-90 text-slate-400" size={20} />
-                        </button>
-                        <div>
-                        <h2 className="text-lg font-black tracking-tight">{activeTrail?.name}</h2>
-                        <div className="flex items-center gap-2">
-                            <span className="text-[10px] bg-slate-100 px-1.5 rounded text-slate-500 font-bold uppercase">{activeTrail.type}</span>
+        <div className="relative h-full w-full">
+        <div className="flex h-[calc(100vh-64px)] overflow-hidden bg-slate-100 dark:bg-slate-950">
+            {/* GRAPH AREA - Simplified Linear List */}
+            <div className="flex-1 overflow-y-auto p-10 flex flex-col items-center gap-6 pb-40">
+                <button 
+                    onClick={() => setTriggerSelectionOpen(true)}
+                    className="p-4 bg-green-100 text-green-700 rounded-full font-black text-xs uppercase tracking-widest border border-green-200 shadow-sm flex items-center gap-2 hover:scale-105 transition-transform cursor-pointer"
+                >
+                    {activeTrail?.original && mapIconForType(activeTrail.original.trigger_type)}
+                    INÍCIO: {activeTrail?.original ? formatTriggerDisplay(activeTrail.original) : 'Carregando...'}
+                </button>
+                <ArrowDown className="text-slate-300"/>
+                
+                {Object.values(activeTrail.original.nodes || {}).map(node => (
+                    <React.Fragment key={node.id}>
+                        <div className="w-full max-w-md relative group">
+                             <TrailNode node={node} selected={selectedNode?.id === node.id} onSelect={() => { setSelectedNode(node); setAddingNodeTo(null); }} />
                         </div>
-                        </div>
-                    </div>
-                    
+                        <ArrowDown className="text-slate-300"/>
+                    </React.Fragment>
+                ))}
 
-                 </header>
-                 <div className="min-w-full min-h-full p-4 md:p-16 flex flex-col items-center justify-start">
-                    {renderFlow()}
-                 </div>
+                <div className="relative group">
+                     {!addingNodeTo ? (
+                        <button onClick={() => setAddingNodeTo('END')} className="p-3 bg-blue-600 text-white rounded-full shadow-lg hover:scale-110 transition-all"><Plus size={24}/></button>
+                     ) : (
+                        <button onClick={() => setAddingNodeTo(null)} className="p-3 bg-slate-400 text-white rounded-full shadow-lg hover:scale-110 transition-all"><X size={24}/></button>
+                     )}
+                     {addingNodeTo && <NodePicker />}
+                </div>
             </div>
-            
-            {/* OVERLAY SIDEBAR */}
-            <div 
-                className={`fixed inset-y-0 right-0 w-full md:w-[500px] bg-white dark:bg-slate-900 shadow-2xl transform transition-transform duration-300 ease-out z-[50] ${selectedNode ? 'translate-x-0' : 'translate-x-full'}`}
-            >
-                {selectedNode && (
-                     <div className="h-full flex flex-col">
-                        <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-white dark:bg-slate-900 z-10">
-                            <h3 className="font-black text-xs uppercase tracking-[0.2em] text-slate-400">Configurar Nó</h3>
-                            <button onClick={() => setSelectedNode(null)} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full text-slate-400 hover:text-red-500 transition-colors"><X size={20}/></button>
+
+            {/* SIDEBAR CONFIG */}
+            {selectedNode && (
+                <div className="w-[450px] bg-white dark:bg-slate-900 border-l border-slate-200 dark:border-slate-800 flex flex-col h-full shadow-2xl z-20 animate-slide-in-right">
+                    <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50/50 dark:bg-slate-900/50">
+                        <div className="flex-1 mr-4">
+                            <label className="text-[10px] font-bold text-slate-400 uppercase">Nome da Etapa</label>
+                            <input 
+                                className="bg-transparent font-black text-lg outline-none w-full text-slate-800 dark:text-white placeholder:text-slate-300" 
+                                value={selectedNode.title || selectedNode.name || ''}
+                                onChange={e => setSelectedNode(prev => ({ ...prev, title: e.target.value, name: e.target.value }))}
+                            />
                         </div>
+                        <button onClick={() => setSelectedNode(null)} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"><X size={20}/></button>
+                    </div>
 
-                        <div className="flex-1 overflow-y-auto p-6 space-y-8">
-                             {/* Node Header */}
-                             <div className="flex items-center gap-4">
-                                <div className={`p-4 rounded-2xl ${mapNodeColor(selectedNode.original.type)} bg-opacity-20 text-slate-700 dark:text-white`}>
-                                    {mapNodeIcon(selectedNode.original.type, selectedNode.original.action_type)}
-                                </div>
-                                <div>
-                                    <input 
-                                        className="text-xl font-black bg-transparent outline-none w-full placeholder:text-slate-300" 
-                                        value={selectedNode.title}
-                                        onChange={e => setSelectedNode(prev => ({...prev, title: e.target.value}))}
-                                    />
-                                    <p className="text-[10px] font-black uppercase text-slate-400 tracking-wide mt-1">{selectedNode.type}</p>
-                                </div>
-                            </div>
-
-                            {/* Dynamic Config Form */}
+                    <div className="flex-1 overflow-y-auto p-6 custom-scrollbar">
                             {selectedNode.original.type === 'ACTION' && (
                                 <div className="space-y-4">
                                     <div className="space-y-2">
@@ -677,7 +704,13 @@ const TrailsManager = () => {
                                                 { id: 'DB_CREATE', label: 'Criar Item', icon: <Plus size={14}/> },
                                                 { id: 'DB_UPDATE', label: 'Editar Item', icon: <Database size={14}/> },
                                                 { id: 'DB_DELETE', label: 'Deletar Item', icon: <Trash2 size={14}/> },
+                                                { id: 'DB_FETCH_FIELD', label: 'Ler Campo', icon: <Search size={14}/> },
+                                                { id: 'MATH_OP', label: 'Cálculo', icon: <Code2 size={14}/> },
                                                 { id: 'NAVIGATE', label: 'Ir para Página', icon: <ChevronRight size={14}/> },
+                                                { id: 'GENERATE_CSV', label: 'Gerar CSV', icon: <ListTree size={14}/> },
+                                                { id: 'GENERATE_PDF', label: 'Gerar PDF', icon: <ListTree size={14}/> },
+                                                { id: 'SEND_NOTIFICATION', label: 'Notificação', icon: <MessageSquare size={14}/> },
+                                                { id: 'OPEN_SUBPAGE', label: 'Abrir Subpágina', icon: <Layout size={14}/> },
                                                 { id: 'WEBHOOK_OUT', label: 'Webhook (API)', icon: <Webhook size={14}/> },
                                                 { id: 'CREATE_TASK', label: 'Criar Tarefa', icon: <CheckCircle2 size={14}/> },
                                             ].map(opt => (
@@ -700,6 +733,74 @@ const TrailsManager = () => {
                                     </div>
                                     
                                     <div className="h-px bg-slate-100 dark:bg-slate-800 my-4"></div>
+
+                                     {/* OPEN SUBPAGE FORM */}
+                                     {selectedNode.original.action_type === 'OPEN_SUBPAGE' && (
+                                         <div className="space-y-4 animate-fade-in">
+                                             <div className="space-y-2">
+                                                <label className="text-xs font-bold text-slate-500 uppercase">Layout / Template da Ficha</label>
+                                                <select 
+                                                    className="w-full p-3 bg-slate-50 rounded-xl text-sm font-bold border border-slate-200 outline-none"
+                                                    value={selectedNode.original.config.path || ''}
+                                                    onChange={e => {
+                                                        const pageId = e.target.value;
+                                                        const page = availablePages.find(p => p.id === pageId);
+                                                        // We save the full path, but here we select by ID for UX
+                                                        // Construct path: /app/page/{id}
+                                                        setSelectedNode(prev => ({
+                                                             ...prev,
+                                                             original: { ...prev.original, config: { ...prev.original.config, path: `/app/page/${pageId}`, title: page?.name } }
+                                                        }));
+                                                    }}
+                                                >
+                                                    <option value="">Selecione o Layout...</option>
+                                                    {availablePages.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                                                </select>
+                                                <p className="text-[10px] text-slate-400">Este layout será aberto em uma nova aba ao clicar.</p>
+                                             </div>
+
+                                             <div className="space-y-2">
+                                                <label className="text-xs font-bold text-slate-500 uppercase">Modelo de Abertura (Template)</label>
+                                                <select 
+                                                    className="w-full p-3 bg-slate-50 rounded-xl text-sm font-bold border border-slate-200 outline-none"
+                                                    value={selectedNode.original.config.template || 'FICHA'}
+                                                    onChange={e => {
+                                                        setSelectedNode(prev => ({
+                                                             ...prev,
+                                                             original: { ...prev.original, config: { ...prev.original.config, template: e.target.value } }
+                                                        }));
+                                                    }}
+                                                >
+                                                    <option value="FICHA">Ficha Lateral (Padrão)</option>
+                                                    <option value="MODAL">Modal (Pop-up)</option>
+                                                    <option value="FULL">Página Cheia</option>
+                                                    <option value="PANEL">Painel Expansível</option>
+                                                </select>
+                                             </div>
+
+                                             <div className="space-y-2">
+                                                <label className="text-xs font-bold text-slate-500 uppercase">ID do Registro (Para carregar dados)</label>
+                                                <select 
+                                                    className="w-full p-3 bg-slate-50 rounded-xl text-sm font-bold border border-slate-200 outline-none"
+                                                    value={selectedNode.original.config.record_id || ''}
+                                                    onChange={e => {
+                                                        setSelectedNode(prev => ({
+                                                             ...prev,
+                                                             original: { ...prev.original, config: { ...prev.original.config, record_id: e.target.value } }
+                                                        }));
+                                                    }}
+                                                >
+                                                    <option value="">Sem Contexto (Página em Branco)</option>
+                                                    {computedVariables.map(v => (
+                                                        <option key={v.name} value={`{{${v.name}}}`}>{v.label} ({v.type})</option>
+                                                    ))}
+                                                    {/* Fallback hardcoded if computed fails */}
+                                                    <option value="{{id}}">ID do Item Clicado (Forçar Manual)</option>
+                                                </select>
+                                                <p className="text-[10px] text-slate-400">Geralmente use <strong>ID do Item Clicado</strong> para abrir o item correto.</p>
+                                             </div>
+                                         </div>
+                                     )}
 
                                     {/* Sub-Forms */}
                                     {selectedNode.original.action_type === 'DB_CREATE' && (
@@ -877,6 +978,124 @@ const TrailsManager = () => {
                                                     ))}
                                                 </select>
                                             </div>
+                                        </div>
+                                    )}
+
+
+                                    {/* DB_FETCH_FIELD */}
+                                    {selectedNode.original.action_type === 'DB_FETCH_FIELD' && (
+                                        <div className="space-y-4 animate-fade-in">
+                                            <div className="space-y-2">
+                                                <label className="text-xs font-bold text-slate-500 uppercase">Tabela de Busca</label>
+                                                <select 
+                                                    className="w-full p-3 bg-slate-50 rounded-xl text-sm font-bold border border-slate-200 outline-none"
+                                                    value={selectedNode.original.config.table_id || ''}
+                                                    onChange={async (e) => {
+                                                        const tid = e.target.value;
+                                                        await fetchEntityFields(tid);
+                                                        setSelectedNode(prev => ({
+                                                             ...prev,
+                                                             original: { ...prev.original, config: { ...prev.original.config, table_id: tid } }
+                                                        }));
+                                                    }}
+                                                >
+                                                    <option value="">Selecione...</option>
+                                                    {availableEntities.map(e => <option key={e.id} value={e.id}>{e.display_name}</option>)}
+                                                </select>
+                                            </div>
+                                            <div className="space-y-2">
+                                                <label className="text-xs font-bold text-slate-500 uppercase">Qual Registro? (ID)</label>
+                                                <select 
+                                                    className="w-full p-3 bg-slate-50 rounded-xl text-sm font-bold border border-slate-200 outline-none"
+                                                    value={selectedNode.original.config.record_id || ''}
+                                                    onChange={e => setSelectedNode(prev => ({...prev, original: { ...prev.original, config: { ...prev.original.config, record_id: e.target.value } }}))}
+                                                >
+                                                    <option value="">Selecione ID...</option>
+                                                    {computedVariables.map(v => <option key={v.name} value={`{{${v.name}}}`}>{v.label}</option>)}
+                                                </select>
+                                            </div>
+                                            <div className="space-y-2">
+                                                <label className="text-xs font-bold text-slate-500 uppercase">Qual Campo Ler?</label>
+                                                <select 
+                                                    className="w-full p-3 bg-slate-50 rounded-xl text-sm font-bold border border-slate-200 outline-none"
+                                                    value={selectedNode.original.config.field_name || ''}
+                                                    onChange={e => setSelectedNode(prev => ({...prev, original: { ...prev.original, config: { ...prev.original.config, field_name: e.target.value } }}))}
+                                                >
+                                                    <option value="">Selecione Campo...</option>
+                                                    {(entityFieldsCache[selectedNode.original.config.table_id] || []).map(f => (
+                                                        <option key={f.name} value={f.name}>{f.display_name}</option>
+                                                    ))}
+                                                </select>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* MATH_OP */}
+                                    {selectedNode.original.action_type === 'MATH_OP' && (
+                                        <div className="space-y-4 animate-fade-in">
+                                             <div className="space-y-2">
+                                                <label className="text-xs font-bold text-slate-500 uppercase">Fórmula Matemática</label>
+                                                <div 
+                                                    onClick={() => {
+                                                        setIsFormulaEditorOpen(true);
+                                                        setFormulaFieldTarget({ path: 'config.expression', label: 'Fórmula' });
+                                                    }}
+                                                    className="w-full bg-slate-50 p-4 rounded-xl border border-slate-200 cursor-pointer hover:border-blue-500"
+                                                >
+                                                    <p className="font-mono text-xs">{selectedNode.original.config.expression || "Clique para editar..."}</p>
+                                                </div>
+                                             </div>
+                                        </div>
+                                    )}
+
+                                    {/* GENERATE_CSV */}
+                                    {selectedNode.original.action_type === 'GENERATE_CSV' && (
+                                        <div className="space-y-4 animate-fade-in">
+                                            <div className="space-y-2">
+                                                <label className="text-xs font-bold text-slate-500 uppercase">Tabela para Exportar</label>
+                                                <select 
+                                                    className="w-full p-3 bg-slate-50 rounded-xl text-sm font-bold border border-slate-200 outline-none"
+                                                    value={selectedNode.original.config.table_id || ''}
+                                                    onChange={e => setSelectedNode(prev => ({...prev, original: { ...prev.original, config: { ...prev.original.config, table_id: e.target.value } }}))}
+                                                >
+                                                    <option value="">Selecione...</option>
+                                                    {availableEntities.map(e => <option key={e.id} value={e.id}>{e.display_name}</option>)}
+                                                </select>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* GENERATE_PDF */}
+                                    {selectedNode.original.action_type === 'GENERATE_PDF' && (
+                                        <div className="space-y-4 animate-fade-in">
+                                            <p className="text-xs text-slate-500">Gera um relatório PDF simples com os dados do contexto atual.</p>
+                                        </div>
+                                    )}
+
+                                    {/* SEND_NOTIFICATION */}
+                                    {selectedNode.original.action_type === 'SEND_NOTIFICATION' && (
+                                        <div className="space-y-4 animate-fade-in">
+                                             <div className="space-y-2">
+                                                <label className="text-xs font-bold text-slate-500 uppercase">Destinatário (Usuário/Email/Fórmula)</label>
+                                                <select 
+                                                    className="w-full p-3 bg-slate-50 rounded-xl text-sm font-bold border border-slate-200 outline-none"
+                                                    value={selectedNode.original.config.recipient || ''}
+                                                    onChange={e => setSelectedNode(prev => ({...prev, original: { ...prev.original, config: { ...prev.original.config, recipient: e.target.value } }}))}
+                                                >
+                                                    <option value="">Selecione...</option>
+                                                    <option value="pbrandon">Pedro Brandon (Hardcoded)</option>
+                                                    {computedVariables.map(v => <option key={v.name} value={`{{${v.name}}}`}>{v.label}</option>)}
+                                                </select>
+                                             </div>
+                                             <div className="space-y-2">
+                                                <label className="text-xs font-bold text-slate-500 uppercase">Mensagem</label>
+                                                <textarea 
+                                                    className="w-full p-3 bg-slate-50 rounded-xl text-sm border border-slate-200 outline-none h-24"
+                                                    placeholder="Sua mensagem aqui..."
+                                                    value={selectedNode.original.config.message || ''}
+                                                    onChange={e => setSelectedNode(prev => ({...prev, original: { ...prev.original, config: { ...prev.original.config, message: e.target.value } }}))}
+                                                />
+                                             </div>
                                         </div>
                                     )}
 

@@ -23,10 +23,11 @@ import { BuilderProvider } from './context/BuilderContext'; // Builder / Engine
 import DatabaseEditor from './pages/editor/DatabaseEditor'; // REFAC: New Editor
 import NavigationEditor from './pages/editor/NavigationEditor'; // REFAC: New Nav Editor
 import WorkflowManager from './pages/builder/WorkflowManager';
-import ActionManager from './pages/builder/ActionManager';
+
+import MainDashboardWrapper from './pages/app/MainDashboardWrapper'; // NEW: Dynamic Dashboard
 import DynamicPageLoader from './pages/app/DynamicPageLoader'; // NEW: Dynamic Page
 import GroupPlaceholder from './pages/app/GroupPlaceholder';
-import TrailList from './pages/builder/TrailList';
+import TrailsManager from './pages/builder/TrailsManager';
 import TrailBuilder from './components/builder/trail/TrailBuilder';
 import { TabProvider } from './context/TabContext';
 
@@ -45,7 +46,8 @@ function App() {
             {/* APP ROUTES (Sales Rep & Tenant Admin) - REDUCED (Redirects to Admin or Dashboard) */}
             <Route path="/app" element={<PrivateRoute><CrmLayout /></PrivateRoute>}>
               {/* Only Dashboard for now */}
-              <Route path="dashboard" element={<div>User Dashboard Placeholder</div>} />
+              {/* Only Dashboard for now */}
+              <Route path="dashboard" element={<MainDashboardWrapper />} />
 
               {/* Builder Routes */}
               <Route path="page/:pageId" element={<DynamicPageLoader />} />
@@ -54,9 +56,9 @@ function App() {
               <Route path="editor/navigation" element={<NavigationEditor />} />
               <Route path="editor/workflows" element={<WorkflowManager />} />
               {/* ActionManager moved to SettingsHub */}
-              <Route path="editor/trails" element={<TrailList />} />
-              <Route path="editor/trails/:trailId" element={<BuilderWrapper />} />
-
+              {/* ActionManager moved to SettingsHub */}
+              <Route path="editor/trails" element={<TrailsManager />} />
+              
               <Route index element={<Navigate to="dashboard" replace />} />
             </Route>
 

@@ -37,6 +37,7 @@ class MetaPageBase(BaseModel):
     name: str
     type: str = "list"
     entity_id: Optional[UUID] = None
+    path: Optional[str] = None
     layout_config: Optional[Dict[str, Any]] = {}
     order: int = 0
 
@@ -45,12 +46,39 @@ class MetaPageCreate(MetaPageBase):
 
 class MetaPageUpdate(BaseModel):
     name: Optional[str] = None
+    path: Optional[str] = None
     layout_config: Optional[Dict[str, Any]] = None
     order: Optional[int] = None
+
+class MetaSubPageBase(BaseModel):
+    name: str
+    type: str = "view"
+    icon: str = "FileText"
+    config: Optional[Dict[str, Any]] = {}
+    order: int = 0
+
+class MetaSubPageCreate(MetaSubPageBase):
+    pass
+
+class MetaSubPageUpdate(BaseModel):
+    name: Optional[str] = None
+    type: Optional[str] = None
+    icon: Optional[str] = None
+    config: Optional[Dict[str, Any]] = None
+    order: Optional[int] = None
+
+class MetaSubPageResponse(MetaSubPageBase):
+    id: UUID
+    page_id: UUID
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
 
 class MetaPageResponse(MetaPageBase):
     id: UUID
     group_id: UUID
+    subpages: List[MetaSubPageResponse] = []
     
     class Config:
         from_attributes = True
@@ -58,6 +86,7 @@ class MetaPageResponse(MetaPageBase):
 class MetaNavigationGroupBase(BaseModel):
     name: str
     icon: str = "Circle"
+    config: Optional[Dict[str, Any]] = {}
     order: int = 0
 
 class MetaNavigationGroupCreate(MetaNavigationGroupBase):
@@ -66,6 +95,7 @@ class MetaNavigationGroupCreate(MetaNavigationGroupBase):
 class MetaNavigationGroupUpdate(BaseModel):
     name: Optional[str] = None
     icon: Optional[str] = None
+    config: Optional[Dict[str, Any]] = None
     order: Optional[int] = None
 
 class MetaNavigationGroupResponse(MetaNavigationGroupBase):

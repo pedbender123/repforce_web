@@ -58,20 +58,27 @@ def create_tenant_user( # Renomeado para clareza
         if not role:
             raise HTTPException(status_code=400, detail="Cargo inválido para este tenant")
     
-    db_new_user = models_system.GlobalUser(
+    db_user = models_system.GlobalUser(
         username=user.username,
         email=user.email,
-        name=user.name,
-        hashed_password=hashed_password,
-        # profile removed
-        tenant_id=tenant_id,
-        role_id=role_id # Associa o cargo
+        full_name=user.name,
+        password_hash=hashed_password,
+        is_active=True
     )
+    db.add(db_user)
+    db.flush()
     
-    db.add(db_new_user)
+    # Create Membership
+    membership = models_system.Membership(
+        user_id=db_user.id,
+        tenant_id=tenant_id,
+        role_id=role_id
+    )
+    db.add(membership)
+    
     db.commit()
-    db.refresh(db_new_user)
-    return db_new_user
+    db.refresh(db_user)
+    return db_user
 
 @router.get("/users", 
             response_model=List[schemas.User], 
@@ -84,7 +91,7 @@ def get_users_in_tenant(
     (Admin de Tenant) Lista todos os usuários do SEU PRÓPRIO tenant.
     """
     tenant_id = request.state.tenant_id
-    users = db.query(models_system.GlobalUser).filter(models_system.GlobalUser.tenant_id == tenant_id).all()
+    users = db.query(models_system.GlobalUser).join(models_system.Membership).filter(models_system.Membership.tenant_id == tenant_id).all()
     return users
 
 # --- PASSO 2: API DE GESTÃO DE CARGOS (ROLES) ---

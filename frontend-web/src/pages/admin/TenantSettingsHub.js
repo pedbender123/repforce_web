@@ -8,9 +8,8 @@ import apiClient from '../../api/apiClient';
 
 // Embedded Modules
 import DatabaseEditor from '../editor/DatabaseEditor';
-import TrailList from '../builder/TrailList';
-import TrailBuilder from '../../components/builder/trail/TrailBuilder';
-import ActionManager from '../builder/ActionManager';
+import TrailsManager from '../builder/TrailsManager';
+
 
 // ... (imports remain)
 
@@ -66,7 +65,7 @@ export default function TenantSettingsHub() {
             items: [
                 { id: 'database', label: 'Base de Dados', icon: Database },
                 { id: 'trails', label: 'Trilhas (Automação)', icon: Workflow },
-                { id: 'actions', label: 'Ações / Botões', icon: Zap },
+
             ]
         }
     ];
@@ -143,25 +142,10 @@ export default function TenantSettingsHub() {
                     )}
                     {activeTab === 'trails' && (
                         <div className="flex-1 h-full w-full overflow-hidden">
-                            {activeTrailId ? (
-                                <TrailBuilder 
-                                    trailId={activeTrailId} 
-                                    onBack={handleBackToTrails}
-                                />
-                            ) : (
-                                <div className="h-full overflow-y-auto p-4 md:p-8">
-                                    <TrailList 
-                                        onSelectTrail={(trail) => setSearchParams({ tab: 'trails', trailId: trail.id })}
-                                    />
-                                </div>
-                            )}
+                            <TrailsManager />
                         </div>
                     )}
-                    {activeTab === 'actions' && (
-                        <div className="flex-1 h-full w-full overflow-hidden">
-                            <ActionManager />
-                        </div>
-                    )}
+
                 </ErrorBoundary>
             </main>
         </div>

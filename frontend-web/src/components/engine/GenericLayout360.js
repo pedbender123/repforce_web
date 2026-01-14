@@ -6,6 +6,7 @@ import { Loader2, AlertTriangle, Settings, Plus, Layout, Database } from 'lucide
 import { useBuilder } from '../../context/BuilderContext';
 import GenericForm from '../builder/GenericForm';
 import TabConfigurator from '../builder/TabConfigurator';
+import DynamicPageLoader from '../../pages/app/DynamicPageLoader';
 
 const SimpleDataTable = ({ entityId, filterColumn, filterValue }) => {
     const [records, setRecords] = useState([]);
@@ -229,7 +230,9 @@ const GenericLayout360 = ({ pageId, entityId, entitySlug, entityName, layoutConf
                         </div>
                     ) : activeTabDef ? (
                         <div className="min-h-full">
-                            {activeTabDef.target_entity && activeTabDef.filter_column ? (
+                            {activeTabDef.type === 'page' && activeTabDef.target_page_id ? (
+                                <DynamicPageLoader pageId={activeTabDef.target_page_id} embedded={true} />
+                            ) : activeTabDef.target_entity && activeTabDef.filter_column ? (
                                 <SimpleDataTable 
                                     entityId={activeTabDef.target_entity}
                                     filterColumn={activeTabDef.filter_column}

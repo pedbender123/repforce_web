@@ -5,9 +5,8 @@ import { X, Home, FileText, CircuitBoard, Layers } from 'lucide-react';
 const TabManager = () => {
     const { tabs, activeTabId, switchTab, closeTab } = useTabs();
 
-    if (tabs.length <= 1) return null; // Don't show if single tab (cleaner) OR show for consistency? Let's show always if preferred, but usually MDI shows only when needed. 
     // User req: "Menu horizontal... que vai ficar posicionado na parte inferior ao que já existe"
-    // Let's show it always to reinforce the MDI concept.
+    // Showing always to reinforce the MDI concept.
 
     const getIcon = (tab) => {
         if (tab.isFixed) return <Layers size={14} />;

@@ -67,7 +67,9 @@ const GenericForm = ({ entityId, layoutConfig, recordId, onSuccess }) => {
                         // Attempt to fetch record. Assuming filter by ID works as seen before or standard Get
                          const { data: searchResult } = await apiClient.get(`/api/engine/object/${currentEntity.slug}?id=${recordId}`);
                          if (searchResult && searchResult.length > 0) {
-                             setFormData(searchResult[0]);
+                         if (searchResult && searchResult.length > 0) {
+                             setFormData({ ...initial, ...searchResult[0] });
+                         }
                          }
                     } catch (e) {
                          console.error("Failed to load record", e);

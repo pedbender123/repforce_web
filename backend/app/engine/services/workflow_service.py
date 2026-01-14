@@ -34,13 +34,37 @@ class WorkflowService:
                 return
 
             # 2. Find Active Workflows for this Entity and Trigger
+            # 2. Find Active Workflows for this Entity and Trigger
+            # A) Legacy Workflows
             workflows = db.query(models_meta.MetaWorkflow).filter(
                 models_meta.MetaWorkflow.entity_id == entity.id,
                 models_meta.MetaWorkflow.trigger_type == trigger_type,
                 models_meta.MetaWorkflow.is_active == True
             ).all()
 
-            if not workflows:
+            # B) New Trails (DB_EVENT)
+            # Filter in Python for JSON config match (simpler than JSON SQL query for now)
+            # We look for trails that are DB_EVENT for this Tenant
+            trails = db.query(models_meta.MetaTrail).filter(
+                models_meta.MetaTrail.tenant_id == tenant_id,
+                models_meta.MetaTrail.trigger_type == 'DB_EVENT',
+                models_meta.MetaTrail.is_active == True
+            ).all()
+            
+            # Filter relevant trails
+            active_trails = []
+            for t in trails:
+                cfg = t.trigger_config or {}
+                # Check Entity ID
+                if str(cfg.get('entity_id')) != str(entity.id):
+                    continue
+                # Check Event (ON_CREATE, ON_UPDATE, ON_DELETE, or ALL)
+                evt = cfg.get('event', 'ALL')
+                if evt != 'ALL' and evt != trigger_type:
+                    continue
+                active_trails.append(t)
+
+            if not workflows and not active_trails:
                 return # No automation configured
 
             # 3. Construct Payload
@@ -62,30 +86,43 @@ class WorkflowService:
                 "changes": changes or {}
             }
 
-            # 4. Dispatch Webhooks
-            async with httpx.AsyncClient() as client:
-                for wf in workflows:
-                    try:
-                        # Internal Script Handler
-                        if wf.webhook_url and wf.webhook_url.startswith("internal://"):
-                            script_name = wf.webhook_url.replace("internal://", "")
-                            logger.info(f"[Workflow] Executing Internal Script: {script_name}")
-                            
-                            # Import shared service
-                            from app.engine.services.internal_scripts import execute_script_by_name
-                            
-                            # Execute (Sync in Async loop - acceptable for light scripts, else use threadpool)
-                            result = execute_script_by_name(script_name, event_payload)
-                            logger.info(f"[Workflow] Result: {result}")
-                            continue
+            # 4. Dispatch Legacy Webhooks
+            if workflows:
+                async with httpx.AsyncClient() as client:
+                    for wf in workflows:
+                        try:
+                            # Internal Script Handler
+                            if wf.webhook_url and wf.webhook_url.startswith("internal://"):
+                                script_name = wf.webhook_url.replace("internal://", "")
+                                logger.info(f"[Workflow] Executing Internal Script: {script_name}")
+                                
+                                # Import shared service
+                                from app.engine.services.internal_scripts import execute_script_by_name
+                                
+                                # Execute (Sync in Async loop - acceptable for light scripts, else use threadpool)
+                                result = execute_script_by_name(script_name, event_payload)
+                                logger.info(f"[Workflow] Result: {result}")
+                                continue
 
-                        # Standard Webhook
-                        logger.info(f"[Workflow] Dispatching {wf.name or 'Webhook'} to {wf.webhook_url}")
-                        resp = await client.post(wf.webhook_url, json=event_payload, timeout=10.0)
-                        if resp.status_code >= 400:
-                            logger.error(f"[Workflow] Failed to send to {wf.webhook_url}: {resp.status_code} - {resp.text}")
+                            # Standard Webhook
+                            logger.info(f"[Workflow] Dispatching {wf.name or 'Webhook'} to {wf.webhook_url}")
+                            resp = await client.post(wf.webhook_url, json=event_payload, timeout=10.0)
+                            if resp.status_code >= 400:
+                                logger.error(f"[Workflow] Failed to send to {wf.webhook_url}: {resp.status_code} - {resp.text}")
+                        except Exception as e:
+                            logger.error(f"[Workflow] Error dispatching to {wf.webhook_url}: {str(e)}")
+            
+            # 5. Execute Trails (Sync/Direct for now, can be backgrounded)
+            if active_trails:
+                from app.engine.services.trail_executor import TrailExecutor
+                executor = TrailExecutor(db, str(tenant_id), user_id=user_id)
+                for trail in active_trails:
+                    try:
+                        logger.info(f"[Workflow] Executing Trail: {trail.name}")
+                        # Payload for trail is the event context
+                        executor.execute_trail(str(trail.id), event_payload)
                     except Exception as e:
-                        logger.error(f"[Workflow] Error dispatching to {wf.webhook_url}: {str(e)}")
+                         logger.error(f"[Workflow] Error executing trail {trail.name}: {str(e)}")
 
         except Exception as e:
             logger.error(f"[Workflow] Critical error in trigger_workflows: {str(e)}")
