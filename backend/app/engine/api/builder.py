@@ -368,6 +368,10 @@ def update_nav_page(
         page.layout_config = payload.layout_config
     if payload.order is not None:
         page.order = payload.order
+    if hasattr(payload, 'default_detail_subpage_id') and payload.default_detail_subpage_id is not None:
+        page.default_detail_subpage_id = payload.default_detail_subpage_id
+    if hasattr(payload, 'default_form_subpage_id') and payload.default_form_subpage_id is not None:
+        page.default_form_subpage_id = payload.default_form_subpage_id
 
     db.commit()
     db.refresh(page)

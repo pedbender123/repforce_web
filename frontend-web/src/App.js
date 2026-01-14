@@ -27,6 +27,7 @@ import WorkflowManager from './pages/builder/WorkflowManager';
 import MainDashboardWrapper from './pages/app/MainDashboardWrapper'; // NEW: Dynamic Dashboard
 import DynamicPageLoader from './pages/app/DynamicPageLoader'; // NEW: Dynamic Page
 import GroupPlaceholder from './pages/app/GroupPlaceholder';
+import RedirectWrapper from './components/navigation/RedirectWrapper';
 import TrailsManager from './pages/builder/TrailsManager';
 import TrailBuilder from './components/builder/trail/TrailBuilder';
 import { TabProvider } from './context/TabContext';
@@ -45,17 +46,20 @@ function App() {
 
             {/* APP ROUTES (Sales Rep & Tenant Admin) - REDUCED (Redirects to Admin or Dashboard) */}
             <Route path="/app" element={<PrivateRoute><CrmLayout /></PrivateRoute>}>
-              {/* Only Dashboard for now */}
-              {/* Only Dashboard for now */}
+              {/* Dashboard */}
               <Route path="dashboard" element={<MainDashboardWrapper />} />
 
-              {/* Builder Routes */}
+              {/* NEW: URL Driven Architecture */}
+              <Route path=":tenantId/:groupId/:pageId" element={<RedirectWrapper />} />
+              <Route path=":tenantId/:groupId/:pageId/:subPageId" element={<DynamicPageLoader />} />
+
+              {/* Legacy / Direct Builder Routes (Migration Phasing) */}
               <Route path="page/:pageId" element={<DynamicPageLoader />} />
               <Route path="group/:groupId" element={<GroupPlaceholder />} />
+              
               <Route path="editor/database" element={<DatabaseEditor />} />
               <Route path="editor/navigation" element={<NavigationEditor />} />
               <Route path="editor/workflows" element={<WorkflowManager />} />
-              {/* ActionManager moved to SettingsHub */}
               {/* ActionManager moved to SettingsHub */}
               <Route path="editor/trails" element={<TrailsManager />} />
               

@@ -8,7 +8,7 @@ import GenericForm from '../builder/GenericForm';
 import TabConfigurator from '../builder/TabConfigurator';
 import DynamicPageLoader from '../../pages/app/DynamicPageLoader';
 
-const SimpleDataTable = ({ entityId, filterColumn, filterValue }) => {
+const SimpleDataTable = ({ entityId, filterColumn, filterValue, filters = {} }) => {
     const [records, setRecords] = useState([]);
     const [loading, setLoading] = useState(true);
     const [cols, setCols] = useState([]);
@@ -17,7 +17,7 @@ const SimpleDataTable = ({ entityId, filterColumn, filterValue }) => {
         if (entityId && filterColumn && filterValue) {
             fetchData();
         }
-    }, [entityId, filterColumn, filterValue]);
+    }, [entityId, filterColumn, filterValue, JSON.stringify(filters)]);
 
     const fetchData = async () => {
         setLoading(true);
@@ -31,10 +31,20 @@ const SimpleDataTable = ({ entityId, filterColumn, filterValue }) => {
             const visibleCols = fields.slice(0, 5); // Show first 5 cols
             setCols(visibleCols);
 
-            // 3. Fetch Data with Dynamic Filter
-            // Note: The logic for dynamic filters is now handled in backend by list_records
-            // We pass context_id and the filter mapping.
-            const { data: recs } = await apiClient.get(`/api/engine/object/${slug}?${filterColumn}=${filterValue}`);
+            // 3. Build Query Params
+            const params = new URLSearchParams();
+            params.append(filterColumn, filterValue);
+            
+            // Append extra filters (arrays or single values)
+            Object.entries(filters).forEach(([key, val]) => {
+                if (Array.isArray(val)) {
+                    val.forEach(v => params.append(key, v));
+                } else {
+                    params.append(key, val);
+                }
+            });
+
+            const { data: recs } = await apiClient.get(`/api/engine/object/${slug}?${params.toString()}`);
             setRecords(recs);
 
         } catch (e) {
@@ -71,13 +81,25 @@ const SimpleDataTable = ({ entityId, filterColumn, filterValue }) => {
     );
 };
 
+// ...
+
+// Dentro do GenericLayout360 (render)
+// ...
+// Este replace é complicado porque eu tenho que "pular" o GenericLayout360 definition para chegar no render
+// Vou usar dois replaces separados. Um para o componente, outro para a chamada.
+// Mas o file está QUEBRADO agora com linhas faltando se eu deletei antes?
+// O view_file anterior mostrou linha 11 a 61 com código. A linha 56 tinha o comentário.
+// Vou substituir linha 11 até 82.
+
+
 /**
  * GenericLayout360 (Split View 33/67)
  * Implements the Engine Authority and Dual Realm principles of Repforce 2.1.
  */
-const GenericLayout360 = ({ pageId, entityId, entitySlug, entityName, layoutConfig }) => {
+const GenericLayout360 = ({ pageId, entityId, entitySlug, entityName, layoutConfig, recordId: propRecordId }) => {
     const [searchParams] = useSearchParams();
-    const recordId = searchParams.get('record_id');
+    // Priority: Prop > URL 'id' > URL 'record_id'
+    const recordId = propRecordId || searchParams.get('id') || searchParams.get('record_id');
     const { isEditMode } = useBuilder();
     
     const [data, setData] = useState(null);
@@ -165,25 +187,28 @@ const GenericLayout360 = ({ pageId, entityId, entitySlug, entityName, layoutConf
                              <h3 className="font-bold text-gray-800 dark:text-white uppercase text-xs tracking-widest">Ficha Cadastral</h3>
                         </div>
                     </div>
-                    <div className="p-0 overflow-y-auto max-h-[700px]">
-                        <GenericForm 
-                            entityId={entityId} 
-                            recordId={recordId}
-                            onSuccess={fetchRecordAndFields}
-                        />
-                    </div>
+                        <div className="p-5 flex flex-col gap-4">
+                            {fields.filter(f => !f.is_hidden).map(field => (
+                                <div key={field.id} className="group">
+                                    <label className="text-[10px] uppercase font-bold text-gray-400 mb-1 block tracking-wider">
+                                        {field.label}
+                                    </label>
+                                    <div className="text-sm text-gray-700 dark:text-gray-200 font-medium break-words">
+                                        {data && data[field.name] !== undefined && data[field.name] !== null ? (
+                                            typeof data[field.name] === 'boolean' ? (data[field.name] ? 'Sim' : 'Não') :
+                                            field.type === 'currency' ? `R$ ${parseFloat(data[field.name]).toFixed(2)}` :
+                                            data[field.name].toString()
+                                        ) : (
+                                            <span className="text-gray-300 italic text-xs">Vazio</span>
+                                        )}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
                 </div>
                 
-                {/* Visual Identity Section */}
-                <div className="hidden lg:flex bg-blue-600 rounded-2xl p-6 text-white shadow-lg shadow-blue-200 dark:shadow-none items-center gap-4">
-                     <div className="p-3 bg-white/20 rounded-xl">
-                        <Layout size={24} />
-                     </div>
-                     <div>
-                        <h4 className="font-bold">Visão 360 ATIVA</h4>
-                        <p className="text-blue-100 text-xs">Acessando inteligência de dados PBPM.</p>
-                     </div>
-                </div>
+                
+                {/* Visual Identity Section Removed as per request */}
             </div>
 
             {/* Right Panel: 67% (Tabs/Insights) */}

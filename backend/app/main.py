@@ -1,6 +1,7 @@
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
+from sqlalchemy import text
 import logging
 import os
 from .core.middleware import TenantMiddleware
@@ -31,7 +32,8 @@ from app.system.api import notifications # REFAC: Notifications API
 from app.engine.api import builder # REFAC: Builder API
 from app.engine.api import metadata # REFAC: Engine Runtime API
 from app.engine.api import data # REFAC: Universal Data API
-from app.engine.api import actions # REFAC: Actions API
+from app.engine.api import actions # REFAC: Actions API (DEPRECATED - Use automation)
+from app.engine.api import automation # NEW: Automation API
 from app.engine.api import analytics # REFAC: Analytics API
 
 # --- LEGACY / SHARED ROUTERS ---
@@ -135,7 +137,8 @@ app.include_router(notifications.router, prefix="/v1/notifications", tags=["Syst
 app.include_router(builder.router, prefix="/api/builder", tags=["Builder"])
 app.include_router(metadata.router, prefix="/api/engine", tags=["Engine Runtime"])
 app.include_router(data.router, prefix="/api/engine", tags=["Universal Data"])
-app.include_router(actions.router, prefix="/api/engine", tags=["Engine Actions"])
+# app.include_router(actions.router, prefix="/api/engine", tags=["Engine Actions"]) # DEPRECATED
+app.include_router(automation.router, prefix="/api/engine/automation", tags=["Engine Automation"])
 app.include_router(analytics.router, prefix="/api/engine/analytics", tags=["Engine Analytics"])
 app.include_router(companies.router, prefix="/v1/sysadmin/companies", tags=["SysAdmin Companies"])
 app.include_router(diagnostics.router, prefix="/v1/sysadmin/diagnostics", tags=["SysAdmin Diagnostics"])
@@ -189,19 +192,27 @@ def check_scheduled_trails():
             if should_run:
                 logger.info(f"Executing Scheduled Trail: {trail.name}")
                 
+                # 3. Contextualize Tenant Schema
+                # We need to set the search_path so that the TrailExecutor can find the dynamic tables
+                # stored in the tenant's schema.
+                if trail.tenant and trail.tenant.slug:
+                    schema_name = f"tenant_{trail.tenant.slug.replace('-', '_')}"
+                    db.execute(text(f"SET search_path TO {schema_name}, public"))
+                
                 # Execute Trail
                 # We need to use TrailExecutor. But it requires a tenant-scoped session usually?
                 # TrailExecutor takes (db, tenant_id).
                 
-                from app.engine.services.trail_executor import TrailExecutor
-                executor = TrailExecutor(db, str(trail.tenant_id))
+                # Execute Trail (New Architecture)
+                from app.engine.automation.service import AutomationService
+                service = AutomationService(db)
                 
                 payload = {
                     "trigger": "scheduler",
                     "timestamp": now.isoformat()
                 }
                 
-                executor.execute_trail(str(trail.id), payload)
+                service.run_trail(str(trail.id), payload)
                 
                 # Update Last Run
                 config['last_run'] = now.isoformat()

@@ -1,17 +1,20 @@
 import React, { useState, useEffect } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate, useParams } from 'react-router-dom';
 import apiClient from '../../api/apiClient';
 import { useBuilder } from '../../context/BuilderContext';
 import { Settings, RefreshCw, ChevronDown, Check, Plus, Loader2, Trash } from 'lucide-react';
 import GenericFormModal from './GenericFormModal';
 import VirtualInfoButton from '../VirtualInfoButton';
+import { useTabs } from '../../context/TabContext';
 import useActionExecutor from '../../hooks/useActionExecutor';
 
 const MAX_VISIBLE_COLUMNS = 8;
 
 
-const GenericListPage = ({ pageId, entityId, entitySlug, entityName, layoutConfig, pageType = 'list' }) => {
+const GenericListPage = ({ pageId, entityId, entitySlug, entityName, layoutConfig, pageType = 'list', defaultDetailSubpageId, defaultFormSubpageId }) => {
     const { isEditMode } = useBuilder();
+    const { openSubPage } = useTabs();
+    const navigate = useNavigate();
     const [data, setData] = useState([]);
     const [fields, setFields] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -102,20 +105,35 @@ const GenericListPage = ({ pageId, entityId, entitySlug, entityName, layoutConfi
     };
 
     useEffect(() => {
-        // Initialize visible columns from config or default to EMPTY
+        // Initialize visible columns
         if (fields.length > 0) {
+            // Priority 1: LocalStorage (User preference persists across sessions)
+            const savedCols = localStorage.getItem(`list_cols_${entityId}`);
+            if (savedCols) {
+                try {
+                     const parsed = JSON.parse(savedCols);
+                     // Validate cols exist
+                     const valid = parsed.filter(c => fields.some(f => f.name === c));
+                     if (valid.length > 0) {
+                         setVisibleColumns(valid);
+                         return; 
+                     }
+                } catch (e) {}
+            }
+
+            // Priority 2: Remote Config
             if (layoutConfig?.columns && layoutConfig.columns.length > 0) {
-                // Filter to ensure columns still exist
                 const validCols = layoutConfig.columns.filter(colName => 
                     fields.some(f => f.name === colName)
                 );
                 setVisibleColumns(validCols);
             } else {
-                // Default: EMPTY (User requested list to start empty)
-                setVisibleColumns([]);
+                // Priority 3: Default (First 5) - Avoid Empty State
+                const defaults = fields.slice(0, 5).map(f => f.name);
+                setVisibleColumns(defaults);
             }
         }
-    }, [fields, layoutConfig]);
+    }, [fields, layoutConfig, entityId]);
 
     const fetchFields = async () => {
         try {
@@ -204,6 +222,8 @@ const GenericListPage = ({ pageId, entityId, entitySlug, entityName, layoutConfi
                 layout_config: newConfig
             });
             setIsConfigOpen(false);
+            // Local Persistence (Immediate Feedback)
+            localStorage.setItem(`list_cols_${entityId}`, JSON.stringify(visibleColumns));
             // Optional: Notify success (toast)
         } catch (error) {
             alert("Erro ao salvar configuração: " + (error.response?.data?.detail || error.message));
@@ -322,7 +342,17 @@ const GenericListPage = ({ pageId, entityId, entitySlug, entityName, layoutConfi
                     {pageType === 'list' && (
                         <button 
                             type="button"
-                            onClick={() => setIsCreateModalOpen(true)}
+                            onClick={() => {
+                                // Generate draft_id
+                                const draftId = crypto.randomUUID ? crypto.randomUUID() : `draft_${Date.now()}`;
+                                // Navigate to form subpage (assuming 'novo' or use pageConfig default)
+                                const params = window.location.pathname.split('/');
+                                const tenantId = params[2] || 'default';
+                                const groupId = params[3];
+                                const currentPageId = pageId;
+                                const targetSubpage = defaultFormSubpageId || 'novo';
+                                navigate(`/app/${tenantId}/${groupId}/${currentPageId}/${targetSubpage}?draft_id=${draftId}`);
+                            }}
                             className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-md text-sm font-medium transition-colors"
                         >
                             <Plus size={16} /> Novo
@@ -445,8 +475,34 @@ const GenericListPage = ({ pageId, entityId, entitySlug, entityName, layoutConfi
                             data.map((row, idx) => (
                                 <tr 
                                     key={row.id || idx} 
-                                    className={`hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors border-b border-gray-50 dark:border-gray-800 ${listAction ? 'cursor-pointer' : ''}`}
-                                    onClick={() => listAction && executeAction(listAction, row)}
+                                    className={`hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors border-b border-gray-50 dark:border-gray-800 cursor-pointer`}
+                                    onClick={() => {
+                                        // FORCED NAVIGATION: Ficha Lateral Rule
+                                        // User Requirement: "obrigatoriamente criar uma aba do lado com a ficha"
+                                        const currentPath = window.location.pathname;
+                                        const basePath = currentPath.endsWith('/') ? currentPath.slice(0, -1) : currentPath;
+                                        
+                                        // Prioritize configured subpage, fallback to 'ficha' (convention)
+                                        const targetSubpage = defaultDetailSubpageId || 'ficha';
+                                        
+                                        // Find best label for Tab
+                                        // 1. First Text field
+                                        const labelVal = visibleColumns.map(c => {
+                                            const f = fields.find(f => f.name === c);
+                                            return { val: row[c], type: f?.type };
+                                        }).find(v => v.type === 'text' || typeof v.val === 'string')?.val;
+                                        
+                                        const label = String(labelVal || row.id || 'Registro').substring(0, 20);
+                                        
+                                        const targetPath = `${basePath}/${targetSubpage}?id=${row.id}`;
+                                        
+                                        // Open Global Tab
+                                        openSubPage({
+                                            title: label,
+                                            path: targetPath,
+                                            id: `record_${row.id}` // Stable ID ensures clicking same record focuses existing tab
+                                        });
+                                    }}
                                 >
                                     {visibleColumns.map(colName => {
                                         const field = fields.find(f => f.name === colName);

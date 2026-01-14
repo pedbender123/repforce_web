@@ -11,6 +11,7 @@ from fastapi import BackgroundTasks
 from app.engine.services.workflow_service import WorkflowService
 
 from app.services.shadow_service import create_shadow_backup
+from app.engine.api.hardcoded_hooks import run_create_hooks, run_update_hooks
 
 def apply_snapshot_formulas(db: Session, tenant_id: str, entity_id: str, record_data: Dict[str, Any], user_context: Optional[Dict[str, Any]]) -> Dict[str, Any]:
     """
@@ -100,6 +101,9 @@ def create_record(
     # for field in entity.fields:
     #     if field.is_required and field.name not in payload:
     #         raise HTTPException(status_code=400, detail=f"Missing required field: {field.name}")
+
+    # --- HARDCODED HOOKS ---
+    run_create_hooks(entity_slug, payload, db, tenant_id)
 
     # 3. Snapshot Formulas
     user_context = get_user_context(request, db, tenant_id)
@@ -296,6 +300,9 @@ def update_record(
     # 3. Update Data (Merge or Replace? Usually merge)
     old_data = record.data.copy()
     merged_data = {**old_data, **payload}
+    
+    # --- HARDCODED HOOKS ---
+    run_update_hooks(entity_slug, record_id, merged_data, db, tenant_id, old_data)
     
     # Snapshot Formulas
     user_context = get_user_context(request, db, tenant_id)
