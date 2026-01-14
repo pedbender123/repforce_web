@@ -121,13 +121,46 @@ export const TabProvider = ({ children }) => {
         }
     }, [tabs, navigate]);
 
-    // Sync URL with Tab (If user navigates manually)
-    // Complexity: If user clicks sidebar, does it replace current tab or open new?
-    // User Rule: "The only tab that exists normally is the List tab, which cannot be closed"
-    // Interpretation: Sidebar clicks should probably update the "Main" tab or switch to a Main tab for that context.
-    // For MVP: Sidebar clicks -> Update Active Tab IF it's a fixed tab, else Open New "Main" context?
-    // DECISION: Sidebar Link Click = Reset/Navigate the "Main Context". Subpages are separate.
+    // Sync URL with Tab (If user navigates manually via Sidebar or Back Button)
+    useEffect(() => {
+        if (isRestoring || tabs.length === 0) return;
+
+        // 1. Is the current path already an open tab?
+        const existingTab = tabs.find(t => t.path === location.pathname);
+        if (existingTab) {
+            if (activeTabId !== existingTab.id) {
+                setActiveTabId(existingTab.id);
+            }
+            return;
+        }
+
+        // 2. If not found, and it's a valid app route, assume it's a "Main Navigation" (Sidebar/Back)
+        // We replace the 'Main' tab (usually the first fixed one) with this new context.
+        if (location.pathname.startsWith('/app/')) {
+            setTabs(prev => {
+                const newTabs = [...prev];
+                // Find first fixed/main tab
+                const mainTabIndex = newTabs.findIndex(t => t.isFixed) !== -1 ? newTabs.findIndex(t => t.isFixed) : 0;
+                
+                if (newTabs[mainTabIndex]) {
+                    // Update Main Tab
+                    newTabs[mainTabIndex] = {
+                        ...newTabs[mainTabIndex],
+                        title: 'Carregando...', // DynamicSidebar/PageLoader should ideally update this title
+                        path: location.pathname,
+                        id: 'main_tab' // Keep ID stable or change? Stable is better for main tab.
+                    };
+                    setActiveTabId(newTabs[mainTabIndex].id);
+                }
+                return newTabs;
+            });
+        }
+    }, [location.pathname, isRestoring]);
     
+    const updateTab = useCallback((tabId, updates) => {
+        setTabs(prev => prev.map(t => t.id === tabId ? { ...t, ...updates } : t));
+    }, []);
+
     return (
         <TabContext.Provider value={{
             tabs,
@@ -135,6 +168,7 @@ export const TabProvider = ({ children }) => {
             openSubPage,
             closeTab,
             switchTab,
+            updateTab,
             setTabs 
         }}>
             {children}

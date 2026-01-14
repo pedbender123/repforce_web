@@ -172,10 +172,10 @@ class FormulaEngine:
                 return None
 
             def app_select(table_slug, return_col, filter_expr=None):
-                return self._select(table_slug, return_col, filter_expr, user_context)
+                return self._select(table_slug, return_col, filter_expr, user_context, parent_context=safe_context)
 
             def app_filter(table_slug, filter_expr):
-                return self._select(table_slug, "id", filter_expr, user_context)
+                return self._select(table_slug, "id", filter_expr, user_context, parent_context=safe_context)
 
             def app_any(lst):
                 if isinstance(lst, list) and len(lst) > 0:
@@ -211,7 +211,7 @@ class FormulaEngine:
 
             # Data e Hora
             def app_today():
-                return datetime.now().date() # retorna date object
+                return datetime.now().strftime("%Y-%m-%d")
             
             def app_now():
                 return datetime.now() # retorna datetime object
@@ -229,14 +229,14 @@ class FormulaEngine:
                 
                 current = start_date
                 added = 0
-                direction = 1 if days > 0 else -1
-                days = abs(days)
+                direction = 1 if int(days) > 0 else -1
+                days = abs(int(days))
                 
                 while added < days:
                     current += timedelta(days=direction)
                     if current.weekday() < 5: # 0-4 é Seg-Sex
                         added += 1
-                return current
+                return current.strftime("%Y-%m-%d")
 
             # Texto
             def app_concatenate(*args):
@@ -271,6 +271,17 @@ class FormulaEngine:
                 except Exception as e:
                     logger.error(f"Geocoding error for '{address}': {e}")
                 return None
+            
+            def app_select_sum(table_slug, sum_col, filter_expr=None):
+                # Otimização para somar direto do banco ou iterar somando
+                # Como _select já itera, podemos reusar mas evitar criar lista gigante
+                rows = self._select(table_slug, None, filter_expr, user_context, return_full_row=True, parent_context=safe_context)
+                total = 0.0
+                for r in rows:
+                     val = r.get(sum_col)
+                     if val is not None and str(val).replace('.','',1).isdigit():
+                         total += float(val)
+                return total
 
             # Globals para eval
             eval_globals = {
@@ -286,6 +297,7 @@ class FormulaEngine:
                 "USER": app_user, "USERNAME": app_username, "USEREMAIL": app_useremail, "USERCARGO": app_usercargo,
                 # List/Search
                 "LOOKUP": app_lookup, "SELECT": app_select, "FILTER": app_filter, 
+                "SELECT_SUM": app_select_sum,
                 "ANY": app_any, "IN": app_in, "DEREF": app_deref,
                 # Math
                 "COUNT": app_count, "SUM": app_sum, "AVERAGE": app_average, "UNIQUEID": app_uniqueid,
@@ -308,6 +320,10 @@ class FormulaEngine:
                     except: safe_context[k] = v
                 else:
                     safe_context[k] = v
+            
+            # Adiciona _THIS ao contexto (cópia do contexto original)
+            if '_THIS' not in safe_context:
+                safe_context['_THIS'] = safe_context.copy()
 
             logger.debug(f"Eval: {processed_formula} | Ctx: {safe_context.keys()}")
             return eval(processed_formula, eval_globals, {"variables": safe_context})
@@ -342,7 +358,7 @@ class FormulaEngine:
             logger.error(f"Lookup DB Error: {e}")
             return None
 
-    def _select(self, table_slug, return_col, filter_expr_raw, user_context):
+    def _select(self, table_slug, return_col, filter_expr_raw, user_context, return_full_row=False, parent_context=None):
         """
         Implementação básica de SELECT. 
         Warning: Performance crítica. Itera sobre registros para filtrar via Python se expression complexa.
@@ -367,9 +383,14 @@ class FormulaEngine:
             # Se não tiver filtro, retorna direto
             if not filter_expr_raw or filter_expr_raw == "TRUE":
                 for r in rows:
-                    data = r.data
-                    if return_col == "id": results.append(str(r.id))
-                    else: results.append(data.get(return_col))
+                    if return_full_row:
+                        full = r.data
+                        full['id'] = str(r.id)
+                        results.append(full)
+                    else:
+                        data = r.data
+                        if return_col == "id": results.append(str(r.id))
+                        else: results.append(data.get(return_col))
                 return results
 
             # Se tiver filtro, avalia para cada linha
@@ -378,16 +399,25 @@ class FormulaEngine:
                 row_ctx = r.data
                 row_ctx['id'] = str(r.id) # Ensure ID is available
                 
+                # INJECTION: Add _THIS to row_ctx if present in context
+                if parent_context:
+                    row_ctx['_THIS'] = parent_context
+
                 # Evaluate filter condition boolean
                 # Cuidado: Recursão infinita se filtro chamar SELECT da mesma tabela?
                 # Devemos passar current_entity_id=target_entity.id
                 match = self.evaluate(filter_expr_raw, row_ctx, user_context, str(target_entity.id))
                 
                 if match:
-                    if return_col == "id": results.append(str(r.id))
-                    else: results.append(row_ctx.get(return_col))
+                    if return_full_row:
+                        results.append(row_ctx)
+                    elif return_col == "id": 
+                        results.append(str(r.id))
+                    else: 
+                        results.append(row_ctx.get(return_col))
                     
             return results
         except Exception as e:
             logger.error(f"Select DB Error: {e}")
             return []
+

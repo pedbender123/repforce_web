@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import apiClient from '../../api/apiClient';
 import { useBuilder } from '../../context/BuilderContext';
+import { useTabs } from '../../context/TabContext';
 import { Settings, PenTool } from 'lucide-react';
 import GenericListPage from '../../components/builder/GenericListPage';
 import GenericRecordPage from '../../components/builder/GenericRecordPage';
@@ -20,9 +21,11 @@ import GenericLayout360 from '../../components/engine/GenericLayout360';
 import PageSettingsModal from '../../components/builder/PageSettingsModal'; // Import Modal
 import { useNavigate } from 'react-router-dom';
 
-const DynamicPageLoader = () => {
-    const { pageId } = useParams();
+const DynamicPageLoader = ({ pageId: propPageId, embedded = false }) => {
+    const params = useParams();
+    const pageId = propPageId || params.pageId;
     const { isEditMode } = useBuilder();
+    const { updateTab, activeTabId } = useTabs();
     const navigate = useNavigate();
     const [page, setPage] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -38,8 +41,10 @@ const DynamicPageLoader = () => {
         setError(null);
         try {
             // 1. Fetch Navigation to find page
+            // Optimization: Could use a specific endpoint for single page to avoid fetching all
             const { data: navData } = await apiClient.get('/api/builder/navigation');
             let foundPage = null;
+            // Search in all groups
             for (const group of navData) {
                 const p = group.pages.find(p => p.id === pageId);
                 if (p) foundPage = p;
@@ -60,6 +65,10 @@ const DynamicPageLoader = () => {
                     }
                 }
                 setPage(foundPage);
+                // Update Tab Title only if main page
+                if (!embedded) {
+                    updateTab(activeTabId, { title: foundPage.name });
+                }
             } else {
                 setError("Página não encontrada.");
             }
@@ -76,7 +85,7 @@ const DynamicPageLoader = () => {
         // If deleted, redirect
         if (result?.deleted) {
             window.dispatchEvent(new Event('navigation-updated')); // Trigger Sidebar Refresh
-            navigate('/app');
+            if (!embedded) navigate('/app');
             return;
         }
         
@@ -90,35 +99,37 @@ const DynamicPageLoader = () => {
     if (!page) return null;
 
     return (
-        <div className="p-6">
-            {/* Header */}
-            <div className="flex justify-between items-center mb-6">
-                <div className="flex items-center gap-3">
-                    <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{page.name}</h1>
+        <div className={`h-full flex flex-col ${embedded ? '' : 'p-3'}`}>
+            {/* Header (Hidden if embedded) */}
+            {!embedded && (
+                <div className="flex justify-between items-center mb-2 shrink-0">
+                    <div className="flex items-center gap-3">
+                        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{page.name}</h1>
+                        {isEditMode && (
+                            <div className="flex items-center gap-2">
+                                <span className="text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded">Modo Edição</span>
+                                <button 
+                                    onClick={() => setIsConfigOpen(true)}
+                                    className="p-1.5 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 rounded-full text-gray-500 hover:text-blue-600 transition-colors"
+                                    title="Editar Configurações da Página"
+                                >
+                                    <PenTool size={16} />
+                                </button>
+                            </div>
+                        )}
+                    </div>
+                    
+                    {/* Modal de Configuração */}
                     {isEditMode && (
-                        <div className="flex items-center gap-2">
-                             <span className="text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded">Modo Edição</span>
-                             <button 
-                                onClick={() => setIsConfigOpen(true)}
-                                className="p-1.5 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 rounded-full text-gray-500 hover:text-blue-600 transition-colors"
-                                title="Editar Configurações da Página"
-                             >
-                                <PenTool size={16} />
-                             </button>
-                        </div>
+                        <PageSettingsModal
+                            isOpen={isConfigOpen}
+                            onClose={() => setIsConfigOpen(false)}
+                            page={page}
+                            onUpdate={handlePageUpdate}
+                        />
                     )}
                 </div>
-                
-                {/* Modal de Configuração */}
-                {isEditMode && (
-                    <PageSettingsModal
-                        isOpen={isConfigOpen}
-                        onClose={() => setIsConfigOpen(false)}
-                        page={page}
-                        onUpdate={handlePageUpdate}
-                    />
-                )}
-            </div>
+            )}
 
             {/* Content Renderer */}
             {['list', 'list_readonly', 'list_custom'].includes(page.type) && <GenericListPage 

@@ -9,6 +9,16 @@ WORKDIR /app
 # RUN pip install poetry
 
 # Copia os arquivos de dependência
+# Instala dependências do sistema para compilar pacotes (pycairo, cffi, etc.)
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    python3-dev \
+    libcairo2-dev \
+    pkg-config \
+    libffi-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copia os arquivos de dependência
 COPY requirements.txt .
 
 # Instala as dependências

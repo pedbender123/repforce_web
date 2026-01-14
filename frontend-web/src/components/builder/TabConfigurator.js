@@ -8,6 +8,7 @@ const TabConfigurator = ({ isOpen, onClose, onSave, currentTabs = [] }) => {
     
     // Remote Data
     const [entities, setEntities] = useState([]);
+    const [pages, setPages] = useState([]); // Available Pages
     const [entityFields, setEntityFields] = useState({}); // Cache: { entityId: [fields] }
     const [isLoading, setIsLoading] = useState(false);
 
@@ -20,10 +21,20 @@ const TabConfigurator = ({ isOpen, onClose, onSave, currentTabs = [] }) => {
 
     const fetchEntities = async () => {
         try {
-            const { data } = await apiClient.get('/api/builder/entities');
-            setEntities(data);
+            const [entRes, navRes] = await Promise.all([
+                apiClient.get('/api/builder/entities'),
+                apiClient.get('/api/builder/navigation')
+            ]);
+            setEntities(entRes.data);
+            
+            // Flatten pages from groups
+            const allPages = [];
+            navRes.data.forEach(g => {
+                if(g.pages) allPages.push(...g.pages);
+            });
+            setPages(allPages);
         } catch (error) {
-            console.error("Failed to load entities", error);
+            console.error("Failed to load options", error);
         }
     };
 
@@ -38,7 +49,15 @@ const TabConfigurator = ({ isOpen, onClose, onSave, currentTabs = [] }) => {
     };
 
     const handleAddTab = () => {
-        setTabs([...tabs, { id: Date.now(), label: 'Nova Aba', target_entity: '', filter_column: '', is_active: true }]);
+        setTabs([...tabs, { 
+            id: Date.now(), 
+            label: 'Nova Aba', 
+            type: 'simple_table', // 'simple_table' or 'page'
+            target_entity: '',
+            target_page_id: '',
+            filter_column: '',
+            is_active: true 
+        }]);
     };
 
     const handleRemoveTab = (idx) => {
@@ -110,37 +129,70 @@ const TabConfigurator = ({ isOpen, onClose, onSave, currentTabs = [] }) => {
                                     />
                                 </div>
 
-                                {/* Entity Select */}
+                                {/* Type Selector */}
                                 <div className="flex-1 space-y-1">
-                                    <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Tabela Relacionada</label>
+                                    <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Tipo de Conteúdo</label>
                                     <select
-                                        value={tab.target_entity}
-                                        onChange={(e) => handleChange(idx, 'target_entity', e.target.value)}
+                                        value={tab.type || 'simple_table'}
+                                        onChange={(e) => handleChange(idx, 'type', e.target.value)}
                                         className="w-full p-2 rounded border border-gray-300 dark:border-gray-600 bg-transparent dark:text-white focus:ring-2 focus:ring-blue-500 outline-none text-sm"
                                     >
-                                        <option value="">Selecione...</option>
-                                        {entities.map(ent => (
-                                            <option key={ent.id} value={ent.id}>{ent.display_name}</option>
-                                        ))}
+                                        <option value="simple_table">Tabela Simples</option>
+                                        <option value="page">Página Existente</option>
                                     </select>
                                 </div>
 
-                                {/* Filter Column Select */}
-                                <div className="flex-1 space-y-1">
-                                    <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Coluna de Filtro (Nela)</label>
-                                    <select
-                                        value={tab.filter_column}
-                                        onChange={(e) => handleChange(idx, 'filter_column', e.target.value)}
-                                        disabled={!tab.target_entity}
-                                        className="w-full p-2 rounded border border-gray-300 dark:border-gray-600 bg-transparent dark:text-white focus:ring-2 focus:ring-blue-500 outline-none text-sm disabled:opacity-50"
-                                    >
-                                        <option value="">Selecione...</option>
-                                        {(entityFields[tab.target_entity] || []).map(f => (
-                                            <option key={f.id} value={f.name}>{f.label} ({f.name})</option>
-                                        ))}
-                                    </select>
-                                    <p className="text-[10px] text-gray-400">Esta coluna deve conter o ID do registro atual.</p>
-                                </div>
+                                {/* Content Config */}
+                                {(tab.type === 'page') ? (
+                                    <div className="flex-1 space-y-1">
+                                        <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Selecionar Página (Réplica)</label>
+                                        <select
+                                            value={tab.target_page_id || ''}
+                                            onChange={(e) => handleChange(idx, 'target_page_id', e.target.value)}
+                                            className="w-full p-2 rounded border border-gray-300 dark:border-gray-600 bg-transparent dark:text-white focus:ring-2 focus:ring-blue-500 outline-none text-sm"
+                                        >
+                                            <option value="">Selecione a Página...</option>
+                                            {pages.map(p => (
+                                                <option key={String(p.id)} value={String(p.id)}>{p.name} ({p.type})</option>
+                                            ))}
+                                        </select>
+                                        <p className="text-[10px] text-gray-400">O ID do registro atual será passado como contexto.</p>
+                                    </div>
+                                ) : (
+                                    <>
+                                        {/* Entity Select */}
+                                        <div className="flex-1 space-y-1">
+                                            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Tabela Relacionada</label>
+                                            <select
+                                                value={tab.target_entity}
+                                                onChange={(e) => handleChange(idx, 'target_entity', e.target.value)}
+                                                className="w-full p-2 rounded border border-gray-300 dark:border-gray-600 bg-transparent dark:text-white focus:ring-2 focus:ring-blue-500 outline-none text-sm"
+                                            >
+                                                <option value="">Selecione...</option>
+                                                {entities.map(ent => (
+                                                    <option key={ent.id} value={ent.id}>{ent.display_name}</option>
+                                                ))}
+                                            </select>
+                                        </div>
+
+                                        {/* Filter Column Select */}
+                                        <div className="flex-1 space-y-1">
+                                            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Coluna de Filtro (Nela)</label>
+                                            <select
+                                                value={tab.filter_column}
+                                                onChange={(e) => handleChange(idx, 'filter_column', e.target.value)}
+                                                disabled={!tab.target_entity}
+                                                className="w-full p-2 rounded border border-gray-300 dark:border-gray-600 bg-transparent dark:text-white focus:ring-2 focus:ring-blue-500 outline-none text-sm disabled:opacity-50"
+                                            >
+                                                <option value="">Selecione...</option>
+                                                {(entityFields[tab.target_entity] || []).map(f => (
+                                                    <option key={f.id} value={f.name}>{f.label} ({f.name})</option>
+                                                ))}
+                                            </select>
+                                            <p className="text-[10px] text-gray-400">Esta coluna deve conter o ID do registro atual.</p>
+                                        </div>
+                                    </>
+                                )}
 
                                 {/* Actions */}
                                 <div className="flex items-center gap-2 pt-5">

@@ -5,12 +5,14 @@ import { Plus, Trash2 } from 'lucide-react';
 
 const PageSettingsModal = ({ isOpen, onClose, page, onUpdate }) => {
     const [name, setName] = useState('');
+    const [isHidden, setIsHidden] = useState(false);
     const [filters, setFilters] = useState([]); // Array of { key: '', value: '' }
     const [loading, setLoading] = useState(false);
 
     useEffect(() => {
         if (isOpen && page) {
             setName(page.name);
+            setIsHidden(page.layout_config?.is_hidden || false);
 
             
             // Convert Object to Array for UI
@@ -34,6 +36,7 @@ const PageSettingsModal = ({ isOpen, onClose, page, onUpdate }) => {
             const newLayoutConfig = {
                 ...(page.layout_config || {}),
                 permanent_filters: parsedFilters,
+                is_hidden: isHidden
             };
 
             await apiClient.put(`/api/builder/navigation/pages/${page.id}`, {
@@ -102,6 +105,16 @@ const PageSettingsModal = ({ isOpen, onClose, page, onUpdate }) => {
                                 value={name}
                                 onChange={(e) => setName(e.target.value)}
                             />
+                        </div>
+                        <div className="mt-4 flex items-center gap-2">
+                             <input 
+                                type="checkbox" 
+                                id="isHidden" 
+                                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                                checked={isHidden}
+                                onChange={(e) => setIsHidden(e.target.checked)} 
+                             />
+                             <label htmlFor="isHidden" className="text-sm text-gray-700 dark:text-gray-300 select-none">Ocultar da Navegação</label>
                         </div>
                     </div>
 

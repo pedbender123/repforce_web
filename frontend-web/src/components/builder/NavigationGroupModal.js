@@ -116,6 +116,9 @@ const NavigationGroupModal = ({ isOpen, onClose, onGroupCreated, groupToEdit }) 
                             </div>
                         )}
                     </div>
+
+
+
                 </div>
 
                 <div className="mt-6 flex justify-between pt-4 border-t border-gray-200 dark:border-gray-700">

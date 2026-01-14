@@ -143,3 +143,89 @@ app.include_router(diagnostics.router, prefix="/v1/sysadmin/diagnostics", tags=[
 # Templates API
 from app.system.api.sysadmin import templates
 app.include_router(templates.router, prefix="/v1/sysadmin/templates", tags=["SysAdmin Templates"])
+
+# --- SCHEDULER (V1.0 MVP) ---
+from apscheduler.schedulers.background import BackgroundScheduler
+from datetime import datetime, timedelta
+import asyncio
+
+scheduler = BackgroundScheduler()
+
+def check_scheduled_trails():
+    """
+    Heartbeat job to check for scheduled trails (Timer/Cron).
+    Runs every 60 seconds.
+    """
+    logger.info("Scheduler Heartbeat...")
+    db = database.SessionSys()
+    try:
+        # Find active Scheduler trails
+        # Note: We need to check all tenants.
+        # Ideally, we iterate tenants, but for now we query all MetaTrails globally if possible?
+        # MetaTrail is in 'public' schema but usually filtered by tenant_id.
+        # Since we are in sys context, we can query all.
+        
+        trails = db.query(models_meta.MetaTrail).filter(
+            models_meta.MetaTrail.trigger_type == 'SCHEDULER',
+            models_meta.MetaTrail.is_active == True
+        ).all()
+        
+        for trail in trails:
+            config = trail.trigger_config or {}
+            interval_mins = int(config.get('interval', 0))
+            if interval_mins <= 0: continue
+            
+            last_run_str = config.get('last_run')
+            should_run = False
+            now = datetime.utcnow()
+            
+            if not last_run_str:
+                should_run = True
+            else:
+                last_run = datetime.fromisoformat(last_run_str)
+                if (now - last_run) > timedelta(minutes=interval_mins):
+                    should_run = True
+            
+            if should_run:
+                logger.info(f"Executing Scheduled Trail: {trail.name}")
+                
+                # Execute Trail
+                # We need to use TrailExecutor. But it requires a tenant-scoped session usually?
+                # TrailExecutor takes (db, tenant_id).
+                
+                from app.engine.services.trail_executor import TrailExecutor
+                executor = TrailExecutor(db, str(trail.tenant_id))
+                
+                payload = {
+                    "trigger": "scheduler",
+                    "timestamp": now.isoformat()
+                }
+                
+                executor.execute_trail(str(trail.id), payload)
+                
+                # Update Last Run
+                config['last_run'] = now.isoformat()
+                # Flag modified for SQLAlchemy (JSON mutation detection is tricky)
+                trail.trigger_config = config 
+                # Re-assigning dict usually triggers update in standard ORM usage if specific type used, 
+                # but explicit reassignment is safer.
+                
+                # Note: This commits the transaction for each trail run to save state.
+                db.commit()
+
+    except Exception as e:
+        logger.error(f"Scheduler Error: {e}")
+        db.rollback()
+    finally:
+        db.close()
+
+@app.on_event("startup")
+def start_scheduler():
+    if not scheduler.running:
+        scheduler.add_job(check_scheduled_trails, 'interval', seconds=60)
+        scheduler.start()
+        logger.info("Task Scheduler Started (60s interval)")
+
+@app.on_event("shutdown")
+def stop_scheduler():
+    scheduler.shutdown()

@@ -1,5 +1,7 @@
 import React, { useContext, useState, useEffect } from 'react';
 import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom';
+import apiClient from '../api/apiClient';
+import { useBuilder } from '../context/BuilderContext';
 import { AuthContext } from '../context/AuthContext';
 import { ThemeContext } from '../context/ThemeContext';
 import {
@@ -32,6 +34,30 @@ const AppLayout = () => {
   const location = useLocation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const { isEditMode } = useBuilder();
+  const [navMap, setNavMap] = useState({}); // Map path -> pageConfig
+
+  const normalizePath = (p) => p ? p.replace(/\/$/, '') : '';
+
+  // Fetch Navigation for Hidden Logic
+  useEffect(() => {
+    apiClient.get('/api/builder/navigation').then(res => {
+        const map = {};
+        res.data.forEach(group => {
+            group.pages.forEach(p => {
+                if (p.path) map[normalizePath(p.path)] = p;
+            });
+        });
+        setNavMap(map);
+    }).catch(err => console.error("Error loading nav map", err));
+  }, [isEditMode]);
+
+  const isHidden = (path) => {
+      // If in edit mode, show everything
+      if (isEditMode) return false;
+      const page = navMap[normalizePath(path)];
+      return page?.layout_config?.is_hidden === true;
+  };
 
   // Mapeamento de Ícones para string (igual ao SysAdmin)
   const iconMap = {
@@ -160,9 +186,10 @@ const AppLayout = () => {
                 <button
                   onClick={() => {
                     setActiveArea(area);
-                    // Navega para a primeira página da área
-                    if (area.pages_json && area.pages_json.length > 0) {
-                      navigate(area.pages_json[0].path);
+                    // Filter hidden pages to find first valid
+                    const visiblePages = (area.pages_json || []).filter(p => !isHidden(p.path));
+                    if (visiblePages.length > 0) {
+                      navigate(visiblePages[0].path);
                     }
                   }}
                   className={`w-full flex items-center py-3 text-sm font-medium rounded-lg transition-colors duration-150 ${isCollapsed ? 'justify-center px-0' : 'px-4'
@@ -204,7 +231,7 @@ const AppLayout = () => {
         {/* --- MENU SUPERIOR (TABS DA ÁREA ATIVA) --- */}
         <div className="hidden md:flex bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 px-6 py-0 items-center h-16 shadow-sm z-10">
           <div className="flex items-end h-full overflow-x-auto mr-auto">
-            {activeArea?.pages_json?.map((page) => {
+            {activeArea?.pages_json?.filter(page => !isHidden(page.path)).map((page) => {
               const isPageActive = location.pathname.startsWith(page.path);
               return (
                 <Link

@@ -285,6 +285,7 @@ def create_nav_group(
         tenant_id=tenant_id,
         name=payload.name,
         icon=payload.icon,
+        config=payload.config,
         order=payload.order
     )
     db.add(new_group)
@@ -312,6 +313,8 @@ def update_nav_group(
         group.name = payload.name
     if payload.icon:
         group.icon = payload.icon
+    if payload.config is not None:
+        group.config = payload.config
     if payload.order is not None:
         group.order = payload.order
     
@@ -330,6 +333,7 @@ def create_nav_page(
         name=payload.name,
         type=payload.type,
         entity_id=payload.entity_id,
+        path=payload.path,
         layout_config=payload.layout_config,
         order=payload.order
     )
@@ -358,6 +362,8 @@ def update_nav_page(
 
     if payload.name:
         page.name = payload.name
+    if payload.path is not None:
+        page.path = payload.path
     if payload.layout_config is not None:
         page.layout_config = payload.layout_config
     if payload.order is not None:
@@ -434,6 +440,99 @@ def get_page(
     if not page:
         raise HTTPException(status_code=404, detail="Pagina nao encontrada.")
     return page
+
+@router.get("/pages/{page_id}/subpages", response_model=List[schemas_meta.MetaSubPageResponse])
+def list_subpages(
+    request: Request,
+    page_id: str,
+    db: Session = Depends(database.get_db)
+):
+    tenant_id = request.state.tenant_id
+    page = db.query(models_meta.MetaPage).join(models_meta.MetaNavigationGroup).filter(
+        models_meta.MetaPage.id == page_id,
+        models_meta.MetaNavigationGroup.tenant_id == tenant_id
+    ).first()
+    
+    if not page:
+        raise HTTPException(status_code=404, detail="Pagina nao encontrada.")
+        
+    return page.subpages
+
+@router.post("/pages/{page_id}/subpages", response_model=schemas_meta.MetaSubPageResponse)
+def create_subpage(
+    request: Request,
+    page_id: str,
+    payload: schemas_meta.MetaSubPageCreate,
+    db: Session = Depends(database.get_db)
+):
+    tenant_id = request.state.tenant_id
+    # Validate Page ownership
+    page = db.query(models_meta.MetaPage).join(models_meta.MetaNavigationGroup).filter(
+        models_meta.MetaPage.id == page_id,
+        models_meta.MetaNavigationGroup.tenant_id == tenant_id
+    ).first()
+    
+    if not page:
+        raise HTTPException(status_code=404, detail="Pagina nao encontrada.")
+
+    new_subpage = models_meta.MetaSubPage(
+        page_id=page.id,
+        name=payload.name,
+        type=payload.type,
+        icon=payload.icon,
+        config=payload.config,
+        order=payload.order
+    )
+    db.add(new_subpage)
+    db.commit()
+    db.refresh(new_subpage)
+    return new_subpage
+
+@router.put("/subpages/{subpage_id}", response_model=schemas_meta.MetaSubPageResponse)
+def update_subpage(
+    request: Request,
+    subpage_id: str,
+    payload: schemas_meta.MetaSubPageUpdate,
+    db: Session = Depends(database.get_db)
+):
+    tenant_id = request.state.tenant_id
+    # Verify ownership via Page -> Group -> Tenant
+    subpage = db.query(models_meta.MetaSubPage).join(models_meta.MetaPage).join(models_meta.MetaNavigationGroup).filter(
+        models_meta.MetaSubPage.id == subpage_id,
+        models_meta.MetaNavigationGroup.tenant_id == tenant_id
+    ).first()
+    
+    if not subpage:
+        raise HTTPException(status_code=404, detail="SubPagina nao encontrada.")
+        
+    if payload.name: subpage.name = payload.name
+    if payload.type: subpage.type = payload.type
+    if payload.icon: subpage.icon = payload.icon
+    if payload.config is not None: subpage.config = payload.config
+    if payload.order is not None: subpage.order = payload.order
+    
+    db.commit()
+    db.refresh(subpage)
+    return subpage
+
+@router.delete("/subpages/{subpage_id}")
+def delete_subpage(
+    request: Request,
+    subpage_id: str,
+    db: Session = Depends(database.get_db)
+):
+    tenant_id = request.state.tenant_id
+    subpage = db.query(models_meta.MetaSubPage).join(models_meta.MetaPage).join(models_meta.MetaNavigationGroup).filter(
+        models_meta.MetaSubPage.id == subpage_id,
+        models_meta.MetaNavigationGroup.tenant_id == tenant_id
+    ).first()
+    
+    if not subpage:
+        raise HTTPException(status_code=404, detail="SubPagina nao encontrada.")
+        
+    db.delete(subpage)
+    db.commit()
+    return {"ok": True}
 
 # --- Endpoints: Workflows ---
 

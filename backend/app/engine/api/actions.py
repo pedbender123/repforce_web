@@ -4,6 +4,7 @@ from app.shared import database
 from app.engine.metadata import models as models_meta, data_models
 from app.system import models as models_system
 from app.engine.services.workflow_service import WorkflowService
+from app.engine.services.trail_executor import TrailExecutor
 from app.engine.formulas import FormulaEngine
 from typing import Dict, Any, Optional
 import logging
@@ -334,3 +335,57 @@ def _execute_logic(action, payload, db, background_tasks, user_id: Optional[str]
         db.rollback()
         logger.error(f"[Action] Failed: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/trails/run")
+def execute_trail(
+    request: Request,
+    background_tasks: BackgroundTasks,
+    payload: Dict[str, Any] = Body(default={}),
+    db: Session = Depends(database.get_db)
+):
+    tenant_id = request.state.tenant_id
+    user_id = getattr(request.state, "user_id", None)
+    
+    trail_id = payload.get("trail_id")
+    context_data = payload.get("context", {})
+    
+    if not trail_id:
+        raise HTTPException(status_code=400, detail="trail_id required")
+
+    trail = db.query(models_meta.MetaTrail).filter(
+        models_meta.MetaTrail.id == trail_id,
+        models_meta.MetaTrail.tenant_id == tenant_id
+    ).first()
+    
+    if not trail:
+        raise HTTPException(status_code=404, detail="Trail not found")
+        
+    logger.info(f"[Trail] Running Manual Trigger: {trail.name} by User {user_id}")
+    
+    # Instantiate Executor
+    executor = TrailExecutor(db, tenant_id, user_id=user_id)
+    
+    # Run Trail
+    final_results = executor.execute_trail(str(trail.id), context_data)
+    
+    # Analyze Final Results for Client Instructions
+    instruction = None
+    message = "Trilha executada com sucesso."
+    
+    # Check for URL or instruction
+    for node_res in final_results.values():
+        if isinstance(node_res, dict):
+            if node_res.get("url"):
+                instruction = {
+                    "type": "URL",
+                    "config": {"url": node_res.get("url")}
+                }
+            if node_res.get("instruction"):
+                 instruction = node_res.get("instruction")
+
+    return {
+        "status": "success", 
+        "results": final_results,
+        "instruction": instruction,
+        "message": message
+    }

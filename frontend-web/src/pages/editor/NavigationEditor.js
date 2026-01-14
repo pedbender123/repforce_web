@@ -13,6 +13,7 @@ const NavigationEditor = () => {
     
     // Page Settings
     const [editingPage, setEditingPage] = useState(null);
+    const [editingGroup, setEditingGroup] = useState(null);
 
     useEffect(() => {
         fetchGroups();
@@ -62,7 +63,7 @@ const NavigationEditor = () => {
                 <div className="p-4 border-b border-gray-200 dark:border-gray-800 flex justify-between items-center">
                     <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">Grupos de Menu</span>
                     <button
-                        onClick={() => setIsGroupModalOpen(true)}
+                        onClick={() => { setEditingGroup(null); setIsGroupModalOpen(true); }}
                         className="p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded text-gray-600 dark:text-gray-400">
                         <Plus size={16} />
                     </button>
@@ -82,6 +83,12 @@ const NavigationEditor = () => {
                             <span className="truncate flex-1 text-left">{group.name}</span>
                             <div className="flex items-center gap-1">
                                 <span className="text-xs opacity-50 bg-gray-200 dark:bg-gray-700 px-1.5 rounded-full">{group.pages?.length || 0}</span>
+                                <div
+                                    onClick={(e) => { e.stopPropagation(); setEditingGroup(group); setIsGroupModalOpen(true); }}
+                                    className="p-1 hover:bg-blue-100 dark:hover:bg-blue-900/40 text-gray-400 hover:text-blue-500 rounded transition-colors"
+                                >
+                                    <Settings size={12} />
+                                </div>
                                 <div
                                     onClick={(e) => { e.stopPropagation(); deleteGroup(group); }}
                                     className="p-1 hover:bg-red-100 dark:hover:bg-red-900/40 text-gray-400 hover:text-red-500 rounded transition-colors"
@@ -167,8 +174,10 @@ const NavigationEditor = () => {
 
             <NavigationGroupModal 
                 isOpen={isGroupModalOpen} 
-                onClose={() => setIsGroupModalOpen(false)} 
+                onClose={() => { setIsGroupModalOpen(false); setEditingGroup(null); }} 
+                group={editingGroup} // Pass editing group
                 onGroupCreated={fetchGroups} 
+                onGroupUpdated={fetchGroups}
             />
             
             <NavigationPageModal

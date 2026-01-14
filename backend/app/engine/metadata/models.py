@@ -71,12 +71,13 @@ class MetaNavigationGroup(Base):
     
     name = Column(String, nullable=False)
     icon = Column(String, default="Folder")
+    config = Column(JSON, default={}) # { "is_hidden": true }
     order = Column(Integer, default=0)
     
     created_at = Column(DateTime, default=datetime.utcnow)
     
     # Relationships
-    pages = relationship("MetaPage", back_populates="group", cascade="all, delete-orphan", order_by="MetaPage.order")
+    pages = relationship("MetaPage", back_populates="group", cascade="all, delete-orphan", order_by="MetaPage.order, MetaPage.created_at")
     tenant = relationship("app.system.models.Tenant")
 
 class MetaPage(Base):
@@ -89,6 +90,7 @@ class MetaPage(Base):
     
     name = Column(String, nullable=False)
     type = Column(String, default="list") # list, form, dashboard, blank
+    path = Column(String, nullable=True) # Caminho_Completo
     layout_config = Column(JSON, default={})
     tabs_config = Column(JSON, default={})
     order = Column(Integer, default=0)
@@ -98,6 +100,25 @@ class MetaPage(Base):
     # Relationships
     group = relationship("MetaNavigationGroup", back_populates="pages")
     entity = relationship("MetaEntity")
+    subpages = relationship("MetaSubPage", back_populates="page", cascade="all, delete-orphan", order_by="MetaSubPage.order, MetaSubPage.created_at")
+
+class MetaSubPage(Base):
+    __tablename__ = "meta_subpages"
+    __table_args__ = {"schema": "public"}
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    page_id = Column(UUID(as_uuid=True), ForeignKey("public.meta_pages.id", ondelete="CASCADE"), nullable=False)
+    
+    name = Column(String, nullable=False) # Tab Name
+    type = Column(String, default="view") # view, list, custom
+    icon = Column(String, default="FileText")
+    config = Column(JSON, default={}) # Filter config, specific layout
+    order = Column(Integer, default=0)
+    
+    created_at = Column(DateTime, default=datetime.utcnow)
+    
+    # Relationships
+    page = relationship("MetaPage", back_populates="subpages")
 
 class MetaWorkflow(Base):
     __tablename__ = "meta_workflows"
