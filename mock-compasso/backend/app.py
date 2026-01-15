@@ -242,40 +242,44 @@ def manage_product_item(id):
 @app.route('/api/orders', methods=['GET', 'POST'])
 def manage_orders():
     if request.method == 'POST':
-        data = request.json
-        items_data = data.get('items', [])
-        total = float(data.get('total', 0))
-        status = data.get('status', 'Faturado')
-        
-        print(f"DEBUG: Creating order/quote with status: {status}, client: {data.get('client_id')}")
-        new_order = Order(
-            client_id=int(data.get('client_id')) if data.get('client_id') else None,
-            total_final=total,
-            status=status,
-            control_number=f"{'ORC' if status == 'Rascunho' else 'PED'}-{datetime.now().strftime('%H%M%S')}"
-        )
-        db.session.add(new_order)
-        db.session.flush() # Get ID
-        print(f"DEBUG: Saved Order ID: {new_order.id}")
+        try:
+            data = request.json or {}
+            items_data = data.get('items', [])
+            total = float(data.get('total', 0))
+            status = data.get('status', 'Faturado')
+            client_id = data.get('client_id')
+            
+            new_order = Order(
+                client_id=int(client_id) if client_id else None,
+                total_final=total,
+                status=status,
+                control_number=f"{'ORC' if status == 'Rascunho' else 'PED'}-{datetime.now().strftime('%H%M%S')}"
+            )
+            db.session.add(new_order)
+            db.session.flush()
 
-        for it in items_data:
-            prod = Product.query.get(it.get('product_id'))
-            if prod:
-                qty = int(it.get('qty', 0))
-                # Only reduce stock if not a draft/quote
-                if status != 'Rascunho':
-                    prod.stock_current = max(0, prod.stock_current - qty)
-                
-                db.session.add(OrderItem(
-                    order_id=new_order.id,
-                    product_id=prod.id,
-                    qty=qty,
-                    price_practiced=prod.price_base,
-                    subtotal=qty * prod.price_base
-                ))
-        
-        db.session.commit()
-        return jsonify(new_order.to_dict()), 201
+            for it in items_data:
+                prod = Product.query.get(it.get('product_id'))
+                if prod:
+                    qty = int(it.get('qty', 0))
+                    if status != 'Rascunho':
+                        prod.stock_current = max(0, prod.stock_current - qty)
+                    
+                    db.session.add(OrderItem(
+                        order_id=new_order.id,
+                        product_id=prod.id,
+                        qty=qty,
+                        price_practiced=prod.price_base or prod.price_original or 0,
+                        subtotal=qty * (prod.price_base or prod.price_original or 0)
+                    ))
+            
+            db.session.commit()
+            return jsonify(new_order.to_dict()), 201
+        except Exception as e:
+            db.session.rollback()
+            return jsonify({'error': str(e)}), 400
+            
+    # GET ALL
     return jsonify([o.to_dict() for o in Order.query.all()])
 
 @app.route('/api/orders/<int:id>', methods=['PUT', 'DELETE'])
@@ -287,73 +291,77 @@ def manage_order_item(id):
         return jsonify({'success': True})
     
     if request.method == 'PUT':
-        data = request.json
+        data = request.json or {}
         new_status = data.get('status')
-        
-        # TRANSITION FROM DRAFT TO FACTURED
         if order.status == 'Rascunho' and new_status == 'Faturado':
             for item in order.items:
                 prod = item.product
                 if prod:
                     prod.stock_current = max(0, prod.stock_current - item.qty)
             order.status = 'Faturado'
-            # Update control number if it was an ORC
             if order.control_number.startswith('ORC'):
                  order.control_number = f"PED-{datetime.now().strftime('%H%M%S')}"
-        
         elif new_status:
             order.status = new_status
-            
         db.session.commit()
         return jsonify(order.to_dict())
 
 @app.route('/api/campaigns', methods=['GET', 'POST'])
 def manage_campaigns():
     if request.method == 'POST':
-        data = request.json
-        discount_pct = float(data.get('discount', 0)) / 100.0
-        product_ids = [int(x) for x in data.get('products', [])]
-        
-        # SAFE DISCOUNT: Always start from price_original
-        target_prods = Product.query.filter(Product.id.in_(product_ids)).all()
-        for p in target_prods:
-            if not p.price_original:
-                p.price_original = p.price_base
-            p.price_base = round(p.price_original * (1.0 - discount_pct), 2)
-        
-        new_camp = Campaign(
-            name=data.get('name'),
-            discount_value=float(data.get('discount', 0)),
-            target_products=",".join(map(str, product_ids))
-        )
-        db.session.add(new_camp)
-        db.session.commit()
-        return jsonify({'success': True}), 201
+        try:
+            data = request.json or {}
+            discount_pct = float(data.get('discount', 0)) / 100.0
+            product_ids = [int(x) for x in data.get('products', [])]
+            
+            target_prods = Product.query.filter(Product.id.in_(product_ids)).all()
+            for p in target_prods:
+                if not p.price_original:
+                    p.price_original = p.price_base
+                p.price_base = round(p.price_original * (1.0 - discount_pct), 2)
+            
+            new_camp = Campaign(
+                name=data.get('name'),
+                discount_value=float(data.get('discount', 0)),
+                target_products=",".join(map(str, product_ids))
+            )
+            db.session.add(new_camp)
+            db.session.commit()
+            return jsonify({'success': True}), 201
+        except Exception as e:
+            db.session.rollback()
+            return jsonify({'error': str(e)}), 400
+            
     return jsonify([{'id': c.id, 'name': c.name, 'discount': c.discount_value, 'products': c.target_products} for c in Campaign.query.all()])
 
 @app.route('/api/campaigns/<int:id>', methods=['DELETE'])
 def delete_campaign(id):
     camp = Campaign.query.get_or_404(id)
-    # Restore prices when campaign is deleted? 
-    # Actually, for a mock it's better to just leave it or reset everything.
-    # Let's at least reset products in this campaign back to price_original.
-    product_ids = [int(x) for x in camp.target_products.split(',') if x]
-    target_prods = Product.query.filter(Product.id.in_(product_ids)).all()
-    for p in target_prods:
-        if p.price_original:
-            p.price_base = p.price_original
-
-    db.session.delete(camp)
-    db.session.commit()
-    return jsonify({'success': True})
+    try:
+        p_ids = [int(x) for x in camp.target_products.split(',') if x]
+        target_prods = Product.query.filter(Product.id.in_(p_ids)).all()
+        for p in target_prods:
+            if p.price_original:
+                p.price_base = p.price_original
+        db.session.delete(camp)
+        db.session.commit()
+        return jsonify({'success': True})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 400
 
 @app.route('/api/tasks', methods=['GET', 'POST'])
 def manage_tasks():
     if request.method == 'POST':
-        new_task = Task(title=request.json.get('title'))
-        db.session.add(new_task)
-        db.session.commit()
-        return jsonify(new_task.to_dict()), 201
+        try:
+            data = request.json or {}
+            new_task = Task(title=data.get('title', 'Sem título'))
+            db.session.add(new_task)
+            db.session.commit()
+            return jsonify(new_task.to_dict()), 201
+        except Exception as e:
+            db.session.rollback()
+            return jsonify({'error': str(e)}), 400
     return jsonify([t.to_dict() for t in Task.query.all()])
 
 @app.route('/api/tasks/<int:id>', methods=['PUT', 'DELETE'])
@@ -364,11 +372,9 @@ def manage_task_item(id):
         db.session.commit()
         return jsonify({'success': True})
     if request.method == 'PUT':
-        data = request.json
-        if 'status' in data:
-            task.status = data.get('status')
-        if 'title' in data:
-            task.title = data.get('title')
+        data = request.json or {}
+        if 'status' in data: task.status = data.get('status')
+        if 'title' in data: task.title = data.get('title')
         db.session.commit()
         return jsonify(task.to_dict())
 
