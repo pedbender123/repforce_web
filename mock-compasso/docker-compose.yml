@@ -11,6 +11,7 @@ services:
       - /app/node_modules
     environment:
       - VITE_API_URL=http://backend:5000/api
+      - VITE_API_TARGET=http://backend:5000
     depends_on:
       - backend
     networks:
