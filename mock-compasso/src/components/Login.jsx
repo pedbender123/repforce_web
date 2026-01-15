@@ -41,7 +41,7 @@ const Login = ({ onLogin }) => {
                 onLogin(res.data.user);
             }
         } catch (err) {
-            setError('Credenciais inválidas. Tente compasso / 123456');
+            setError('Credenciais inválidas.');
         } finally {
             setLoading(false);
         }
@@ -97,7 +97,7 @@ const Login = ({ onLogin }) => {
                                     value={username}
                                     onChange={(e) => setUsername(e.target.value)}
                                     className="block w-full pl-10 pr-4 py-3 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-xl text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all shadow-sm"
-                                    placeholder="Ex: admin"
+                                    placeholder="Digite seu usuário"
                                 />
                             </div>
                         </div>
@@ -113,7 +113,7 @@ const Login = ({ onLogin }) => {
                                     value={password}
                                     onChange={(e) => setPassword(e.target.value)}
                                     className="block w-full pl-10 pr-4 py-3 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-xl text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all shadow-sm"
-                                    placeholder="••••••••"
+                                    placeholder="Digite sua senha"
                                 />
                             </div>
                         </div>
@@ -131,11 +131,6 @@ const Login = ({ onLogin }) => {
                             ) : 'Entrar na Plataforma'}
                         </button>
                     </form>
-
-                    <div className="mt-8 text-center bg-blue-50 dark:bg-blue-900/20 p-4 rounded-xl border border-blue-100 dark:border-blue-800">
-                        <p className="text-xs text-blue-800 dark:text-blue-200 font-semibold mb-1">DADOS DE ACESSO (DEMO)</p>
-                        <p className="text-sm text-gray-600 dark:text-gray-400">Demo: <span className="font-mono bg-white dark:bg-gray-800 px-1 rounded shadow-sm">compasso</span> / <span className="font-mono bg-white dark:bg-gray-800 px-1 rounded shadow-sm">123456</span></p>
-                    </div>
                 </div>
             </div>
         </div>

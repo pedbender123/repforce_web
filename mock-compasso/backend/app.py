@@ -15,16 +15,16 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
 
 # -------------------------------------------------------------------
-# MODELS (Compasso V1 Structure)
+# MODELS
 # -------------------------------------------------------------------
 
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100))
     email = db.Column(db.String(100), unique=True)
-    role = db.Column(db.String(20)) # admin, vendedor, gerente
+    role = db.Column(db.String(20)) 
     password = db.Column(db.String(100))
-    username = db.Column(db.String(50)) # Added username field
+    username = db.Column(db.String(50), unique=True)
 
 class Supplier(db.Model):
     __tablename__ = 'suppliers'
@@ -33,14 +33,6 @@ class Supplier(db.Model):
     cnpj = db.Column(db.String(20))
     logo_url = db.Column(db.String(255))
     active = db.Column(db.Boolean, default=True)
-    contact_info = db.Column(db.String(255))
-
-class FreightRule(db.Model):
-    __tablename__ = 'freight_rules'
-    id = db.Column(db.Integer, primary_key=True)
-    state_uf = db.Column(db.String(2))
-    min_order_value = db.Column(db.Float)
-    freight_percent = db.Column(db.Float)
 
 class Client(db.Model):
     __tablename__ = 'clients'
@@ -50,28 +42,19 @@ class Client(db.Model):
     cnpj = db.Column(db.String(20))
     activity_branch = db.Column(db.String(50)) 
     address_full = db.Column(db.String(255))
-    status = db.Column(db.String(20)) 
-    abc_class = db.Column(db.String(1)) 
+    status = db.Column(db.String(20), default='Ativo') 
+    abc_class = db.Column(db.String(1), default='C') 
     last_purchase_date = db.Column(db.DateTime, nullable=True)
-    
     credit_limit = db.Column(db.Float, default=10000.0)
     credit_used = db.Column(db.Float, default=0.0)
     
     def to_dict(self):
         days_since = (datetime.now() - self.last_purchase_date).days if self.last_purchase_date else None
         return {
-            'id': self.id,
-            'razao_social': self.razao_social,
-            'fantasy_name': self.fantasy_name,
-            'cnpj': self.cnpj,
-            'segment': self.activity_branch,
-            'activity_branch': self.activity_branch,
-            'address': self.address_full,
-            'status': self.status,
-            'abc_class': self.abc_class,
-            'days_since_purchase': days_since,
-            'credit_limit': self.credit_limit,
-            'credit_used': self.credit_used
+            'id': self.id, 'razao_social': self.razao_social, 'fantasy_name': self.fantasy_name,
+            'cnpj': self.cnpj, 'activity_branch': self.activity_branch, 'address': self.address_full,
+            'status': self.status, 'abc_class': self.abc_class, 'days_since_purchase': days_since,
+            'credit_limit': self.credit_limit, 'credit_used': self.credit_used
         }
 
 class Product(db.Model):
@@ -80,12 +63,13 @@ class Product(db.Model):
     name = db.Column(db.String(150))
     sku = db.Column(db.String(50))
     supplier_id = db.Column(db.Integer, db.ForeignKey('suppliers.id'))
-    price_base = db.Column(db.Float)
+    price_base = db.Column(db.Float) # Current price (with discounts)
+    price_original = db.Column(db.Float) # Original price (to prevent compounding)
     cost = db.Column(db.Float)
-    stock_current = db.Column(db.Integer)
-    stock_min = db.Column(db.Integer)
+    stock_current = db.Column(db.Integer, default=0)
+    stock_min = db.Column(db.Integer, default=0)
     image_url = db.Column(db.String(255))
-    unit = db.Column(db.String(10))
+    unit = db.Column(db.String(10), default='UN')
     group = db.Column(db.String(50)) 
     details = db.Column(db.Text)
 
@@ -95,23 +79,18 @@ class Product(db.Model):
         stock_status = 'Crítico' if self.stock_current <= self.stock_min else 'Normal'
         return {
             'id': self.id, 'name': self.name, 'sku': self.sku,
-            'supplier_name': self.supplier.razao_social if self.supplier else '',
-            'price': self.price_base, 'cost': self.cost,
-            'stock': self.stock_current, 'stock_status': stock_status,
-            'unit': self.unit, 'image': self.image_url, 'group': self.group,
-            'details': self.details
+            'supplier_name': self.supplier.razao_social if self.supplier else 'N/A',
+            'price': self.price_base, 'price_original': self.price_original,
+            'cost': self.cost, 'stock': self.stock_current, 'stock_status': stock_status,
+            'unit': self.unit, 'image': self.image_url, 'group': self.group, 'details': self.details
         }
 
 class Campaign(db.Model):
     __tablename__ = 'campaigns'
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100))
-    start_date = db.Column(db.DateTime)
-    end_date = db.Column(db.DateTime)
-    discount_type = db.Column(db.String(20))
-    value = db.Column(db.Float)
-    target_type = db.Column(db.String(20))
-    target_value = db.Column(db.String(100))
+    discount_value = db.Column(db.Float)
+    target_products = db.Column(db.String(255)) # Store as comma-separated IDs "1,2,3"
 
 class Order(db.Model):
     __tablename__ = 'orders'
@@ -119,13 +98,7 @@ class Order(db.Model):
     control_number = db.Column(db.String(20))
     client_id = db.Column(db.Integer, db.ForeignKey('clients.id'))
     created_at = db.Column(db.DateTime, default=datetime.now)
-    status = db.Column(db.String(30)) 
-    payment_condition = db.Column(db.String(50))
-    validity = db.Column(db.DateTime)
-    discount_value = db.Column(db.Float, default=0.0)
-    link_nf = db.Column(db.String(255))
-    
-    total_items = db.Column(db.Float, default=0.0)
+    status = db.Column(db.String(30), default='Faturado') 
     total_final = db.Column(db.Float, default=0.0)
 
     client = db.relationship('Client')
@@ -134,11 +107,9 @@ class Order(db.Model):
     def to_dict(self):
         return {
             'id': self.id, 'control_number': self.control_number,
-            'client_name': self.client.razao_social if self.client else '',
+            'client_name': self.client.razao_social if self.client else 'Consumidor Final',
             'created_at': self.created_at.isoformat(),
-            'status': self.status,
-            'total_final': self.total_final,
-            'fase_funil': 'Orcamento' if self.status in ['Rascunho', 'Em Negociacao', 'Aguardando Aprovação'] else 'Venda'
+            'status': self.status, 'total_final': self.total_final
         }
 
 class OrderItem(db.Model):
@@ -156,21 +127,10 @@ class Task(db.Model):
     __tablename__ = 'tasks'
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String(255))
-    client_id = db.Column(db.Integer, db.ForeignKey('clients.id'), nullable=True) # made nullable
-    priority = db.Column(db.String(20))
-    deadline = db.Column(db.DateTime)
-    status = db.Column(db.String(20))
-
-    client = db.relationship('Client')
+    status = db.Column(db.String(20), default='Pendente')
 
     def to_dict(self):
-        return {
-            'id': self.id, 'title': self.title,
-            'client_name': self.client.razao_social if self.client else 'Geral',
-            'priority': self.priority,
-            'status': self.status,
-            'deadline': self.deadline.strftime('%d/%m') if self.deadline else ''
-        }
+        return {'id': self.id, 'title': self.title, 'status': self.status}
 
 # -------------------------------------------------------------------
 # ROUTES
@@ -179,151 +139,238 @@ class Task(db.Model):
 @app.route('/api/login', methods=['POST'])
 def login():
     data = request.json
-    u = data.get('username')
-    p = data.get('password')
-    # Simple hardcoded check first or db check
+    u, p = data.get('username'), data.get('password')
     user = User.query.filter_by(username=u).first()
-    if user:
-         # In real app compare hash, here plain for requested "0 segurança"
-         if user.password == p:
-             return jsonify({'token': f'tk-{user.id}', 'user': {'name': user.name, 'role': user.role}})
-    
-    if u == 'compasso' and p == '123456':
-         return jsonify({'token': 'tk-demo', 'user': {'name': 'Compasso Demo', 'role': 'admin'}})
-    if u == 'admin' and p == '123':
-        return jsonify({'token': 'tk-admin', 'user': {'name': 'Admin', 'role': 'admin'}})
+    if user and user.password == p:
+        return jsonify({'token': f'tk-{user.id}', 'user': {'name': user.name, 'role': user.role}})
+    if u == 'compasso' and p == '123456': # Fallback demo
+        return jsonify({'token': 'tk-demo', 'user': {'name': 'Compasso Demo', 'role': 'admin'}})
     return jsonify({'error': 'Invalid'}), 401
 
-@app.route('/api/users', methods=['GET'])
-def get_users():
-    users = User.query.all()
-    if not users:
-        # Return mocks if empty
-        return jsonify([
-            {'id': 1, 'name': 'Compasso Demo', 'role': 'admin', 'email': 'demo@compasso.com', 'username': 'compasso'},
-            {'id': 2, 'name': 'Pedro Vendedor', 'role': 'vendedor', 'email': 'pedro@repforce.com', 'username': 'pedro'}
-        ])
-    return jsonify([{
-        'id': u.id, 'name': u.name, 'email': u.email, 'role': u.role, 'username': u.username
-    } for u in users])
+@app.route('/api/users', methods=['GET', 'POST'])
+def manage_users():
+    if request.method == 'POST':
+        data = request.json
+        if not data.get('username') or not data.get('password'):
+            return jsonify({'error': 'Faltam dados'}), 400
+        new_user = User(
+            name=data.get('name'), email=data.get('email'),
+            role=data.get('role', 'vendedor'), password=data.get('password'),
+            username=data.get('username')
+        )
+        db.session.add(new_user)
+        db.session.commit()
+        return jsonify({'success': True, 'id': new_user.id}), 201
+    return jsonify([{'id': u.id, 'name': u.name, 'email': u.email, 'role': u.role, 'username': u.username} for u in User.query.all()])
 
-@app.route('/api/users', methods=['POST'])
-def create_user():
-    data = request.json
-    new_user = User(
-        name=data.get('name'),
-        email=data.get('email'),
-        role=data.get('role', 'vendedor'),
-        password=data.get('password'),
-        username=data.get('username') # Added username
-    )
-    db.session.add(new_user)
-    db.session.commit()
-    return jsonify({'success': True, 'id': new_user.id}), 201
+@app.route('/api/users/<int:id>', methods=['PUT', 'DELETE'])
+def manage_user_item(id):
+    user = User.query.get_or_404(id)
+    if request.method == 'DELETE':
+        db.session.delete(user)
+        db.session.commit()
+        return jsonify({'success': True})
+    if request.method == 'PUT':
+        data = request.json
+        user.name = data.get('name', user.name)
+        user.email = data.get('email', user.email)
+        user.role = data.get('role', user.role)
+        if data.get('password'):
+            user.password = data.get('password')
+        db.session.commit()
+        return jsonify({'success': True})
 
-@app.route('/api/roles', methods=['GET'])
-def get_roles():
-    return jsonify([
-        {'id': 'admin', 'name': 'Administrador'},
-        {'id': 'vendedor', 'name': 'Vendedor Externo'},
-        {'id': 'gerente', 'name': 'Gerente Comercial'}
-    ])
-
-# --- CRUDs ---
-
-@app.route('/api/clients', methods=['GET'])
-def get_clients():
+@app.route('/api/clients', methods=['GET', 'POST'])
+def manage_clients():
+    if request.method == 'POST':
+        data = request.json
+        new_client = Client(
+            razao_social=data.get('razao_social'),
+            fantasy_name=data.get('fantasy_name', data.get('razao_social')),
+            cnpj=data.get('cnpj'),
+            activity_branch=data.get('activity_branch', 'Geral'),
+            address_full=data.get('address_full', 'Endereço não informado'),
+            abc_class=data.get('abc_class', 'C'),
+            credit_limit=float(data.get('credit_limit', 10000.0)),
+            status='Ativo'
+        )
+        db.session.add(new_client)
+        db.session.commit()
+        return jsonify({'success': True, 'id': new_client.id}), 201
     return jsonify([c.to_dict() for c in Client.query.all()])
 
-@app.route('/api/clients', methods=['POST']) # Added boilerplate for copy paste module
-def create_client():
-    # Placeholder for MVP compatibility with "Orders/Quotes" style
-    return jsonify({'success': True}), 201
+@app.route('/api/clients/<int:id>', methods=['PUT', 'DELETE'])
+def manage_client_item(id):
+    client = Client.query.get_or_404(id)
+    if request.method == 'DELETE':
+        db.session.delete(client)
+        db.session.commit()
+        return jsonify({'success': True})
+    if request.method == 'PUT':
+        data = request.json
+        client.razao_social = data.get('razao_social', client.razao_social)
+        client.fantasy_name = data.get('fantasy_name', client.fantasy_name)
+        client.cnpj = data.get('cnpj', client.cnpj)
+        client.activity_branch = data.get('activity_branch', client.activity_branch)
+        client.address_full = data.get('address_full', client.address_full)
+        client.abc_class = data.get('abc_class', client.abc_class)
+        client.credit_limit = float(data.get('credit_limit', client.credit_limit))
+        db.session.commit()
+        return jsonify({'success': True})
 
 @app.route('/api/products', methods=['GET'])
 def get_products():
     return jsonify([p.to_dict() for p in Product.query.all()])
 
-@app.route('/api/orders', methods=['GET'])
-def get_orders():
+@app.route('/api/products/<int:id>', methods=['PUT', 'DELETE'])
+def manage_product_item(id):
+    product = Product.query.get_or_404(id)
+    if request.method == 'DELETE':
+        db.session.delete(product)
+        db.session.commit()
+        return jsonify({'success': True})
+    if request.method == 'PUT':
+        data = request.json
+        product.name = data.get('name', product.name)
+        product.sku = data.get('sku', product.sku)
+        product.price_base = float(data.get('price', product.price_base))
+        product.price_original = float(data.get('price_original', product.price_original))
+        product.stock_current = int(data.get('stock', product.stock_current))
+        db.session.commit()
+        return jsonify({'success': True})
+
+@app.route('/api/orders', methods=['GET', 'POST'])
+def manage_orders():
+    if request.method == 'POST':
+        data = request.json
+        items_data = data.get('items', [])
+        total = float(data.get('total', 0))
+        status = data.get('status', 'Faturado')
+        
+        print(f"DEBUG: Creating order/quote with status: {status}, client: {data.get('client_id')}")
+        new_order = Order(
+            client_id=int(data.get('client_id')) if data.get('client_id') else None,
+            total_final=total,
+            status=status,
+            control_number=f"{'ORC' if status == 'Rascunho' else 'PED'}-{datetime.now().strftime('%H%M%S')}"
+        )
+        db.session.add(new_order)
+        db.session.flush() # Get ID
+        print(f"DEBUG: Saved Order ID: {new_order.id}")
+
+        for it in items_data:
+            prod = Product.query.get(it.get('product_id'))
+            if prod:
+                qty = int(it.get('qty', 0))
+                # Only reduce stock if not a draft/quote
+                if status != 'Rascunho':
+                    prod.stock_current = max(0, prod.stock_current - qty)
+                
+                db.session.add(OrderItem(
+                    order_id=new_order.id,
+                    product_id=prod.id,
+                    qty=qty,
+                    price_practiced=prod.price_base,
+                    subtotal=qty * prod.price_base
+                ))
+        
+        db.session.commit()
+        return jsonify(new_order.to_dict()), 201
     return jsonify([o.to_dict() for o in Order.query.all()])
 
-@app.route('/api/orders', methods=['POST'])
-def create_order():
-    data = request.json
-    client = Client.query.get(data.get('client_id')) if data.get('client_id') else None
-    new_order = Order(
-        client_id=client.id if client else None,
-        status=data.get('status', 'Rascunho'),
-        total_final=float(data.get('total', 0.0)),
-        control_number=f"PED-{datetime.now().strftime('%H%M%S')}",
-        created_at=datetime.now()
-    )
-    db.session.add(new_order)
-    db.session.commit()
-    return jsonify(new_order.to_dict()), 201
+@app.route('/api/orders/<int:id>', methods=['PUT', 'DELETE'])
+def manage_order_item(id):
+    order = Order.query.get_or_404(id)
+    if request.method == 'DELETE':
+        db.session.delete(order)
+        db.session.commit()
+        return jsonify({'success': True})
+    
+    if request.method == 'PUT':
+        data = request.json
+        new_status = data.get('status')
+        
+        # TRANSITION FROM DRAFT TO FACTURED
+        if order.status == 'Rascunho' and new_status == 'Faturado':
+            for item in order.items:
+                prod = item.product
+                if prod:
+                    prod.stock_current = max(0, prod.stock_current - item.qty)
+            order.status = 'Faturado'
+            # Update control number if it was an ORC
+            if order.control_number.startswith('ORC'):
+                 order.control_number = f"PED-{datetime.now().strftime('%H%M%S')}"
+        
+        elif new_status:
+            order.status = new_status
+            
+        db.session.commit()
+        return jsonify(order.to_dict())
 
-@app.route('/api/tasks', methods=['GET'])
-def get_tasks():
+@app.route('/api/campaigns', methods=['GET', 'POST'])
+def manage_campaigns():
+    if request.method == 'POST':
+        data = request.json
+        discount_pct = float(data.get('discount', 0)) / 100.0
+        product_ids = [int(x) for x in data.get('products', [])]
+        
+        # SAFE DISCOUNT: Always start from price_original
+        target_prods = Product.query.filter(Product.id.in_(product_ids)).all()
+        for p in target_prods:
+            if not p.price_original:
+                p.price_original = p.price_base
+            p.price_base = round(p.price_original * (1.0 - discount_pct), 2)
+        
+        new_camp = Campaign(
+            name=data.get('name'),
+            discount_value=float(data.get('discount', 0)),
+            target_products=",".join(map(str, product_ids))
+        )
+        db.session.add(new_camp)
+        db.session.commit()
+        return jsonify({'success': True}), 201
+    return jsonify([{'id': c.id, 'name': c.name, 'discount': c.discount_value, 'products': c.target_products} for c in Campaign.query.all()])
+
+@app.route('/api/campaigns/<int:id>', methods=['DELETE'])
+def delete_campaign(id):
+    camp = Campaign.query.get_or_404(id)
+    # Restore prices when campaign is deleted? 
+    # Actually, for a mock it's better to just leave it or reset everything.
+    # Let's at least reset products in this campaign back to price_original.
+    product_ids = [int(x) for x in camp.target_products.split(',') if x]
+    target_prods = Product.query.filter(Product.id.in_(product_ids)).all()
+    for p in target_prods:
+        if p.price_original:
+            p.price_base = p.price_original
+
+    db.session.delete(camp)
+    db.session.commit()
+    return jsonify({'success': True})
+
+@app.route('/api/tasks', methods=['GET', 'POST'])
+def manage_tasks():
+    if request.method == 'POST':
+        new_task = Task(title=request.json.get('title'))
+        db.session.add(new_task)
+        db.session.commit()
+        return jsonify(new_task.to_dict()), 201
     return jsonify([t.to_dict() for t in Task.query.all()])
 
-@app.route('/api/tasks', methods=['POST'])
-def create_task():
-    data = request.json
-    new_task = Task(
-        title=data.get('title'),
-        priority='Normal',
-        status='Pendente',
-        deadline=datetime.now() + timedelta(days=7)
-    )
-    db.session.add(new_task)
-    db.session.commit()
-    return jsonify(new_task.to_dict()), 201
-
-@app.route('/api/dashboard', methods=['GET'])
-def get_dashboard():
-    total_sales = db.session.query(db.func.sum(Order.total_final)).filter(Order.status == 'Faturado').scalar() or 0
-    return jsonify({
-        'sales_today': 15000, 
-        'total_sales_month': total_sales,
-        'new_clients': 12
-    })
-
-@app.route('/api/campaigns', methods=['GET'])
-def get_campaigns():
-    return jsonify([{
-        'id': c.id, 'name': c.name, 'discount': c.value, 'target': c.target_value
-    } for c in Campaign.query.all()])
-
-@app.route('/api/campaigns', methods=['POST'])
-def create_campaign():
-    data = request.json
-    new_camp = Campaign(
-        name=data.get('name'),
-        discount_type='Percentual',
-        value=float(data.get('discount', 0)),
-        target_type='PRODUTO', 
-        target_value=str(data.get('products', []))
-    )
-    db.session.add(new_camp)
-    
-    # APPLY DISCOUNT LOGIC
-    product_ids = data.get('products', []) 
-    discount_pct = float(data.get('discount', 0)) / 100.0
-    
-    if product_ids:
-        products = Product.query.filter(Product.id.in_(product_ids)).all()
-        for p in products:
-            if p.price_base:
-                p.price_base = p.price_base * (1.0 - discount_pct)
-            
-    db.session.commit()
-    return jsonify({'success': True}), 201
-
-@app.cli.command("seed_db")
-def seed_db_cmd():
-    db.create_all()
-    print("Tables created.")
+@app.route('/api/tasks/<int:id>', methods=['PUT', 'DELETE'])
+def manage_task_item(id):
+    task = Task.query.get_or_404(id)
+    if request.method == 'DELETE':
+        db.session.delete(task)
+        db.session.commit()
+        return jsonify({'success': True})
+    if request.method == 'PUT':
+        data = request.json
+        if 'status' in data:
+            task.status = data.get('status')
+        if 'title' in data:
+            task.title = data.get('title')
+        db.session.commit()
+        return jsonify(task.to_dict())
 
 if __name__ == '__main__':
     with app.app_context():
