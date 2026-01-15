@@ -1,24 +1,0 @@
-* Host localhost:8100 was resolved.
-* IPv6: ::1
-* IPv4: 127.0.0.1
-  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
-                                 Dload  Upload   Total   Spent    Left  Speed
-  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0*   Trying [::1]:8100...
-* Connected to localhost (::1) port 8100
-> GET /v1/engine/metadata/products HTTP/1.1
-> Host: localhost:8100
-> User-Agent: curl/8.5.0
-> Accept: */*
-> Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI1MGUwZWE2Zi05Njk1LTQ4ZGUtOTdjMC03YzkwOTJlOTVkYzMiLCJ1c2VybmFtZSI6InBicmFuZG9uIiwiaXNfc3VwZXJ1c2VyIjp0cnVlLCJleHAiOjE3Njc2ODEwNzN9.LGiRop0qkdiDUvQmXDHLoVNOrH1mS6zbidKvcsXXPhk
-> X-Tenant-Slug: test-corp
-> 
-< HTTP/1.1 500 Internal Server Error
-< date: Mon, 05 Jan 2026 18:31:37 GMT
-< server: uvicorn
-< content-length: 21
-< content-type: text/plain; charset=utf-8
-< 
-{ [21 bytes data]
-100    21  100    21    0     0   3469      0 --:--:-- --:--:-- --:--:--  4200
-* Connection #0 to host localhost left intact
-Internal Server Error
