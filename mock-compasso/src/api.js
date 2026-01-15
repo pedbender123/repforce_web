@@ -9,9 +9,12 @@ const api = axios.create({
 
 // LOG TODAS AS REQUISIÇÕES
 api.interceptors.request.use(request => {
-    // Evita erro 415 em GET removendo body se existir
+    // Evita erro 415 em GET removendo body e header Content-Type
     if (request.method === 'get') {
         request.data = undefined;
+        if (request.headers) {
+            delete request.headers['Content-Type'];
+        }
     }
     console.log('🚀 FRONTEND ENVIANDO:', request.method?.toUpperCase(), request.url, request.data || '');
     return request;
