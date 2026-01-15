@@ -28,7 +28,7 @@ Função: Ele direciona o tráfego:
 
 Requisições para repforce.com.br/api/* são enviadas para http://127.0.0.1:8000 (o container backend).
 
-Todas as outras requisições (/, /login, /sysadmin, etc.) são enviadas para http://127.0.0.1:3000 (o container frontend-web).
+Todas as outras requisições (/, /login, /sysadmin, etc.) são enviadas para http://127.0.0.1:3001 (o container frontend-web).
 
 Nginx do Container frontend-web (O "Servidor do React"):
 
