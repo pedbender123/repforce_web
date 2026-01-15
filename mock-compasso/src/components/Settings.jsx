@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { User, Shield, Plus, Save } from 'lucide-react';
-import api from '../../api';
-import StandardModule from '../Shared/StandardModule';
+import api from '../api';
+import StandardModule from './Shared/StandardModule';
 
 const Settings = () => {
     const [users, setUsers] = useState([]);

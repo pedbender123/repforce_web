@@ -7,11 +7,27 @@ const Login = ({ onLogin }) => {
     const [password, setPassword] = useState('');
     const [error, setError] = useState(null);
     const [loading, setLoading] = useState(false);
-    const [darkMode, setDarkMode] = useState(false);
+    const [darkMode, setDarkMode] = useState(() => {
+        if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            document.documentElement.classList.add('dark');
+            return true;
+        }
+        document.documentElement.classList.remove('dark');
+        return false;
+    });
 
     const toggleTheme = () => {
-        setDarkMode(!darkMode);
-        document.documentElement.classList.toggle('dark');
+        setDarkMode(prev => {
+            const newVal = !prev;
+            if (newVal) {
+                document.documentElement.classList.add('dark');
+                localStorage.theme = 'dark';
+            } else {
+                document.documentElement.classList.remove('dark');
+                localStorage.theme = 'light';
+            }
+            return newVal;
+        });
     };
 
     const handleLogin = async (e) => {

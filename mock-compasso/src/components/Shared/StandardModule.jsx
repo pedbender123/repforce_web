@@ -1,9 +1,12 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Search, Plus, ChevronRight, X } from 'lucide-react';
 
-const StandardModule = ({ title, data, columns, renderRow, renderDetail, newItemLabel, tabState }) => {
+const StandardModule = ({ title, data, columns, renderRow, renderDetail, newItemLabel, tabState, onAdd, renderForm, showAddButton = true }) => {
     const { tabs, activeId, setActiveId, open, close } = tabState;
     const activeItem = tabs.find(t => t.id === activeId);
+    const [showAddModal, setShowAddModal] = useState(false);
+
+    const closeModal = () => setShowAddModal(false);
 
     return (
         <div className="flex flex-col h-full bg-white dark:bg-gray-900 animate-fade-in text-gray-900 dark:text-white">
@@ -55,8 +58,8 @@ const StandardModule = ({ title, data, columns, renderRow, renderDetail, newItem
                                     placeholder="Pesquisar..."
                                 />
                             </div>
-                            {newItemLabel && (
-                                <button className="bg-blue-700 hover:bg-blue-800 dark:bg-blue-600 dark:hover:bg-blue-700 text-white px-4 py-1.5 rounded-sm text-sm font-medium flex items-center gap-2 shadow-sm transition-colors">
+                            {newItemLabel && showAddButton && (
+                                <button onClick={() => setShowAddModal(true)} className="bg-blue-700 hover:bg-blue-800 dark:bg-blue-600 dark:hover:bg-blue-700 text-white px-4 py-1.5 rounded-sm text-sm font-medium flex items-center gap-2 shadow-sm transition-colors">
                                     <Plus className="w-4 h-4" /> {newItemLabel}
                                 </button>
                             )}
@@ -94,6 +97,24 @@ const StandardModule = ({ title, data, columns, renderRow, renderDetail, newItem
                         : <div className="p-10 text-center text-gray-400 dark:text-gray-600">Item fechado ou removido.</div>
                 )}
             </div>
+
+            {/* Generic Add Modal */}
+            {showAddModal && newItemLabel && showAddButton && (
+                <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 animate-fade-in">
+                    <div className="bg-white dark:bg-gray-900 w-full max-w-lg rounded-lg shadow-xl flex flex-col max-h-[90vh]">
+                        <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
+                            <h3 className="font-bold text-lg dark:text-white">{newItemLabel}</h3>
+                            <button onClick={() => setShowAddModal(false)}><X className="w-5 h-5 text-gray-500" /></button>
+                        </div>
+                        <div className="p-6 overflow-y-auto">
+                            {/* If renderForm is passed, use it, else generic */}
+                            {renderForm ? renderForm(closeModal, (data) => { onAdd(data); closeModal(); }) : (
+                                <p className="text-gray-500">Formulário não configurado.</p>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

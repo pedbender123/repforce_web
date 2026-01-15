@@ -24,6 +24,7 @@ class User(db.Model):
     email = db.Column(db.String(100), unique=True)
     role = db.Column(db.String(20)) # admin, vendedor, gerente
     password = db.Column(db.String(100))
+    username = db.Column(db.String(50)) # Added username field
 
 class Supplier(db.Model):
     __tablename__ = 'suppliers'
@@ -47,13 +48,12 @@ class Client(db.Model):
     razao_social = db.Column(db.String(150))
     fantasy_name = db.Column(db.String(150))
     cnpj = db.Column(db.String(20))
-    activity_branch = db.Column(db.String(50)) # Marcenaria, Revenda, etc.
+    activity_branch = db.Column(db.String(50)) 
     address_full = db.Column(db.String(255))
-    status = db.Column(db.String(20)) # Prospect, Ativo, Bloqueado, Inativo
-    abc_class = db.Column(db.String(1)) # A, B, C
+    status = db.Column(db.String(20)) 
+    abc_class = db.Column(db.String(1)) 
     last_purchase_date = db.Column(db.DateTime, nullable=True)
     
-    # Legacy/Compat fields from MVP
     credit_limit = db.Column(db.Float, default=10000.0)
     credit_used = db.Column(db.Float, default=0.0)
     
@@ -64,7 +64,7 @@ class Client(db.Model):
             'razao_social': self.razao_social,
             'fantasy_name': self.fantasy_name,
             'cnpj': self.cnpj,
-            'segment': self.activity_branch, # Frontend uses 'segment'
+            'segment': self.activity_branch,
             'activity_branch': self.activity_branch,
             'address': self.address_full,
             'status': self.status,
@@ -85,8 +85,8 @@ class Product(db.Model):
     stock_current = db.Column(db.Integer)
     stock_min = db.Column(db.Integer)
     image_url = db.Column(db.String(255))
-    unit = db.Column(db.String(10)) # UN, KG, etc.
-    group = db.Column(db.String(50)) # For existing Campaign logic
+    unit = db.Column(db.String(10))
+    group = db.Column(db.String(50)) 
     details = db.Column(db.Text)
 
     supplier = db.relationship('Supplier')
@@ -108,9 +108,9 @@ class Campaign(db.Model):
     name = db.Column(db.String(100))
     start_date = db.Column(db.DateTime)
     end_date = db.Column(db.DateTime)
-    discount_type = db.Column(db.String(20)) # Percentual, Fixo
+    discount_type = db.Column(db.String(20))
     value = db.Column(db.Float)
-    target_type = db.Column(db.String(20)) # GRUPO, PRODUTO
+    target_type = db.Column(db.String(20))
     target_value = db.Column(db.String(100))
 
 class Order(db.Model):
@@ -119,13 +119,12 @@ class Order(db.Model):
     control_number = db.Column(db.String(20))
     client_id = db.Column(db.Integer, db.ForeignKey('clients.id'))
     created_at = db.Column(db.DateTime, default=datetime.now)
-    status = db.Column(db.String(30)) # Rascunho, Em Negociacao, Aprovado, etc.
+    status = db.Column(db.String(30)) 
     payment_condition = db.Column(db.String(50))
     validity = db.Column(db.DateTime)
     discount_value = db.Column(db.Float, default=0.0)
     link_nf = db.Column(db.String(255))
     
-    # Totals are usually computed, but can be cached
     total_items = db.Column(db.Float, default=0.0)
     total_final = db.Column(db.Float, default=0.0)
 
@@ -157,7 +156,7 @@ class Task(db.Model):
     __tablename__ = 'tasks'
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String(255))
-    client_id = db.Column(db.Integer, db.ForeignKey('clients.id'))
+    client_id = db.Column(db.Integer, db.ForeignKey('clients.id'), nullable=True) # made nullable
     priority = db.Column(db.String(20))
     deadline = db.Column(db.DateTime)
     status = db.Column(db.String(20))
@@ -174,47 +173,6 @@ class Task(db.Model):
         }
 
 # -------------------------------------------------------------------
-# BUSINESS LOGIC / AUTOMATIONS
-# -------------------------------------------------------------------
-
-def recalculate_order(order):
-    total = 0.0
-    for item in order.items:
-        item.subtotal = item.qty * item.price_practiced
-        total += item.subtotal
-    
-    order.total_items = total
-    order.total_final = max(0, total - order.discount_value)
-    
-    # W01: Approval Trigger
-    if order.status in ['Rascunho', 'Em Negociacao']:
-        if order.discount_value > (0.15 * total):
-            order.status = 'Aguardando Aprovação'
-            print(f"Automacao W01: Pedido {order.id} enviado para aprovacao.")
-
-    db.session.commit()
-
-def convert_sale(order):
-    # W03: Conversion Logic
-    if order.status == 'Aprovado':
-        # Decrement Stock
-        for item in order.items:
-            prod = item.product
-            # W04: Stock Check (Should catch before here, but safe guard)
-            if prod.stock_current >= item.qty:
-                 prod.stock_current -= item.qty
-            else:
-                # In real scenario, rollback or partial
-                pass
-        
-        # Update Client
-        if order.client:
-            order.client.last_purchase_date = datetime.now()
-            order.client.status = 'Ativo'
-        
-        db.session.commit()
-
-# -------------------------------------------------------------------
 # ROUTES
 # -------------------------------------------------------------------
 
@@ -223,6 +181,13 @@ def login():
     data = request.json
     u = data.get('username')
     p = data.get('password')
+    # Simple hardcoded check first or db check
+    user = User.query.filter_by(username=u).first()
+    if user:
+         # In real app compare hash, here plain for requested "0 segurança"
+         if user.password == p:
+             return jsonify({'token': f'tk-{user.id}', 'user': {'name': user.name, 'role': user.role}})
+    
     if u == 'compasso' and p == '123456':
          return jsonify({'token': 'tk-demo', 'user': {'name': 'Compasso Demo', 'role': 'admin'}})
     if u == 'admin' and p == '123':
@@ -233,24 +198,24 @@ def login():
 def get_users():
     users = User.query.all()
     if not users:
+        # Return mocks if empty
         return jsonify([
             {'id': 1, 'name': 'Compasso Demo', 'role': 'admin', 'email': 'demo@compasso.com', 'username': 'compasso'},
-            {'id': 2, 'name': 'Pedro Vendedor', 'role': 'vendedor', 'email': 'pedro@repforce.com', 'username': 'pedro'},
-            {'id': 3, 'name': 'Maria Gerente', 'role': 'gerente', 'email': 'maria@repforce.com', 'username': 'maria'}
+            {'id': 2, 'name': 'Pedro Vendedor', 'role': 'vendedor', 'email': 'pedro@repforce.com', 'username': 'pedro'}
         ])
     return jsonify([{
-        'id': u.id, 'name': u.name, 'email': u.email, 'role': u.role, 'username': u.name.lower().replace(' ', '')
+        'id': u.id, 'name': u.name, 'email': u.email, 'role': u.role, 'username': u.username
     } for u in users])
 
 @app.route('/api/users', methods=['POST'])
 def create_user():
     data = request.json
-    # "nada de segurança"
     new_user = User(
         name=data.get('name'),
         email=data.get('email'),
         role=data.get('role', 'vendedor'),
-        password=data.get('password') # Storing plain text as requested "quantos digitos quiser"
+        password=data.get('password'),
+        username=data.get('username') # Added username
     )
     db.session.add(new_user)
     db.session.commit()
@@ -270,25 +235,27 @@ def get_roles():
 def get_clients():
     return jsonify([c.to_dict() for c in Client.query.all()])
 
+@app.route('/api/clients', methods=['POST']) # Added boilerplate for copy paste module
+def create_client():
+    # Placeholder for MVP compatibility with "Orders/Quotes" style
+    return jsonify({'success': True}), 201
+
 @app.route('/api/products', methods=['GET'])
 def get_products():
     return jsonify([p.to_dict() for p in Product.query.all()])
 
 @app.route('/api/orders', methods=['GET'])
 def get_orders():
-    # Filter by 'type' query param if needed, or return all
-    # Frontend can filter
     return jsonify([o.to_dict() for o in Order.query.all()])
 
 @app.route('/api/orders', methods=['POST'])
 def create_order():
     data = request.json
-    # Simple order creation for MVP
-    client = Client.query.get(data.get('client_id'))
+    client = Client.query.get(data.get('client_id')) if data.get('client_id') else None
     new_order = Order(
         client_id=client.id if client else None,
         status=data.get('status', 'Rascunho'),
-        total_final=data.get('total', 0.0),
+        total_final=float(data.get('total', 0.0)),
         control_number=f"PED-{datetime.now().strftime('%H%M%S')}",
         created_at=datetime.now()
     )
@@ -315,13 +282,11 @@ def create_task():
 
 @app.route('/api/dashboard', methods=['GET'])
 def get_dashboard():
-    # Mock Aggregation
     total_sales = db.session.query(db.func.sum(Order.total_final)).filter(Order.status == 'Faturado').scalar() or 0
-    new_clients = Client.query.filter(Client.created_at >= datetime.now() - timedelta(days=30)).count() if hasattr(Client, 'created_at') else 12
     return jsonify({
         'sales_today': 15000, 
         'total_sales_month': total_sales,
-        'new_clients': new_clients
+        'new_clients': 12
     })
 
 @app.route('/api/campaigns', methods=['GET'])
@@ -337,31 +302,26 @@ def create_campaign():
         name=data.get('name'),
         discount_type='Percentual',
         value=float(data.get('discount', 0)),
-        target_type='PRODUTO', # MVP assumes list of IDs or Group
+        target_type='PRODUTO', 
         target_value=str(data.get('products', []))
     )
     db.session.add(new_camp)
     
     # APPLY DISCOUNT LOGIC
-    # "quando cadastrado já ser aplicado o desconto em todos os produtos nela selecionados"
-    product_ids = data.get('products', []) # Expecting list of IDs
+    product_ids = data.get('products', []) 
     discount_pct = float(data.get('discount', 0)) / 100.0
     
-    products = Product.query.filter(Product.id.in_(product_ids)).all()
-    for p in products:
-        # Apply discount to price_base (simple approach)
-        # or maybe we should have a price_promo. For now, updating price_base as requested "apply"
-        if p.price_base:
-            p.price_base = p.price_base * (1.0 - discount_pct)
+    if product_ids:
+        products = Product.query.filter(Product.id.in_(product_ids)).all()
+        for p in products:
+            if p.price_base:
+                p.price_base = p.price_base * (1.0 - discount_pct)
             
     db.session.commit()
-    return jsonify({'success': True, 'affected': len(products)}), 201
-
-# --- COMMANDS ---
+    return jsonify({'success': True}), 201
 
 @app.cli.command("seed_db")
 def seed_db_cmd():
-    # We will use the external seed.py mostly, but this is a stub
     db.create_all()
     print("Tables created.")
 

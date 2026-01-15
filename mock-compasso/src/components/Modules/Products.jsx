@@ -88,6 +88,7 @@ const Products = ({ tabState }) => {
             tabState={tabState}
             renderRow={renderRow}
             renderDetail={renderDetail}
+            showAddButton={false}
         />
     );
 };
