@@ -7,6 +7,14 @@ from datetime import datetime, timedelta
 app = Flask(__name__)
 CORS(app)
 
+# LOG TODAS AS REQUISIÇÕES RECEBIDAS
+@app.before_request
+def log_request():
+    real_ip = request.headers.get('X-Forwarded-For', request.remote_addr)
+    print(f"🔥 BACKEND RECEBEU: {request.method} {request.path} - IP REAL: {real_ip}")
+    if request.json:
+        print(f"   📦 DADOS: {request.json}")
+
 # Database Config - SQLite
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(BASE_DIR, 'repforce.db')
