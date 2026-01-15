@@ -14,5 +14,6 @@ export default defineConfig({
         port: 3000,
         host: '0.0.0.0',
         strictPort: true,
+        allowedHosts: ['repforce.com.br', 'localhost', '127.0.0.1'],
     }
 })
