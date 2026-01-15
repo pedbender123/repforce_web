@@ -1,0 +1,33 @@
+version: '3.8'
+
+services:
+  frontend:
+    build: .
+    container_name: compasso_frontend
+    ports:
+      - "3000:3000"
+    volumes:
+      - .:/app
+      - /app/node_modules
+    environment:
+      - VITE_API_URL=http://backend:5000/api
+    depends_on:
+      - backend
+    networks:
+      - compasso_net
+
+  backend:
+    build: ./backend
+    container_name: compasso_backend
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./backend:/app
+    environment:
+      - FLASK_ENV=development
+    networks:
+      - compasso_net
+
+networks:
+  compasso_net:
+    driver: bridge
