@@ -11,9 +11,17 @@ CORS(app)
 @app.before_request
 def log_request():
     real_ip = request.headers.get('X-Forwarded-For', request.remote_addr)
+    
+    # FIX: Remove Content-Type header on GET requests to prevent 415 Unsupported Media Type
+    if request.method == 'GET' and 'Content-Type' in request.headers:
+        del request.headers['Content-Type']
+
     print(f"🔥 BACKEND RECEBEU: {request.method} {request.path} - IP REAL: {real_ip}")
     if request.json:
-        print(f"   📦 DADOS: {request.json}")
+        try:
+             print(f"   📦 DADOS: {request.json}")
+        except:
+             pass
 
 # Database Config - SQLite
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
