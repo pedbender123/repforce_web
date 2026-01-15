@@ -37,3 +37,6 @@ Ignora o arquivo .env que contém os segredos
 /backend/uploads/
 /backend/app/data/*.db
 .venv_fix
+/mock-compasso/node_modules
+/mock-compasso/build
+/mock-compasso/.npm
