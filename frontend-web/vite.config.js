@@ -13,6 +13,7 @@ export default defineConfig({
   server: {
     port: 3001,
     open: true,
+    allowedHosts: true,
     host: true,
     proxy: {
       '/v1': {
@@ -21,9 +22,9 @@ export default defineConfig({
         secure: false,
       },
       '/api': {
-         target: 'http://backend:8000',
-         changeOrigin: true,
-         secure: false,
+        target: 'http://backend:8000',
+        changeOrigin: true,
+        secure: false,
       },
       '/manager': {
         target: 'http://backend:8000',
