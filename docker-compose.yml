@@ -47,7 +47,7 @@ services:
       dockerfile: Dockerfile
       target: build
     container_name: repforce_frontend
-    command: npm start
+    command: npm start -- --host 0.0.0.0
     volumes:
       - ./frontend-web:/app
       - /app/node_modules
